@@ -1,0 +1,1327 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 0;
+}
+
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 0;
+}
+
+
+/* =========================================================
+   MAIN PAGE
+========================================================= */
+
+.pg-login-page {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+
+  padding: 14px;
+
+  overflow: hidden;
+
+  background: #edf8f5;
+
+  font-family: "DM Sans", sans-serif;
+
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   MAIN CONTAINER
+========================================================= */
+
+.pg-login-container {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  display: grid;
+
+  grid-template-columns: 52% 48%;
+
+  overflow: hidden;
+
+  border-radius: 24px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 25px 70px rgba(20, 72, 61, 0.12);
+}
+
+
+/* =========================================================
+   LEFT SIDE
+========================================================= */
+
+.pg-login-left {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #ffffff 0%,
+      #f8fffd 55%,
+      #effaf7 100%
+    );
+}
+
+
+/* =========================================================
+   LEFT DECORATIONS
+========================================================= */
+
+.left-decoration {
+  position: absolute;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+}
+
+.decoration-one {
+  width: 340px;
+  height: 340px;
+
+  top: -160px;
+  left: -110px;
+
+  background:
+    rgba(207, 240, 233, 0.5);
+}
+
+.decoration-two {
+  width: 210px;
+  height: 210px;
+
+  right: -85px;
+  top: 30%;
+
+  background:
+    rgba(212, 241, 235, 0.55);
+}
+
+.decoration-three {
+  width: 160px;
+  height: 160px;
+
+  left: 5%;
+  bottom: -75px;
+
+  background:
+    rgba(217, 243, 237, 0.65);
+}
+
+
+/* =========================================================
+   PGMATE LOGO
+========================================================= */
+
+.pgmate-logo {
+  display: flex;
+
+  align-items: center;
+
+  width: fit-content;
+
+  gap: 10px;
+}
+
+.desktop-logo {
+  position: relative;
+
+  z-index: 10;
+
+  margin: 30px 0 0 40px;
+}
+
+.mobile-logo {
+  display: none;
+}
+
+.pgmate-logo-mark {
+  width: 48px;
+  height: 48px;
+
+  display: grid;
+
+  place-items: center;
+
+  flex-shrink: 0;
+
+  border-radius: 12px;
+
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      145deg,
+      #0c203c,
+      #17345e
+    );
+
+  box-shadow:
+    0 8px 22px rgba(20, 47, 83, 0.18);
+}
+
+.pgmate-logo-text {
+  display: flex;
+
+  flex-direction: column;
+
+  line-height: 1;
+}
+
+.pgmate-logo-text > span {
+  font-family: "Manrope", sans-serif;
+
+  font-size: 31px;
+
+  font-weight: 800;
+
+  letter-spacing: -1.5px;
+}
+
+.logo-pg {
+  color: #101b31;
+}
+
+.logo-mate {
+  color: #5054ec;
+}
+
+.pgmate-logo-text small {
+  margin-top: 5px;
+
+  color: #4d5870;
+
+  font-size: 9px;
+
+  font-weight: 600;
+}
+
+
+/* =========================================================
+   PG ILLUSTRATION
+========================================================= */
+
+.pg-illustration-wrapper {
+  position: absolute;
+
+  z-index: 3;
+
+  left: 4%;
+  right: 4%;
+
+  top: 15%;
+  bottom: 5%;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+}
+
+.pg-illustration {
+  width: 100%;
+  height: 100%;
+
+  object-fit: contain;
+
+  display: block;
+}
+
+
+/* =========================================================
+   LEFT BOTTOM CONTENT
+========================================================= */
+
+.left-bottom-content {
+  position: absolute;
+
+  z-index: 8;
+
+  left: 40px;
+  bottom: 22px;
+
+  max-width: 380px;
+}
+
+.secure-badge {
+  width: fit-content;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  padding: 6px 11px;
+
+  border:
+    1px solid rgba(55, 125, 110, 0.12);
+
+  border-radius: 100px;
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  color: #247261;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  box-shadow:
+    0 6px 18px rgba(28, 97, 84, 0.06);
+}
+
+.left-bottom-content > p {
+  margin-top: 7px;
+
+  color: #607168;
+
+  font-size: 10px;
+
+  line-height: 1.45;
+}
+
+
+/* =========================================================
+   RIGHT LOGIN SECTION
+========================================================= */
+
+.pg-login-right {
+  position: relative;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  overflow: hidden;
+
+  background:
+    linear-gradient(
+      145deg,
+      #245c4c 0%,
+      #185441 45%,
+      #123f33 100%
+    );
+}
+
+
+/* =========================================================
+   S-SHAPED CURVE
+========================================================= */
+
+.login-curve {
+  position: absolute;
+
+  z-index: 3;
+
+  top: 0;
+  left: 0;
+
+  width: 135px;
+  height: 100%;
+
+  pointer-events: none;
+}
+
+.login-curve svg {
+  display: block;
+
+  width: 100%;
+  height: 100%;
+}
+
+
+/* =========================================================
+   RIGHT DECORATIONS
+========================================================= */
+
+.right-shape {
+  position: absolute;
+
+  border-radius: 50%;
+
+  pointer-events: none;
+
+  z-index: 1;
+}
+
+.right-shape-one {
+  width: 480px;
+  height: 480px;
+
+  top: -310px;
+  right: -170px;
+
+  background:
+    rgba(255, 255, 255, 0.035);
+}
+
+.right-shape-two {
+  width: 360px;
+  height: 360px;
+
+  left: -220px;
+  bottom: -230px;
+
+  background:
+    rgba(116, 201, 178, 0.07);
+}
+
+.right-shape-three {
+  width: 210px;
+  height: 210px;
+
+  right: -100px;
+  bottom: -70px;
+
+  background:
+    rgba(255, 255, 255, 0.025);
+}
+
+
+/* =========================================================
+   LOGIN CONTENT
+========================================================= */
+
+.login-content {
+  position: relative;
+
+  z-index: 10;
+
+  width: min(390px, 76%);
+
+  padding: 20px 0;
+
+  /*
+    No extra left margin.
+    This keeps the form away from
+    the S curve.
+  */
+
+  margin-left: 0;
+}
+
+
+/* =========================================================
+   LOGIN TITLE
+========================================================= */
+
+.login-title {
+  margin-bottom: 24px;
+}
+
+.login-title h1 {
+  margin: 0;
+
+  font-family: "Manrope", sans-serif;
+
+  color: #ffffff;
+
+  font-size: clamp(40px, 4vw, 54px);
+
+  font-weight: 800;
+
+  line-height: 1;
+
+  letter-spacing: -2px;
+}
+
+.login-title p {
+  max-width: 330px;
+
+  margin-top: 9px;
+
+  color:
+    rgba(255, 255, 255, 0.67);
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.pg-login-form {
+  width: 100%;
+}
+
+.pg-input-group {
+  margin-bottom: 14px;
+}
+
+.pg-input-group label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color:
+    rgba(255, 255, 255, 0.9);
+
+  font-size: 11px;
+
+  font-weight: 600;
+}
+
+
+/* =========================================================
+   INPUT
+========================================================= */
+
+.pg-input-wrapper {
+  position: relative;
+
+  width: 100%;
+  height: 50px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding: 0 15px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.05);
+
+  border-radius: 10px;
+
+  background:
+    rgba(7, 35, 28, 0.58);
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease,
+    transform 0.25s ease;
+}
+
+.pg-input-wrapper:focus-within {
+  border-color:
+    rgba(113, 205, 181, 0.7);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(103, 193, 170, 0.09);
+
+  transform:
+    translateY(-1px);
+}
+
+.pg-input-icon {
+  flex: 0 0 auto;
+
+  color:
+    rgba(255, 255, 255, 0.67);
+}
+
+.pg-input-wrapper input {
+  width: 100%;
+  height: 100%;
+
+  padding: 0 11px;
+
+  border: none;
+  outline: none;
+
+  background: transparent;
+
+  color: #ffffff;
+
+  font-family:
+    "DM Sans", sans-serif;
+
+  font-size: 12px;
+}
+
+.pg-input-wrapper input::placeholder {
+  color:
+    rgba(255, 255, 255, 0.52);
+}
+
+
+/* =========================================================
+   PASSWORD SHOW / HIDE
+========================================================= */
+
+.show-password-button {
+  width: 30px;
+  height: 30px;
+
+  flex: 0 0 auto;
+
+  display: grid;
+
+  place-items: center;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: transparent;
+
+  color:
+    rgba(255, 255, 255, 0.7);
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.show-password-button:hover {
+  background:
+    rgba(255, 255, 255, 0.07);
+
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   FORGOT PASSWORD
+========================================================= */
+
+.forgot-row {
+  display: flex;
+
+  justify-content: flex-end;
+
+  margin-top: -3px;
+
+  margin-bottom: 18px;
+}
+
+.forgot-button {
+  padding: 3px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #7ad1bb;
+
+  font-family:
+    "DM Sans", sans-serif;
+
+  font-size: 10px;
+
+  font-weight: 600;
+
+  text-decoration: underline;
+
+  text-underline-offset: 3px;
+
+  cursor: pointer;
+}
+
+.forgot-button:hover {
+  color: #a2e6d4;
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+.pg-login-button {
+  position: relative;
+
+  width: 100%;
+  height: 51px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  border: none;
+
+  border-radius: 100px;
+
+  background:
+    linear-gradient(
+      100deg,
+      #6dc8b1,
+      #72cdb6
+    );
+
+  color: #ffffff;
+
+  font-family:
+    "Manrope", sans-serif;
+
+  font-size: 13px;
+
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 24px
+    rgba(6, 39, 30, 0.2);
+
+  transition:
+    box-shadow 0.25s ease,
+    filter 0.25s ease;
+}
+
+.pg-login-button:hover {
+  filter: brightness(1.06);
+
+  box-shadow:
+    0 14px 28px
+    rgba(6, 39, 30, 0.28);
+}
+
+.pg-login-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.pg-login-button svg {
+  position: absolute;
+
+  right: 23px;
+}
+
+
+/* =========================================================
+   SECURITY MESSAGE
+========================================================= */
+
+.login-security {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 6px;
+
+  margin-top: 15px;
+
+  color:
+    rgba(255, 255, 255, 0.42);
+
+  font-size: 9px;
+}
+
+.login-security svg {
+  width: 15px;
+  height: 15px;
+
+  color:
+    rgba(116, 203, 181, 0.8);
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.login-footer {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-top: 17px;
+}
+
+.login-footer button {
+  padding: 0;
+
+  border: none;
+
+  background: transparent;
+
+  color:
+    rgba(255, 255, 255, 0.36);
+
+  font-family:
+    "DM Sans", sans-serif;
+
+  font-size: 9px;
+
+  cursor: pointer;
+}
+
+.login-footer button:hover {
+  color:
+    rgba(255, 255, 255, 0.75);
+}
+
+.login-footer span {
+  color:
+    rgba(255, 255, 255, 0.22);
+
+  font-size: 7px;
+}
+
+
+/* =========================================================
+   SHORT LAPTOP
+========================================================= */
+
+@media (max-height: 750px) and (min-width: 769px) {
+
+  .pg-login-page {
+    padding: 10px;
+  }
+
+  .pg-login-container {
+    min-height:
+      calc(100vh - 20px);
+  }
+
+  .desktop-logo {
+    margin-top: 22px;
+    margin-left: 32px;
+  }
+
+  .pgmate-logo-mark {
+    width: 43px;
+    height: 43px;
+  }
+
+  .pgmate-logo-text > span {
+    font-size: 28px;
+  }
+
+  .pg-illustration-wrapper {
+    top: 13%;
+    bottom: 3%;
+  }
+
+  .left-bottom-content {
+    bottom: 15px;
+    left: 32px;
+  }
+
+  .login-content {
+    width: min(370px, 74%);
+
+    padding: 10px 0;
+
+    margin-left: 0;
+  }
+
+  .login-title {
+    margin-bottom: 18px;
+  }
+
+  .login-title h1 {
+    font-size: 43px;
+  }
+
+  .pg-input-group {
+    margin-bottom: 10px;
+  }
+
+  .pg-input-wrapper {
+    height: 45px;
+  }
+
+  .forgot-row {
+    margin-bottom: 13px;
+  }
+
+  .pg-login-button {
+    height: 47px;
+  }
+
+  .login-security {
+    margin-top: 10px;
+  }
+
+  .login-footer {
+    margin-top: 11px;
+  }
+}
+
+
+/* =========================================================
+   TABLET / SMALL LAPTOP
+========================================================= */
+
+@media (min-width: 769px) and (max-width: 1100px) {
+
+  .pg-login-container {
+    grid-template-columns: 48% 52%;
+  }
+
+  .desktop-logo {
+    margin-left: 28px;
+  }
+
+  .pgmate-logo-text > span {
+    font-size: 27px;
+  }
+
+  .pg-illustration-wrapper {
+    left: 2%;
+    right: 2%;
+  }
+
+  .left-bottom-content {
+    left: 28px;
+  }
+
+  .login-curve {
+    width: 115px;
+  }
+
+  .login-content {
+    width: min(370px, 75%);
+
+    margin-left: 0;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+  /* -------------------------------------------------------
+     PAGE
+  ------------------------------------------------------- */
+
+  .pg-login-page {
+    width: 100%;
+
+    height: 100dvh;
+
+    padding: 0;
+
+    overflow: hidden;
+
+    background:
+      linear-gradient(
+        145deg,
+        #245c4c 0%,
+        #185441 45%,
+        #123f33 100%
+      );
+  }
+
+
+  /* -------------------------------------------------------
+     CONTAINER
+  ------------------------------------------------------- */
+
+  .pg-login-container {
+    width: 100%;
+
+    height: 100dvh;
+
+    display: block;
+
+    border-radius: 0;
+
+    background: transparent;
+
+    box-shadow: none;
+  }
+
+
+  /* -------------------------------------------------------
+     HIDE DESKTOP LEFT SIDE
+  ------------------------------------------------------- */
+
+  .pg-login-left {
+    display: none;
+  }
+
+
+  /* -------------------------------------------------------
+     RIGHT SIDE
+  ------------------------------------------------------- */
+
+  .pg-login-right {
+    width: 100%;
+
+    height: 100dvh;
+
+    min-height: 100dvh;
+
+    padding:
+      100px 24px 30px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    background:
+      linear-gradient(
+        145deg,
+        #245c4c 0%,
+        #185441 45%,
+        #123f33 100%
+      );
+
+    overflow: hidden;
+  }
+
+
+  /* -------------------------------------------------------
+     MOBILE LOGO
+  ------------------------------------------------------- */
+
+  .mobile-logo {
+    position: absolute;
+
+    z-index: 20;
+
+    top: 28px;
+    left: 50%;
+
+    display: flex;
+
+    transform: translateX(-50%);
+
+    gap: 8px;
+  }
+
+  .mobile-logo .pgmate-logo-mark {
+    width: 42px;
+    height: 42px;
+
+    border-radius: 11px;
+  }
+
+  .mobile-logo .pgmate-logo-text > span {
+    font-size: 27px;
+
+    letter-spacing: -1.2px;
+  }
+
+  .mobile-logo .pgmate-logo-text small {
+    margin-top: 4px;
+
+    font-size: 7px;
+
+    color:
+      rgba(255, 255, 255, 0.65);
+  }
+
+  /*
+    On mobile the logo text needs to be
+    visible on the green background.
+  */
+
+  .mobile-logo .logo-pg {
+    color: #ffffff;
+  }
+
+  .mobile-logo .logo-mate {
+    color: #78d3bd;
+  }
+
+
+  /* -------------------------------------------------------
+     REMOVE CURVE
+  ------------------------------------------------------- */
+
+  .login-curve {
+    display: none;
+  }
+
+
+  /* -------------------------------------------------------
+     CONTENT
+  ------------------------------------------------------- */
+
+  .login-content {
+    width: 100%;
+
+    max-width: 390px;
+
+    padding: 0;
+
+    margin: 0;
+  }
+
+
+  /* -------------------------------------------------------
+     TITLE
+  ------------------------------------------------------- */
+
+  .login-title {
+    margin-bottom: 24px;
+  }
+
+  .login-title h1 {
+    font-size: 38px;
+
+    letter-spacing: -1.5px;
+  }
+
+  .login-title p {
+    max-width: 300px;
+
+    margin-top: 7px;
+
+    font-size: 10px;
+  }
+
+
+  /* -------------------------------------------------------
+     INPUTS
+  ------------------------------------------------------- */
+
+  .pg-input-group {
+    margin-bottom: 14px;
+  }
+
+  .pg-input-group label {
+    margin-bottom: 6px;
+
+    font-size: 10px;
+  }
+
+  .pg-input-wrapper {
+    height: 48px;
+
+    border-radius: 9px;
+
+    padding: 0 13px;
+  }
+
+  .pg-input-wrapper input {
+    font-size: 11px;
+
+    padding-left: 9px;
+  }
+
+  .pg-input-icon {
+    width: 17px;
+    height: 17px;
+  }
+
+  .show-password-button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .show-password-button svg {
+    width: 16px;
+    height: 16px;
+  }
+
+
+  /* -------------------------------------------------------
+     FORGOT PASSWORD
+  ------------------------------------------------------- */
+
+  .forgot-row {
+    margin-top: -2px;
+
+    margin-bottom: 15px;
+  }
+
+  .forgot-button {
+    font-size: 9px;
+  }
+
+
+  /* -------------------------------------------------------
+     LOGIN BUTTON
+  ------------------------------------------------------- */
+
+  .pg-login-button {
+    height: 48px;
+
+    font-size: 11px;
+  }
+
+  .pg-login-button svg {
+    width: 17px;
+    height: 17px;
+
+    right: 18px;
+  }
+
+
+  /* -------------------------------------------------------
+     SECURITY
+  ------------------------------------------------------- */
+
+  .login-security {
+    margin-top: 12px;
+
+    font-size: 7px;
+  }
+
+  .login-security svg {
+    width: 13px;
+    height: 13px;
+  }
+
+
+  /* -------------------------------------------------------
+     FOOTER
+  ------------------------------------------------------- */
+
+  .login-footer {
+    margin-top: 11px;
+
+    gap: 6px;
+  }
+
+  .login-footer button {
+    font-size: 7px;
+  }
+
+  .login-footer span {
+    font-size: 6px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL MOBILE
+========================================================= */
+
+@media (max-width: 380px) {
+
+  .pg-login-right {
+    padding:
+      95px 18px 25px;
+  }
+
+  .mobile-logo {
+    top: 23px;
+  }
+
+  .mobile-logo .pgmate-logo-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mobile-logo .pgmate-logo-text > span {
+    font-size: 24px;
+  }
+
+  .mobile-logo .pgmate-logo-text small {
+    font-size: 6px;
+  }
+
+  .login-title {
+    margin-bottom: 19px;
+  }
+
+  .login-title h1 {
+    font-size: 33px;
+  }
+
+  .login-title p {
+    font-size: 9px;
+  }
+
+  .pg-input-group {
+    margin-bottom: 11px;
+  }
+
+  .pg-input-wrapper {
+    height: 44px;
+  }
+
+  .pg-login-button {
+    height: 45px;
+  }
+
+  .login-security {
+    margin-top: 9px;
+  }
+
+  .login-footer {
+    margin-top: 8px;
+  }
+}
+
+.login-error {
+  width: 100%;
+  box-sizing: border-box;
+
+  margin-bottom: 18px;
+
+  padding: 11px 14px;
+
+  border-radius: 10px;
+
+  background: #fff0f0;
+
+  border: 1px solid #f3caca;
+
+  color: #c0392b;
+
+  font-size: 14px;
+
+  line-height: 1.4;
+}

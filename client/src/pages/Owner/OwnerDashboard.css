@@ -1,0 +1,3144 @@
+/* =========================================================
+   PGmate OWNER DASHBOARD
+   Responsive Desktop + Tablet + Mobile
+========================================================= */
+
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.owner-dashboard {
+  min-height: 100vh;
+
+  background: #f5faf8;
+
+  color: #173d33;
+
+  overflow-x: hidden;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.owner-dashboard::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* Hide scrollbars everywhere inside dashboard
+   but keep scrolling functionality */
+
+.owner-dashboard * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.owner-dashboard *::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
+
+.owner-sidebar {
+  position: fixed;
+
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 250px;
+
+  background: #123f33;
+
+  color: white;
+
+  padding: 22px 15px;
+
+  box-sizing: border-box;
+
+  display: flex;
+
+  flex-direction: column;
+
+  z-index: 200;
+
+  overflow-y: auto;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.owner-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.owner-brand {
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 7px 9px 22px;
+
+  flex-shrink: 0;
+}
+
+
+.owner-brand-icon {
+  width: 40px;
+  height: 40px;
+
+  border-radius: 11px;
+
+  background: #6dc8b1;
+
+  color: #123f33;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-brand-text {
+  display: flex;
+
+  flex-direction: column;
+
+  min-width: 0;
+}
+
+
+.owner-brand-text strong {
+  font-size: 20px;
+
+  line-height: 1;
+}
+
+
+.owner-brand-text span {
+  font-size: 9px;
+
+  opacity: 0.55;
+
+  margin-top: 4px;
+
+  letter-spacing: 0.8px;
+}
+
+
+.owner-sidebar-close {
+  display: none;
+}
+
+
+/* =========================================================
+   PROPERTY SELECTOR
+========================================================= */
+
+.owner-property-selector {
+  margin-bottom: 18px;
+
+  flex-shrink: 0;
+}
+
+
+.owner-property-label {
+  display: block;
+
+  padding: 0 9px;
+
+  margin-bottom: 8px;
+
+  color: rgba(255, 255, 255, 0.72);
+
+  font-size: 9px;
+
+  letter-spacing: 1px;
+
+  font-weight: 700;
+}
+
+
+.owner-property-select-wrapper {
+  position: relative;
+
+  height: 46px;
+
+  margin: 0 1px;
+
+  border: 1px solid rgba(255, 255, 255, 0.16);
+
+  border-radius: 11px;
+
+  background: rgba(255, 255, 255, 0.055);
+
+  display: flex;
+
+  align-items: center;
+
+  padding: 0 12px;
+
+  box-sizing: border-box;
+
+  color: white;
+
+  transition: 0.2s ease;
+}
+
+
+.owner-property-select-wrapper:hover {
+  background: rgba(255, 255, 255, 0.08);
+
+  border-color: rgba(255, 255, 255, 0.23);
+}
+
+
+.owner-property-select-wrapper > svg:first-child {
+  flex-shrink: 0;
+
+  color: #6dc8b1;
+}
+
+
+.owner-property-select-wrapper select {
+  appearance: none;
+
+  -webkit-appearance: none;
+
+  border: none;
+
+  outline: none;
+
+  background: transparent;
+
+  color: white;
+
+  width: 100%;
+
+  min-width: 0;
+
+  padding: 0 26px 0 9px;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+
+.owner-property-select-wrapper select option {
+  background: #123f33;
+
+  color: white;
+}
+
+
+.owner-property-select-wrapper select:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+
+.owner-property-chevron {
+  position: absolute;
+
+  right: 10px;
+
+  pointer-events: none;
+
+  opacity: 0.8;
+}
+
+
+/* =========================================================
+   NAVIGATION
+========================================================= */
+
+.owner-navigation {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  flex: 0 0 auto;
+}
+
+
+.owner-nav-item {
+  width: 100%;
+
+  border: none;
+
+  background: transparent;
+
+  color: rgba(255, 255, 255, 0.66);
+
+  padding: 11px 13px;
+
+  border-radius: 10px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 11px;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  box-sizing: border-box;
+}
+
+
+.owner-nav-item svg {
+  flex-shrink: 0;
+}
+
+
+.owner-nav-item span {
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-nav-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+
+  color: white;
+}
+
+
+.owner-nav-item.active {
+  background: rgba(255, 255, 255, 0.12);
+
+  color: white;
+
+  box-shadow: inset 3px 0 0 #6dc8b1;
+}
+
+
+/* =========================================================
+   SIDEBAR BOTTOM
+========================================================= */
+
+.owner-sidebar-bottom {
+  margin-top: auto;
+
+  padding-top: 20px;
+
+  flex-shrink: 0;
+}
+
+
+.owner-logout-button {
+  width: 100%;
+
+  border: none;
+
+  background: rgba(255, 255, 255, 0.07);
+
+  color: rgba(255, 255, 255, 0.75);
+
+  padding: 11px 13px;
+
+  border-radius: 10px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 10px;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  font-size: 12px;
+
+  transition: 0.2s ease;
+}
+
+
+.owner-logout-button:hover {
+  background: rgba(255, 255, 255, 0.13);
+
+  color: white;
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.owner-main {
+  margin-left: 250px;
+
+  width: calc(100% - 250px);
+
+  min-height: 100vh;
+
+  box-sizing: border-box;
+}
+
+
+/* =========================================================
+   TOPBAR
+========================================================= */
+
+.owner-topbar {
+  height: 74px;
+
+  background: white;
+
+  border-bottom: 1px solid #e5efeb;
+
+  padding: 0 32px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  box-sizing: border-box;
+
+  position: sticky;
+
+  top: 0;
+
+  z-index: 100;
+}
+
+
+.owner-topbar-left {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-topbar h1 {
+  margin: 0;
+
+  color: #173d33;
+
+  font-size: 21px;
+
+  line-height: 1.2;
+}
+
+
+.owner-topbar p {
+  margin: 4px 0 0;
+
+  color: #81948f;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   DESKTOP PROFILE
+========================================================= */
+
+.owner-profile {
+  display: flex;
+
+  align-items: center;
+
+  gap: 9px;
+
+  flex-shrink: 0;
+}
+
+
+.owner-avatar {
+  width: 39px;
+  height: 39px;
+
+  border-radius: 50%;
+
+  background: #dff5ee;
+
+  color: #185441;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-weight: 700;
+}
+
+
+.owner-profile-info {
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-profile-info strong {
+  font-size: 12px;
+}
+
+
+.owner-profile-info span {
+  margin-top: 2px;
+
+  font-size: 9px;
+
+  color: #81948f;
+}
+
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.owner-content {
+  width: 100%;
+
+  max-width: 1500px;
+
+  margin: 0 auto;
+
+  padding: 28px 32px;
+
+  box-sizing: border-box;
+}
+
+
+.owner-mobile-page-title {
+  display: none;
+}
+
+
+/* =========================================================
+   ACTIVE PROPERTY
+========================================================= */
+
+.owner-active-property-card {
+  min-height: 100px;
+
+  background: #185441;
+
+  color: white;
+
+  border-radius: 18px;
+
+  padding: 20px 23px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+
+  box-sizing: border-box;
+}
+
+
+.owner-active-property-icon {
+  width: 48px;
+  height: 48px;
+
+  border-radius: 13px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  color: #6dc8b1;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-active-property-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+
+.owner-active-property-info span {
+  display: block;
+
+  font-size: 8px;
+
+  letter-spacing: 1px;
+
+  opacity: 0.6;
+}
+
+
+.owner-active-property-info h2 {
+  margin: 4px 0 3px;
+
+  font-size: 19px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-active-property-info p {
+  margin: 0;
+
+  color: rgba(255, 255, 255, 0.65);
+
+  font-size: 10px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-active-property-badge {
+  padding: 6px 10px;
+
+  background: rgba(255, 255, 255, 0.1);
+
+  border-radius: 20px;
+
+  font-size: 9px;
+
+  color: #a8ead6;
+
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   STATS
+========================================================= */
+
+.owner-stat-grid {
+  display: grid;
+
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 15px;
+
+  margin-top: 18px;
+}
+
+
+.owner-stat-card {
+  background: white;
+
+  border: 1px solid #e5efeb;
+
+  border-radius: 15px;
+
+  padding: 18px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  min-width: 0;
+
+  box-sizing: border-box;
+}
+
+
+.owner-stat-icon {
+  width: 43px;
+  height: 43px;
+
+  border-radius: 11px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-stat-icon.orange {
+  background: #fff0df;
+
+  color: #ec7b16;
+}
+
+
+.owner-stat-icon.green {
+  background: #e2f7ee;
+
+  color: #0a9b70;
+}
+
+
+.owner-stat-icon.red {
+  background: #ffebeb;
+
+  color: #e64b4b;
+}
+
+
+.owner-stat-icon.blue {
+  background: #e9efff;
+
+  color: #4d76db;
+}
+
+
+.owner-stat-card > div:last-child {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-stat-card strong {
+  font-size: 20px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-stat-card span {
+  margin-top: 3px;
+
+  color: #81948f;
+
+  font-size: 10px;
+}
+
+
+.owner-stat-card small {
+  margin-top: 4px;
+
+  color: #9aa9a5;
+
+  font-size: 8px;
+}
+
+
+.stat-positive {
+  color: #0a9b70 !important;
+}
+
+
+.stat-danger {
+  color: #e64b4b !important;
+}
+
+
+/* =========================================================
+   SECTIONS
+========================================================= */
+
+.owner-section {
+  background: white;
+
+  border: 1px solid #e5efeb;
+
+  border-radius: 17px;
+
+  margin-top: 20px;
+
+  overflow: hidden;
+
+  box-sizing: border-box;
+}
+
+
+.owner-section-header {
+  padding: 19px 22px;
+
+  border-bottom: 1px solid #edf3f1;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+
+.owner-section-header > div {
+  min-width: 0;
+}
+
+
+.owner-section-header h2 {
+  margin: 0;
+
+  font-size: 16px;
+}
+
+
+.owner-section-header p {
+  margin: 4px 0 0;
+
+  font-size: 10px;
+
+  color: #81948f;
+}
+
+
+.owner-view-all {
+  border: none;
+
+  background: transparent;
+
+  color: #168965;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 3px;
+
+  cursor: pointer;
+
+  font-family: inherit;
+
+  font-size: 10px;
+
+  white-space: nowrap;
+
+  flex-shrink: 0;
+}
+
+
+/* =========================================================
+   QUICK ACTIONS
+========================================================= */
+
+.owner-quick-actions {
+  padding: 18px 22px;
+
+  display: grid;
+
+  grid-template-columns: repeat(4, 1fr);
+
+  gap: 10px;
+}
+
+
+.owner-quick-actions button {
+  min-width: 0;
+
+  border: 1px solid #e2ece8;
+
+  background: #fbfdfc;
+
+  border-radius: 12px;
+
+  padding: 15px;
+
+  color: #185441;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 8px;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  cursor: pointer;
+
+  transition: 0.2s ease;
+}
+
+
+.owner-quick-actions button:hover {
+  background: #eef8f4;
+
+  border-color: #b9ded2;
+}
+
+
+.owner-quick-actions .quick-primary {
+  background: #185441;
+
+  color: white;
+
+  border-color: #185441;
+}
+
+
+.owner-quick-actions .quick-primary:hover {
+  background: #123f33;
+
+  border-color: #123f33;
+}
+
+
+/* =========================================================
+   TWO COLUMN
+========================================================= */
+
+.owner-two-column {
+  display: grid;
+
+  grid-template-columns: 1.25fr 0.75fr;
+
+  gap: 20px;
+
+  align-items: start;
+}
+
+
+/* =========================================================
+   PAYMENTS
+========================================================= */
+
+.owner-payment-list {
+  padding: 5px 22px 13px;
+}
+
+
+.owner-payment-item {
+  min-height: 65px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #edf3f1;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+
+.owner-payment-item:last-child {
+  border-bottom: none;
+}
+
+
+.owner-payment-main {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-payment-main strong {
+  font-size: 11px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.owner-payment-main span {
+  margin-top: 4px;
+
+  color: #71837e;
+
+  font-size: 9px;
+}
+
+
+.owner-payment-main small {
+  margin-top: 3px;
+
+  color: #a0aaa7;
+
+  font-size: 8px;
+}
+
+
+.owner-payment-right {
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+
+  flex-shrink: 0;
+}
+
+
+.owner-payment-right strong {
+  color: #07966d;
+
+  font-size: 12px;
+}
+
+
+.status-success {
+  margin-top: 4px;
+
+  padding: 4px 7px;
+
+  border-radius: 20px;
+
+  background: #e1f7ee;
+
+  color: #07966d;
+
+  font-size: 7px;
+
+  font-weight: 700;
+}
+
+
+/* =========================================================
+   RENT STATUS
+========================================================= */
+
+.owner-rent-status-list {
+  padding: 5px 22px 13px;
+}
+
+
+.owner-rent-item {
+  min-height: 60px;
+
+  padding: 10px 0;
+
+  border-bottom: 1px solid #edf3f1;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 10px;
+}
+
+
+.owner-rent-item:last-child {
+  border-bottom: none;
+}
+
+
+.owner-rent-item > div:first-child {
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-rent-item strong {
+  font-size: 10px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+.owner-rent-item span {
+  margin-top: 3px;
+
+  color: #81948f;
+
+  font-size: 8px;
+}
+
+
+.owner-rent-status {
+  flex-shrink: 0;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+}
+
+
+.rent-badge {
+  display: flex !important;
+
+  align-items: center;
+
+  gap: 4px;
+
+  padding: 4px 7px;
+
+  border-radius: 20px;
+
+  font-size: 7px !important;
+
+  font-weight: 700;
+}
+
+
+.rent-badge.paid {
+  background: #e1f7ee;
+
+  color: #07966d;
+}
+
+
+.rent-badge.pending {
+  background: #fff2d8;
+
+  color: #d68900;
+}
+
+
+.rent-badge.overdue {
+  background: #ffe5e5;
+
+  color: #e24c4c;
+}
+
+
+/* =========================================================
+   ROOMS
+========================================================= */
+
+.owner-room-list {
+  padding: 5px 22px 13px;
+}
+
+
+.owner-room-item {
+  min-height: 68px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #edf3f1;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+}
+
+
+.owner-room-item:last-child {
+  border-bottom: none;
+}
+
+
+.owner-room-icon {
+  width: 40px;
+  height: 40px;
+
+  border-radius: 10px;
+
+  background: #eef8f4;
+
+  color: #185441;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-room-info {
+  flex: 1;
+
+  min-width: 0;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-room-info strong {
+  font-size: 11px;
+}
+
+
+.owner-room-info span {
+  margin-top: 3px;
+
+  color: #81948f;
+
+  font-size: 8px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-room-rent {
+  flex-shrink: 0;
+}
+
+
+.owner-room-rent strong {
+  color: #e87916;
+
+  font-size: 9px;
+}
+
+
+.room-occupancy {
+  min-width: 55px;
+
+  padding: 5px;
+
+  border-radius: 8px;
+
+  text-align: center;
+
+  font-size: 9px;
+
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+
+.room-occupancy small {
+  display: block;
+
+  margin-top: 2px;
+
+  font-size: 6px;
+
+  font-weight: 500;
+}
+
+
+.room-occupancy.available {
+  background: #e2f7ee;
+
+  color: #07966d;
+}
+
+
+/* =========================================================
+   COMPLAINTS
+========================================================= */
+
+.owner-complaint-list {
+  padding: 6px 22px 14px;
+}
+
+
+.owner-complaint-item {
+  display: flex;
+
+  gap: 11px;
+
+  padding: 13px 0;
+
+  border-bottom: 1px solid #edf3f1;
+}
+
+
+.owner-complaint-item:last-child {
+  border-bottom: none;
+}
+
+
+.owner-complaint-icon {
+  width: 37px;
+  height: 37px;
+
+  border-radius: 9px;
+
+  background: #fff0ef;
+
+  color: #e75a55;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-complaint-content {
+  min-width: 0;
+
+  flex: 1;
+
+  display: flex;
+
+  flex-direction: column;
+}
+
+
+.owner-complaint-top {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: space-between;
+
+  gap: 8px;
+}
+
+
+.complaint-id {
+  color: #e86e19 !important;
+
+  font-size: 8px !important;
+
+  font-weight: 700;
+}
+
+
+.complaint-status {
+  padding: 3px 6px;
+
+  border-radius: 20px;
+
+  font-size: 7px !important;
+
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+
+.complaint-status.open {
+  background: #ffe5e5;
+
+  color: #df4b4b;
+}
+
+
+.complaint-status.in-progress {
+  background: #fff1d5;
+
+  color: #d78a00;
+}
+
+
+.complaint-status.resolved {
+  background: #e1f7ee;
+
+  color: #07966d;
+}
+
+
+.owner-complaint-content strong {
+  margin-top: 6px;
+
+  font-size: 10px;
+
+  line-height: 1.4;
+}
+
+
+.owner-complaint-content > span:last-child {
+  margin-top: 4px;
+
+  color: #81948f;
+
+  font-size: 8px;
+}
+
+
+/* =========================================================
+   PROFILE PAGE
+========================================================= */
+
+.owner-profile-page {
+  width: 100%;
+
+  max-width: 1000px;
+
+  margin: 0 auto;
+}
+
+
+/* =========================================================
+   PROFILE ACCOUNT
+========================================================= */
+
+.owner-profile-account {
+  padding: 24px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 14px;
+
+  border-bottom: 1px solid #edf3f1;
+}
+
+
+.owner-profile-large-avatar {
+  width: 58px;
+  height: 58px;
+
+  border-radius: 17px;
+
+  background: #dff5ee;
+
+  color: #185441;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  font-size: 21px;
+
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+
+.owner-profile-account h2 {
+  margin: 0;
+
+  font-size: 18px;
+}
+
+
+.owner-profile-account span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #81948f;
+
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   ADD PG BUTTON
+========================================================= */
+
+.owner-profile-add-button {
+  border: none;
+
+  background: #185441;
+
+  color: white;
+
+  padding: 9px 13px;
+
+  border-radius: 9px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  font-family: inherit;
+
+  font-size: 10px;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+
+  transition: 0.2s ease;
+}
+
+
+.owner-profile-add-button:hover {
+  background: #123f33;
+}
+
+
+/* =========================================================
+   PROPERTIES LIST
+========================================================= */
+
+.owner-properties-list {
+  padding: 16px 22px 20px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+
+.owner-property-card {
+  border: 1px solid #e2ece8;
+
+  border-radius: 13px;
+
+  padding: 15px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 12px;
+
+  transition: 0.2s ease;
+
+  box-sizing: border-box;
+}
+
+
+.owner-property-card:hover {
+  border-color: #c4ded4;
+}
+
+
+.owner-property-card.selected {
+  border-color: #9bd8c5;
+
+  background: #f3fbf8;
+}
+
+
+.owner-property-card-icon {
+  width: 42px;
+  height: 42px;
+
+  border-radius: 11px;
+
+  background: #e4f6ef;
+
+  color: #185441;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+
+.owner-property-card-info {
+  flex: 1;
+
+  min-width: 0;
+}
+
+
+.owner-property-card-title {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  min-width: 0;
+}
+
+
+.owner-property-card-title strong {
+  font-size: 12px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-property-card-title span {
+  padding: 3px 6px;
+
+  border-radius: 20px;
+
+  background: #e1f7ee;
+
+  color: #07966d;
+
+  font-size: 7px;
+
+  font-weight: 700;
+
+  flex-shrink: 0;
+}
+
+
+.owner-property-card-info p {
+  margin: 5px 0 0;
+
+  color: #81948f;
+
+  font-size: 8px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 4px;
+
+  white-space: nowrap;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+}
+
+
+.owner-switch-property {
+  border: 1px solid #cfe4dc;
+
+  background: white;
+
+  color: #185441;
+
+  border-radius: 8px;
+
+  padding: 7px 10px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 4px;
+
+  font-family: inherit;
+
+  font-size: 9px;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+
+  transition: 0.2s ease;
+}
+
+
+.owner-switch-property:hover {
+  border-color: #185441;
+
+  background: #f3fbf8;
+}
+
+
+.owner-property-card.selected .owner-switch-property {
+  background: #185441;
+
+  border-color: #185441;
+
+  color: white;
+}
+
+
+/* =========================================================
+   EMPTY STATE
+========================================================= */
+
+.owner-empty-state {
+  min-height: 180px;
+
+  padding: 20px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 7px;
+
+  color: #81948f;
+
+  font-size: 10px;
+
+  text-align: center;
+
+  box-sizing: border-box;
+}
+
+
+.owner-empty-state svg {
+  color: #6dc8b1;
+}
+
+
+.owner-empty-state strong {
+  color: #38564e;
+
+  font-size: 13px;
+}
+
+
+.owner-empty-state button {
+  margin-top: 7px;
+
+  border: none;
+
+  background: #185441;
+
+  color: white;
+
+  padding: 9px 13px;
+
+  border-radius: 9px;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  font-family: inherit;
+
+  font-size: 9px;
+
+  cursor: pointer;
+}
+
+
+/* =========================================================
+   ACCOUNT INFO
+========================================================= */
+
+.owner-account-info {
+  padding: 18px 24px;
+
+  display: grid;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 20px;
+}
+
+
+.owner-account-info div {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+  min-width: 0;
+}
+
+
+.owner-account-info span {
+  font-size: 8px;
+
+  color: #81948f;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.5px;
+}
+
+
+.owner-account-info strong {
+  font-size: 11px;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   MODAL
+========================================================= */
+
+.owner-modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  background: rgba(11, 38, 31, 0.5);
+
+  backdrop-filter: blur(4px);
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 20px;
+
+  z-index: 500;
+}
+
+
+.owner-modal {
+  width: min(520px, 100%);
+
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  background: white;
+
+  border-radius: 19px;
+
+  box-shadow:
+    0 20px 70px
+    rgba(0, 0, 0, 0.2);
+
+  scrollbar-width: none;
+
+  -ms-overflow-style: none;
+}
+
+
+.owner-modal::-webkit-scrollbar {
+  display: none;
+}
+
+
+.owner-modal-header {
+  padding: 21px 23px;
+
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  border-bottom: 1px solid #e8f0ed;
+
+  gap: 15px;
+}
+
+
+.owner-modal-header > div {
+  min-width: 0;
+}
+
+
+.owner-modal-header span {
+  color: #81948f;
+
+  font-size: 8px;
+
+  letter-spacing: 1px;
+
+  font-weight: 700;
+}
+
+
+.owner-modal-header h2 {
+  margin: 5px 0 0;
+
+  font-size: 19px;
+}
+
+
+.owner-modal-header button {
+  width: 33px;
+  height: 33px;
+
+  border: none;
+
+  background: #eef7f4;
+
+  color: #185441;
+
+  border-radius: 9px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  cursor: pointer;
+
+  flex-shrink: 0;
+}
+
+
+.owner-pg-form {
+  padding: 21px 23px 23px;
+}
+
+
+.owner-form-group {
+  margin-bottom: 15px;
+}
+
+
+.owner-form-group label {
+  display: block;
+
+  margin-bottom: 5px;
+
+  font-size: 10px;
+
+  font-weight: 700;
+
+  color: #38564e;
+}
+
+
+.owner-form-group input,
+.owner-form-group textarea {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  border: 1px solid #dce9e4;
+
+  background: #fbfdfc;
+
+  border-radius: 9px;
+
+  padding: 10px 11px;
+
+  color: #173d33;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  outline: none;
+}
+
+
+.owner-form-group input:focus,
+.owner-form-group textarea:focus {
+  border-color: #6dc8b1;
+
+  background: white;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(109, 200, 177, 0.12);
+}
+
+
+.owner-form-group textarea {
+  resize: vertical;
+
+  min-height: 80px;
+}
+
+
+.owner-form-row {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  gap: 11px;
+}
+
+
+.owner-form-error {
+  padding: 9px 11px;
+
+  margin-bottom: 14px;
+
+  border-radius: 8px;
+
+  background: #fff0f0;
+
+  border: 1px solid #f3cccc;
+
+  color: #c44747;
+
+  font-size: 10px;
+}
+
+
+.owner-modal-actions {
+  display: flex;
+
+  justify-content: flex-end;
+
+  gap: 9px;
+}
+
+
+.owner-modal-actions button {
+  border: none;
+
+  border-radius: 9px;
+
+  padding: 10px 16px;
+
+  font-family: inherit;
+
+  font-size: 10px;
+
+  cursor: pointer;
+}
+
+
+.owner-modal-cancel {
+  background: #eef4f1;
+
+  color: #38564e;
+}
+
+
+.owner-modal-submit {
+  background: #185441;
+
+  color: white;
+}
+
+
+.owner-modal-submit:hover {
+  background: #123f33;
+}
+
+
+.owner-modal-submit:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 1100px) {
+
+  .owner-sidebar {
+    width: 225px;
+  }
+
+
+  .owner-main {
+    margin-left: 225px;
+
+    width: calc(100% - 225px);
+  }
+
+
+  .owner-topbar {
+    padding: 0 25px;
+  }
+
+
+  .owner-content {
+    padding: 24px 25px;
+  }
+
+
+  .owner-stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+
+  .owner-two-column {
+    grid-template-columns: 1fr;
+  }
+
+
+  .owner-quick-actions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+}
+
+
+/* =========================================================
+   MOBILE HEADER
+========================================================= */
+
+.owner-mobile-header {
+  display: none;
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 750px) {
+
+  /* -----------------------------------------
+     MOBILE HEADER
+  ----------------------------------------- */
+
+  .owner-mobile-header {
+    height: 62px;
+
+    width: 100%;
+
+    background: white;
+
+    border-bottom: 1px solid #e5efeb;
+
+    padding: 0 14px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    box-sizing: border-box;
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 150;
+  }
+
+
+  .owner-mobile-brand {
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    min-width: 0;
+  }
+
+
+  .owner-mobile-brand-icon {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 9px;
+
+    background: #6dc8b1;
+
+    color: #123f33;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+  }
+
+
+  .owner-mobile-brand > div:last-child {
+    display: flex;
+
+    flex-direction: column;
+
+    min-width: 0;
+  }
+
+
+  .owner-mobile-brand strong {
+    color: #173d33;
+
+    font-size: 16px;
+
+    line-height: 1;
+  }
+
+
+  .owner-mobile-brand span {
+    color: #81948f;
+
+    font-size: 7px;
+
+    margin-top: 3px;
+
+    letter-spacing: 0.5px;
+  }
+
+
+  .owner-mobile-header-right {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    flex-shrink: 0;
+  }
+
+
+  .owner-mobile-avatar {
+    width: 33px;
+    height: 33px;
+
+    border-radius: 50%;
+
+    background: #dff5ee;
+
+    color: #185441;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 11px;
+
+    font-weight: 700;
+  }
+
+
+  .owner-menu-button {
+    width: 38px;
+    height: 38px;
+
+    border: none;
+
+    background: #eef7f4;
+
+    color: #185441;
+
+    border-radius: 9px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    cursor: pointer;
+  }
+
+
+  /* -----------------------------------------
+     MOBILE SIDEBAR
+  ----------------------------------------- */
+
+  .owner-sidebar {
+    width: 275px;
+
+    padding: 19px 14px;
+
+    transform: translateX(-100%);
+
+    transition: transform 0.25s ease;
+
+    box-shadow:
+      10px 0 35px
+      rgba(0, 0, 0, 0.15);
+
+    overflow-y: auto;
+  }
+
+
+  .owner-sidebar-open {
+    transform: translateX(0);
+  }
+
+
+  .owner-sidebar-close {
+    display: flex;
+
+    margin-left: auto;
+
+    width: 33px;
+    height: 33px;
+
+    border: none;
+
+    background: rgba(255, 255, 255, 0.1);
+
+    color: white;
+
+    border-radius: 8px;
+
+    align-items: center;
+
+    justify-content: center;
+
+    cursor: pointer;
+
+    flex-shrink: 0;
+  }
+
+
+  .owner-sidebar-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    background: rgba(0, 0, 0, 0.32);
+
+    z-index: 190;
+  }
+
+
+  /* -----------------------------------------
+     MAIN
+  ----------------------------------------- */
+
+  .owner-main {
+    margin-left: 0;
+
+    width: 100%;
+
+    min-height: 100vh;
+  }
+
+
+  .owner-topbar {
+    display: none;
+  }
+
+
+  .owner-content {
+    width: 100%;
+
+    padding: 17px 13px 35px;
+
+    box-sizing: border-box;
+  }
+
+
+  /* -----------------------------------------
+     MOBILE PAGE TITLE
+  ----------------------------------------- */
+
+  .owner-mobile-page-title {
+    display: block;
+
+    margin-bottom: 14px;
+  }
+
+
+  .owner-mobile-page-title span {
+    color: #81948f;
+
+    font-size: 7px;
+
+    letter-spacing: 1px;
+
+    font-weight: 700;
+  }
+
+
+  .owner-mobile-page-title h1 {
+    margin: 4px 0 3px;
+
+    color: #173d33;
+
+    font-size: 24px;
+
+    line-height: 1.15;
+  }
+
+
+  .owner-mobile-page-title p {
+    margin: 0;
+
+    color: #81948f;
+
+    font-size: 9px;
+  }
+
+
+  /* -----------------------------------------
+     ACTIVE PROPERTY
+  ----------------------------------------- */
+
+  .owner-active-property-card {
+    min-height: 82px;
+
+    padding: 15px;
+
+    border-radius: 15px;
+
+    gap: 10px;
+  }
+
+
+  .owner-active-property-icon {
+    width: 39px;
+    height: 39px;
+
+    border-radius: 10px;
+  }
+
+
+  .owner-active-property-info h2 {
+    font-size: 14px;
+
+    margin: 3px 0;
+  }
+
+
+  .owner-active-property-info p {
+    font-size: 8px;
+  }
+
+
+  .owner-active-property-badge {
+    font-size: 7px;
+
+    padding: 5px 7px;
+  }
+
+
+  /* -----------------------------------------
+     STATS
+  ----------------------------------------- */
+
+  .owner-stat-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 9px;
+
+    margin-top: 10px;
+  }
+
+
+  .owner-stat-card {
+    padding: 12px;
+
+    gap: 8px;
+
+    min-height: 78px;
+
+    border-radius: 13px;
+  }
+
+
+  .owner-stat-icon {
+    width: 33px;
+    height: 33px;
+
+    border-radius: 8px;
+  }
+
+
+  .owner-stat-icon svg {
+    width: 16px;
+    height: 16px;
+  }
+
+
+  .owner-stat-card strong {
+    font-size: 14px;
+  }
+
+
+  .owner-stat-card span {
+    font-size: 7px;
+  }
+
+
+  .owner-stat-card small {
+    font-size: 6px;
+  }
+
+
+  /* -----------------------------------------
+     SECTIONS
+  ----------------------------------------- */
+
+  .owner-section {
+    margin-top: 13px;
+
+    border-radius: 14px;
+  }
+
+
+  .owner-section-header {
+    padding: 14px;
+
+    gap: 8px;
+  }
+
+
+  .owner-section-header h2 {
+    font-size: 13px;
+  }
+
+
+  .owner-section-header p {
+    font-size: 8px;
+  }
+
+
+  .owner-view-all {
+    font-size: 8px;
+  }
+
+
+  /* -----------------------------------------
+     QUICK ACTIONS
+  ----------------------------------------- */
+
+  .owner-quick-actions {
+    padding: 12px;
+
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    gap: 7px;
+  }
+
+
+  .owner-quick-actions button {
+    min-height: 48px;
+
+    padding: 9px;
+
+    font-size: 8px;
+
+    border-radius: 9px;
+
+    gap: 5px;
+  }
+
+
+  .owner-quick-actions button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+
+  /* -----------------------------------------
+     TWO COLUMN
+  ----------------------------------------- */
+
+  .owner-two-column {
+    display: block;
+  }
+
+
+  /* -----------------------------------------
+     LISTS
+  ----------------------------------------- */
+
+  .owner-payment-list,
+  .owner-rent-status-list,
+  .owner-room-list,
+  .owner-complaint-list {
+    padding-left: 14px;
+
+    padding-right: 14px;
+  }
+
+
+  /* -----------------------------------------
+     PAYMENT
+  ----------------------------------------- */
+
+  .owner-payment-item {
+    gap: 8px;
+  }
+
+
+  .owner-payment-main strong {
+    font-size: 9px;
+  }
+
+
+  .owner-payment-main span {
+    font-size: 8px;
+  }
+
+
+  .owner-payment-main small {
+    font-size: 7px;
+  }
+
+
+  .owner-payment-right strong {
+    font-size: 10px;
+  }
+
+
+  /* -----------------------------------------
+     RENT
+  ----------------------------------------- */
+
+  .owner-rent-item strong {
+    font-size: 9px;
+  }
+
+
+  .owner-rent-item span {
+    font-size: 7px;
+  }
+
+
+  /* -----------------------------------------
+     ROOMS
+  ----------------------------------------- */
+
+  .owner-room-item {
+    gap: 8px;
+  }
+
+
+  .owner-room-icon {
+    width: 34px;
+    height: 34px;
+
+    border-radius: 8px;
+  }
+
+
+  .owner-room-info strong {
+    font-size: 9px;
+  }
+
+
+  .owner-room-info span {
+    font-size: 7px;
+  }
+
+
+  .owner-room-rent strong {
+    font-size: 8px;
+  }
+
+
+  .room-occupancy {
+    min-width: 43px;
+
+    padding: 4px;
+
+    font-size: 7px;
+  }
+
+
+  .room-occupancy small {
+    font-size: 5px;
+  }
+
+
+  /* -----------------------------------------
+     COMPLAINTS
+  ----------------------------------------- */
+
+  .owner-complaint-icon {
+    width: 33px;
+    height: 33px;
+
+    border-radius: 8px;
+  }
+
+
+  .owner-complaint-content strong {
+    font-size: 9px;
+  }
+
+
+  .owner-complaint-content > span:last-child {
+    font-size: 7px;
+  }
+
+
+  .complaint-id {
+    font-size: 7px !important;
+  }
+
+
+  .complaint-status {
+    font-size: 6px !important;
+
+    padding: 3px 5px;
+  }
+
+
+  /* -----------------------------------------
+     PROFILE
+  ----------------------------------------- */
+
+  .owner-profile-page {
+    width: 100%;
+  }
+
+
+  .owner-profile-account {
+    padding: 17px;
+
+    gap: 10px;
+  }
+
+
+  .owner-profile-large-avatar {
+    width: 47px;
+    height: 47px;
+
+    border-radius: 13px;
+
+    font-size: 17px;
+  }
+
+
+  .owner-profile-account h2 {
+    font-size: 15px;
+  }
+
+
+  .owner-profile-account span {
+    font-size: 8px;
+  }
+
+
+  .owner-profile-add-button {
+    padding: 8px 10px;
+
+    font-size: 8px;
+  }
+
+
+  /* -----------------------------------------
+     PROPERTIES
+  ----------------------------------------- */
+
+  .owner-properties-list {
+    padding: 12px;
+
+    gap: 8px;
+  }
+
+
+  .owner-property-card {
+    padding: 12px;
+
+    gap: 9px;
+  }
+
+
+  .owner-property-card-icon {
+    width: 36px;
+    height: 36px;
+
+    border-radius: 9px;
+  }
+
+
+  .owner-property-card-title {
+    gap: 5px;
+  }
+
+
+  .owner-property-card-title strong {
+    font-size: 9px;
+  }
+
+
+  .owner-property-card-title span {
+    font-size: 6px;
+
+    padding: 2px 5px;
+  }
+
+
+  .owner-property-card-info p {
+    font-size: 6px;
+  }
+
+
+  .owner-switch-property {
+    padding: 6px 8px;
+
+    font-size: 7px;
+  }
+
+
+  /* -----------------------------------------
+     ACCOUNT INFO
+  ----------------------------------------- */
+
+  .owner-account-info {
+    padding: 14px 17px;
+
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    gap: 14px;
+  }
+
+
+  .owner-account-info span {
+    font-size: 7px;
+  }
+
+
+  .owner-account-info strong {
+    font-size: 9px;
+  }
+
+
+  /* -----------------------------------------
+     MODAL
+  ----------------------------------------- */
+
+  .owner-modal-overlay {
+    padding: 10px;
+
+    align-items: flex-end;
+  }
+
+
+  .owner-modal {
+    width: 100%;
+
+    max-height: 93svh;
+
+    border-radius:
+      17px 17px 0 0;
+  }
+
+
+  .owner-modal-header {
+    padding: 17px;
+  }
+
+
+  .owner-modal-header h2 {
+    font-size: 17px;
+  }
+
+
+  .owner-pg-form {
+    padding: 17px;
+  }
+
+
+  .owner-form-row {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+
+  .owner-modal-actions {
+    display: grid;
+
+    grid-template-columns:
+      1fr 1fr;
+  }
+
+
+  .owner-modal-actions button {
+    width: 100%;
+  }
+
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 500px) {
+
+  .owner-mobile-avatar {
+    display: none;
+  }
+
+
+  .owner-content {
+    padding-left: 10px;
+
+    padding-right: 10px;
+  }
+
+
+  .owner-stat-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+
+  .owner-quick-actions {
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+
+  .owner-active-property-card {
+    padding: 13px;
+  }
+
+
+  .owner-active-property-info h2 {
+    max-width: 150px;
+  }
+
+
+  .owner-active-property-badge {
+    display: none;
+  }
+
+
+  .owner-profile-account {
+    flex-wrap: wrap;
+  }
+
+
+  .owner-profile-add-button {
+    margin-left: auto;
+  }
+
+}
+
+
+/* =========================================================
+   VERY SMALL PHONES
+========================================================= */
+
+@media (max-width: 380px) {
+
+  .owner-mobile-header {
+    padding: 0 10px;
+  }
+
+
+  .owner-mobile-brand strong {
+    font-size: 15px;
+  }
+
+
+  .owner-sidebar {
+    width: 260px;
+  }
+
+
+  .owner-content {
+    padding-left: 10px;
+
+    padding-right: 10px;
+  }
+
+
+  .owner-stat-card {
+    padding: 9px;
+
+    gap: 6px;
+  }
+
+
+  .owner-stat-icon {
+    width: 29px;
+    height: 29px;
+  }
+
+
+  .owner-stat-card strong {
+    font-size: 12px;
+  }
+
+
+  .owner-stat-card span {
+    font-size: 6px;
+  }
+
+
+  .owner-stat-card small {
+    font-size: 5px;
+  }
+
+
+  .owner-quick-actions button {
+    min-height: 44px;
+
+    font-size: 7px;
+  }
+
+
+  .owner-property-card {
+    gap: 7px;
+
+    padding: 10px;
+  }
+
+
+  .owner-property-card-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+
+  .owner-property-card-title strong {
+    font-size: 8px;
+  }
+
+
+  .owner-switch-property {
+    padding: 5px 6px;
+
+    font-size: 6px;
+  }
+
+}
+
+
+/* =========================================================
+   LANDSCAPE MOBILE
+========================================================= */
+
+@media (max-width: 750px) and (orientation: landscape) {
+
+  .owner-mobile-header {
+    height: 56px;
+  }
+
+
+  .owner-sidebar {
+    width: 260px;
+  }
+
+
+  .owner-content {
+    padding-top: 14px;
+  }
+
+
+  .owner-stat-grid {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+
+
+  .owner-quick-actions {
+    grid-template-columns:
+      repeat(4, minmax(0, 1fr));
+  }
+
+}
+
+
+/* =========================================================
+   ACCESSIBILITY / TOUCH
+========================================================= */
+
+@media (hover: none) {
+
+  .owner-nav-item:hover {
+    background: transparent;
+
+    color: rgba(255, 255, 255, 0.66);
+  }
+
+
+  .owner-nav-item.active:hover {
+    background: rgba(255, 255, 255, 0.12);
+
+    color: white;
+  }
+
+
+  .owner-quick-actions button:hover {
+    background: #fbfdfc;
+
+    border-color: #e2ece8;
+  }
+
+
+  .owner-quick-actions .quick-primary:hover {
+    background: #185441;
+
+    border-color: #185441;
+  }
+
+}
+
+
+/* =========================================================
+   SAFE AREA FOR MODERN PHONES
+========================================================= */
+
+@supports (padding: env(safe-area-inset-bottom)) {
+
+  .owner-mobile-header {
+    padding-left:
+      max(14px, env(safe-area-inset-left));
+
+    padding-right:
+      max(14px, env(safe-area-inset-right));
+  }
+
+
+  .owner-content {
+    padding-bottom:
+      max(35px, env(safe-area-inset-bottom));
+  }
+
+}

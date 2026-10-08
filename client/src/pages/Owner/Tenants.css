@@ -1,0 +1,3132 @@
+/* =====================================================
+
+ TENANTS PAGE
+
+\===================================================== */
+
+
+
+.tenants-page {
+
+width: 100%;
+min-height: 100vh;
+
+padding: 32px 38px 60px;
+
+ box-sizing: border-box;
+
+ background: #f5faf8;
+
+ color: #173d33;
+
+}
+
+
+
+.tenants-page * {
+
+ box-sizing: border-box;
+
+}
+
+
+
+.tenants-page button,
+
+.tenants-page input,
+
+.tenants-page select,
+
+.tenants-page textarea {
+
+ font: inherit;
+
+}
+
+
+
+/* =====================================================
+
+ HEADER
+
+\===================================================== */
+
+
+
+.tenants-page-header {
+
+ display: flex;
+
+ align-items: flex-end;
+
+ justify-content: space-between;
+
+ gap: 24px;
+
+ margin-bottom: 25px;
+
+}
+
+
+
+.tenants-eyebrow {
+
+ display: block;
+
+ margin-bottom: 8px;
+
+ color: #63bfa8;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+ letter-spacing: 2px;
+
+}
+
+
+
+.tenants-page-header h1 {
+
+ margin: 0;
+
+ color: #123f33;
+
+ font-size: 34px;
+
+ line-height: 1;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenants-page-header p {
+
+ margin: 10px 0 0;
+
+ color: #7a9089;
+
+ font-size: 13px;
+
+ line-height: 1.5;
+
+}
+
+
+
+.tenants-add-button {
+
+ min-height: 48px;
+
+ padding: 0 20px;
+
+ border: none;
+
+ border-radius: 14px;
+
+ background: #185441;
+
+ color: #fff;
+
+ display: inline-flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ gap: 8px;
+
+ cursor: pointer;
+
+ font-size: 12px;
+
+ font-weight: 800;
+
+ box-shadow: 0 10px 25px rgba(24, 84, 65, 0.15);
+
+ transition: transform 0.18s ease, background 0.18s ease;
+
+}
+
+
+
+.tenants-add-button:hover {
+
+ background: #123f33;
+
+ transform: translateY(-1px);
+
+}
+
+
+
+/* =====================================================
+
+ RENT STATS
+
+\===================================================== */
+
+
+
+.tenants-stat-grid {
+
+ display: grid;
+
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+
+ gap: 16px;
+
+ margin-bottom: 22px;
+
+}
+
+
+
+.tenant-stat-card {
+
+ min-height: 112px;
+
+ padding: 22px;
+
+ border: 1px solid #e0ece7;
+
+ border-radius: 19px;
+
+ background: #fff;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 15px;
+
+ box-shadow: 0 8px 25px rgba(28, 71, 59, 0.04);
+
+}
+
+
+
+.tenant-stat-card.pending {
+
+ border-color: #f0ddd5;
+
+}
+
+
+
+.tenant-stat-card.paid {
+
+ border-color: #dceee7;
+
+}
+
+
+
+.tenant-stat-card.active {
+
+ border-color: #dce7f4;
+
+}
+
+
+
+.tenant-stat-icon {
+
+ width: 48px;
+
+ height: 48px;
+
+ flex: 0 0 48px;
+
+ border-radius: 15px;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+}
+
+
+
+.tenant-stat-icon.red {
+
+ background: #fff0ec;
+
+ color: #d66b43;
+
+}
+
+
+
+.tenant-stat-icon.green {
+
+ background: #e6f7f0;
+
+ color: #14906d;
+
+}
+
+
+
+.tenant-stat-icon.blue {
+
+ background: #eaf2fb;
+
+ color: #3b76b8;
+
+}
+
+
+
+.tenant-stat-card strong {
+
+ display: block;
+
+ color: #173d33;
+
+ font-size: 23px;
+
+ line-height: 1.1;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenant-stat-card span {
+
+ display: block;
+
+ margin-top: 5px;
+
+ color: #56736a;
+
+ font-size: 11px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenant-stat-card small {
+
+ display: block;
+
+ margin-top: 4px;
+
+ color: #8aa099;
+
+ font-size: 10px;
+
+}
+
+
+
+/* =====================================================
+
+ SECTION
+
+\===================================================== */
+
+
+
+.tenants-section {
+
+ padding: 24px;
+
+ border: 1px solid #e1ece8;
+
+ border-radius: 24px;
+
+ background: #fff;
+
+ box-shadow: 0 10px 35px rgba(28, 71, 59, 0.035);
+
+}
+
+
+
+.tenants-section-header {
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: space-between;
+
+ gap: 20px;
+
+ margin-bottom: 18px;
+
+}
+
+
+
+.tenants-section-header h2 {
+
+ margin: 0;
+
+ color: #183f35;
+
+ font-size: 20px;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenants-section-header p {
+
+ margin: 5px 0 0;
+
+ color: #8a9c96;
+
+ font-size: 11px;
+
+}
+
+
+
+.tenants-count {
+
+ padding: 8px 12px;
+
+ border-radius: 10px;
+
+ background: #edf6f2;
+
+ color: #477166;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+}
+
+
+
+/* =====================================================
+
+ TOOLBAR
+
+\===================================================== */
+
+
+
+.tenants-toolbar {
+
+ display: grid;
+
+ grid-template-columns: minmax(0, 1fr) 170px;
+
+ gap: 10px;
+
+ margin-bottom: 18px;
+
+}
+
+
+
+.tenants-search,
+
+.tenant-filter {
+
+ min-height: 46px;
+
+ border: 1px solid #dce9e4;
+
+ border-radius: 13px;
+
+ background: #fbfdfc;
+
+ display: flex;
+
+ align-items: center;
+
+}
+
+
+
+.tenants-search {
+
+ padding: 0 13px;
+
+ color: #8ca19a;
+
+ gap: 8px;
+
+}
+
+
+
+.tenants-search input {
+
+ width: 100%;
+
+ border: none;
+
+ outline: none;
+
+ background: transparent;
+
+ color: #24473e;
+
+ font-size: 11px;
+
+}
+
+
+
+.tenants-search input::placeholder {
+
+ color: #a0b0ab;
+
+}
+
+
+
+.tenants-search button {
+
+ width: 27px;
+
+ height: 27px;
+
+ border: none;
+
+ border-radius: 8px;
+
+ background: #edf4f1;
+
+ color: #67827a;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ cursor: pointer;
+
+}
+
+
+
+.tenant-filter {
+
+ position: relative;
+
+ padding: 0 12px;
+
+ color: #769087;
+
+}
+
+
+
+.tenant-filter select {
+
+ width: 100%;
+
+ height: 100%;
+
+ padding-right: 20px;
+
+ border: none;
+
+ outline: none;
+
+ appearance: none;
+
+ background: transparent;
+
+ color: #46665d;
+
+ font-size: 11px;
+
+ cursor: pointer;
+
+}
+
+
+
+.tenant-filter svg {
+
+ position: absolute;
+
+ right: 12px;
+
+ pointer-events: none;
+
+}
+
+
+
+/* =====================================================
+
+ LOADING / ERROR / EMPTY
+
+\===================================================== */
+
+
+
+.tenants-loading-page {
+
+ min-height: 70vh;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+}
+
+
+
+.tenants-loading-card,
+
+.tenants-error-card,
+
+.tenants-empty-card {
+
+ border: 1px solid #e0ebe7;
+
+ border-radius: 18px;
+
+ background: #fff;
+
+}
+
+
+
+.tenants-loading-card {
+
+ min-height: 86px;
+
+ padding: 17px 18px;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 13px;
+
+ color: #24473e;
+
+}
+
+
+
+.tenants-loading-icon {
+
+ width: 44px;
+
+ height: 44px;
+
+ border-radius: 13px;
+
+ background: #e8f6f1;
+
+ color: #159273;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+}
+
+
+
+.tenants-loading-icon svg {
+
+ animation: tenantSpin 1s linear infinite;
+
+}
+
+
+
+.tenants-loading-card strong,
+
+.tenants-error-card strong {
+
+ display: block;
+
+ color: #1a4036;
+
+ font-size: 12px;
+
+}
+
+
+
+.tenants-loading-card span,
+
+.tenants-error-card span {
+
+ display: block;
+
+ margin-top: 4px;
+
+ color: #899d96;
+
+ font-size: 10px;
+
+}
+
+
+
+.tenants-error-card {
+
+ padding: 15px 16px;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 12px;
+
+ color: #c85a4e;
+
+}
+
+
+
+.tenants-error-card > div {
+
+ flex: 1;
+
+}
+
+
+
+.tenants-error-card button {
+
+ min-height: 34px;
+
+ padding: 0 13px;
+
+ border: none;
+
+ border-radius: 9px;
+
+ background: #185441;
+
+ color: #fff;
+
+ cursor: pointer;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenants-empty-card {
+
+ padding: 45px 20px;
+
+ text-align: center;
+
+}
+
+
+
+.tenants-empty-icon {
+
+ width: 54px;
+
+ height: 54px;
+
+ margin: 0 auto 13px;
+
+ border-radius: 17px;
+
+ background: #e8f6f1;
+
+ color: #159273;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+}
+
+
+
+.tenants-empty-card h3 {
+
+ margin: 0;
+
+ color: #1b4036;
+
+ font-size: 15px;
+
+}
+
+
+
+.tenants-empty-card p {
+
+ max-width: 360px;
+
+ margin: 7px auto 16px;
+
+ color: #899d96;
+
+ font-size: 11px;
+
+ line-height: 1.5;
+
+}
+
+
+
+.tenants-empty-card button {
+
+ min-height: 37px;
+
+ padding: 0 14px;
+
+ border: none;
+
+ border-radius: 10px;
+
+ background: #185441;
+
+ color: #fff;
+
+ display: inline-flex;
+
+ align-items: center;
+
+ gap: 6px;
+
+ cursor: pointer;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+}
+
+
+
+/* =====================================================
+
+ TENANT LIST
+
+\===================================================== */
+
+
+
+.tenant-list {
+
+ display: flex;
+
+ flex-direction: column;
+
+ gap: 10px;
+
+}
+
+
+
+/* =====================================================
+
+ COMPACT TENANT CARD
+
+\===================================================== */
+
+
+
+.tenant-card {
+  overflow: hidden;
+  border: 1px solid #dfeae6;
+  border-radius: 17px;
+  background: #fff;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.tenant-card.rent-pending-card {
+  border-color: #efb9ae;
+  background: #fff6f4;
+}
+
+.tenant-card.rent-paid-card {
+  border-color: #b8decf;
+  background: #f2fbf7;
+}
+
+.tenant-card.rent-pending-card:hover {
+  border-color: #e39d90;
+  box-shadow: 0 10px 30px rgba(204, 89, 68, 0.08);
+}
+
+.tenant-card.rent-paid-card:hover {
+  border-color: #91cbb7;
+  box-shadow: 0 10px 30px rgba(24, 132, 99, 0.08);
+}
+
+.tenant-card.rent-pending-card.expanded {
+  border-color: #e3a69a;
+}
+
+.tenant-card.rent-paid-card.expanded {
+  border-color: #9dccba;
+}
+
+.tenant-card:hover {
+
+ border-color: #c8ded7;
+
+ box-shadow: 0 10px 30px rgba(24, 84, 65, 0.055);
+
+}
+
+
+
+.tenant-card.expanded {
+
+ border-color: #acd4c7;
+
+}
+
+
+
+.tenant-compact-row {
+
+ min-height: 92px;
+
+ padding: 13px 14px;
+
+ display: grid;
+
+ grid-template-columns: 45px minmax(180px, 1fr) 125px minmax(245px, auto) auto;
+
+ align-items: center;
+
+ gap: 13px;
+
+}
+
+
+
+.tenant-avatar {
+
+ width: 45px;
+
+ height: 45px;
+
+ border-radius: 14px;
+
+ background: #e6f6f0;
+
+ color: #18755c;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ font-size: 16px;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenant-compact-main {
+
+ min-width: 0;
+
+}
+
+
+
+.tenant-compact-main h3 {
+
+ margin: 0;
+
+ color: #193f35;
+
+ font-size: 14px;
+
+ font-weight: 850;
+
+ white-space: nowrap;
+
+ overflow: hidden;
+
+ text-overflow: ellipsis;
+
+}
+
+
+
+.tenant-compact-info {
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 10px;
+
+ margin-top: 7px;
+
+ flex-wrap: wrap;
+
+}
+
+
+
+.tenant-compact-info span {
+
+ display: inline-flex;
+
+ align-items: center;
+
+ gap: 4px;
+
+ color: #7c928b;
+
+ font-size: 9px;
+
+ white-space: nowrap;
+
+}
+
+
+
+.tenant-compact-info svg {
+
+ color: #66aa99;
+
+}
+
+
+
+.tenant-compact-rent {
+
+ min-width: 0;
+
+ padding-left: 12px;
+
+ border-left: 1px solid #e7efec;
+
+}
+
+
+
+.tenant-compact-rent span {
+
+ display: block;
+
+ color: #8ba099;
+
+ font-size: 8px;
+
+ font-weight: 800;
+
+ text-transform: uppercase;
+
+ letter-spacing: 0.5px;
+
+}
+
+
+
+.tenant-compact-rent strong {
+
+ display: block;
+
+ margin-top: 5px;
+
+ font-size: 13px;
+
+ font-weight: 850;
+
+}
+
+
+
+.pending-text {
+
+ color: #d56847;
+
+}
+
+
+
+.paid-text {
+
+ color: #148a68;
+
+}
+
+
+
+.tenant-compact-status {
+
+ display: flex;
+
+ justify-content: center;
+
+}
+
+
+
+.rent-status-buttons {
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 5px;
+
+ padding: 3px;
+
+ border-radius: 10px;
+
+ background: #f3f7f5;
+
+}
+
+
+
+.rent-status-button {
+
+ min-height: 30px;
+
+ padding: 0 9px;
+
+ border: none;
+
+ border-radius: 8px;
+
+ display: inline-flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ gap: 4px;
+
+ cursor: pointer;
+
+ font-size: 9px;
+
+ font-weight: 800;
+
+ transition: background 0.16s ease, color 0.16s ease;
+
+}
+
+
+
+.rent-status-button.paid {
+
+ background: transparent;
+
+ color: #6e8880;
+
+}
+
+
+
+.rent-status-button.paid.active {
+
+ background: #dff5eb;
+
+ color: #148967;
+
+}
+
+
+
+.rent-status-button.pending {
+
+ background: transparent;
+
+ color: #6e8880;
+
+}
+
+
+
+.rent-status-button.pending.active {
+
+ background: #fff0e9;
+
+ color: #d16b4a;
+
+}
+
+
+
+.rent-status-button:disabled {
+
+ opacity: 0.65;
+
+ cursor: wait;
+
+}
+
+
+
+.vacated-mini-status {
+
+ padding: 7px 9px;
+
+ border-radius: 9px;
+
+ background: #f0f3f2;
+
+ color: #83928e;
+
+ font-size: 9px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenant-compact-actions {
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 5px;
+
+}
+
+
+
+.tenant-icon-button,
+
+.tenant-expand-button {
+
+ width: 32px;
+
+ height: 32px;
+
+ border-radius: 9px;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ cursor: pointer;
+
+ transition: transform 0.16s ease, background 0.16s ease;
+
+}
+
+
+
+.tenant-icon-button:hover,
+
+.tenant-expand-button:hover {
+
+ transform: translateY(-1px);
+
+}
+
+
+
+.tenant-icon-button {
+
+ border: 1px solid #dfeae6;
+
+ background: #fff;
+
+}
+
+
+
+.tenant-icon-button.edit {
+
+ color: #257761;
+
+}
+
+
+
+.tenant-icon-button.edit:hover {
+
+ background: #eaf7f2;
+
+}
+
+
+
+.tenant-icon-button.delete {
+
+ color: #d15b52;
+
+}
+
+
+
+.tenant-icon-button.delete:hover {
+
+ background: #fff0ee;
+
+}
+
+
+
+.tenant-expand-button {
+
+ border: none;
+
+ background: #eaf5f1;
+
+ color: #35685b;
+
+}
+
+
+
+/* =====================================================
+
+ EXPANDED DETAILS
+
+\===================================================== */
+
+
+
+.tenant-expanded {
+
+ padding: 0 14px 15px;
+
+ border-top: 1px solid #edf2f0;
+
+ background: #fbfdfc;
+
+}
+
+
+
+.tenant-detail-grid {
+
+ display: grid;
+
+ grid-template-columns: repeat(4, minmax(0, 1fr));
+
+ gap: 8px;
+
+ padding-top: 13px;
+
+}
+
+
+
+.tenant-detail-box,
+
+.tenant-assignment-box,
+
+.tenant-rent-detail {
+
+ min-height: 63px;
+
+ padding: 11px 12px;
+
+ border: 1px solid #e2ece9;
+
+ border-radius: 12px;
+
+ background: #fff;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 9px;
+
+}
+
+
+
+.tenant-detail-box svg,
+
+.tenant-assignment-box svg,
+
+.tenant-rent-detail svg {
+
+ flex: 0 0 auto;
+
+ color: #4ea38e;
+
+}
+
+
+
+.tenant-detail-box.emergency svg {
+
+ color: #d48b3d;
+
+}
+
+
+
+.tenant-detail-box.rent-cycle svg {
+
+ color: #7357bd;
+
+}
+
+
+
+.tenant-detail-box div,
+
+.tenant-assignment-box div,
+
+.tenant-rent-detail div {
+
+ min-width: 0;
+
+}
+
+
+
+.tenant-detail-box span,
+
+.tenant-assignment-box span,
+
+.tenant-rent-detail span {
+
+ display: block;
+
+ color: #91a29c;
+
+ font-size: 8px;
+
+ font-weight: 800;
+
+ text-transform: uppercase;
+
+ letter-spacing: 0.5px;
+
+}
+
+
+
+.tenant-detail-box strong,
+
+.tenant-assignment-box strong,
+
+.tenant-rent-detail strong {
+
+ display: block;
+
+ margin-top: 4px;
+
+ color: #21473d;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+ white-space: nowrap;
+
+ overflow: hidden;
+
+ text-overflow: ellipsis;
+
+}
+
+
+
+.tenant-assignment-row,
+
+.tenant-rent-detail-row {
+
+ display: grid;
+
+ grid-template-columns: repeat(3, minmax(0, 1fr));
+
+ gap: 8px;
+
+ margin-top: 8px;
+
+}
+
+
+
+.tenant-rent-detail.status.paid {
+
+ background: #f0faf6;
+
+ border-color: #d7eee5;
+
+}
+
+
+
+.tenant-rent-detail.status.paid svg,
+
+.tenant-rent-detail.status.paid strong {
+
+ color: #148967;
+
+}
+
+
+
+.tenant-rent-detail.status.pending {
+
+ background: #fff8f4;
+
+ border-color: #f0dfd7;
+
+}
+
+
+
+.tenant-rent-detail.status.pending svg,
+
+.tenant-rent-detail.status.pending strong {
+
+ color: #d06b49;
+
+}
+
+
+
+.tenant-payment-record,
+
+.tenant-emergency-name,
+
+.tenant-notes {
+
+ margin-top: 8px;
+
+ padding: 10px 12px;
+
+ border-radius: 10px;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 7px;
+
+ color: #6f8880;
+
+ font-size: 9px;
+
+}
+
+
+
+.tenant-payment-record {
+
+ background: #f2f7f5;
+
+}
+
+
+
+.tenant-emergency-name {
+
+ background: #fff8eb;
+
+ color: #8d7147;
+
+}
+
+
+
+.tenant-notes {
+
+ align-items: flex-start;
+
+ background: #f7f8fb;
+
+}
+
+
+
+.tenant-notes > div {
+
+ min-width: 0;
+
+}
+
+
+
+.tenant-notes span {
+
+ display: block;
+
+ color: #83958f;
+
+ font-size: 8px;
+
+ font-weight: 800;
+
+ text-transform: uppercase;
+
+}
+
+
+
+.tenant-notes p {
+
+ margin: 4px 0 0;
+
+ color: #536e66;
+
+ font-size: 10px;
+
+ line-height: 1.5;
+
+}
+
+
+
+.tenant-expanded-footer {
+
+ margin-top: 12px;
+
+ padding-top: 12px;
+
+ border-top: 1px solid #e6efec;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: space-between;
+
+ gap: 10px;
+
+}
+
+
+
+.tenant-expanded-actions {
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 7px;
+
+}
+
+
+
+.tenant-edit-button,
+
+.tenant-delete-button,
+
+.tenant-vacate-button {
+
+ min-height: 35px;
+
+ padding: 0 12px;
+
+ border-radius: 9px;
+
+ display: inline-flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ gap: 6px;
+
+ cursor: pointer;
+
+ font-size: 9px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenant-edit-button {
+
+ border: 1px solid #d5e7e1;
+
+ background: #eef8f4;
+
+ color: #23745e;
+
+}
+
+
+
+.tenant-delete-button {
+
+ border: 1px solid #f0d9d5;
+
+ background: #fff5f3;
+
+ color: #c9564e;
+
+}
+
+
+
+.tenant-vacate-button {
+
+ border: 1px solid #eadfd0;
+
+ background: #fff9ef;
+
+ color: #a56d26;
+
+}
+
+
+
+.tenant-edit-button:hover,
+
+.tenant-delete-button:hover,
+
+.tenant-vacate-button:hover {
+
+ transform: translateY(-1px);
+
+}
+
+
+
+/* =====================================================
+
+ MODAL
+
+\===================================================== */
+
+
+
+/* =====================================================
+   PAYMENT METHOD CARD
+===================================================== */
+
+.rent-payment-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2100;
+  padding: 20px;
+  background: rgba(8, 32, 26, 0.48);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rent-payment-card {
+  position: relative;
+  width: min(410px, 100%);
+  padding: 29px;
+  border: 1px solid #e1ece8;
+  border-radius: 22px;
+  background: #fff;
+  text-align: center;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.24);
+  animation: rentPaymentCardIn 0.2s ease;
+}
+
+.rent-payment-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: #eef5f2;
+  color: #527069;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.rent-payment-icon {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 14px;
+  border-radius: 18px;
+  background: #e7f7f1;
+  color: #168c6a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rent-payment-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #83a097;
+  font-size: 8px;
+  font-weight: 850;
+  letter-spacing: 1.5px;
+}
+
+.rent-payment-card h2 {
+  margin: 0;
+  color: #173d33;
+  font-size: 21px;
+  font-weight: 850;
+}
+
+.rent-payment-card > p {
+  margin: 8px auto 20px;
+  max-width: 310px;
+  color: #789089;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.rent-payment-card > p strong {
+  color: #31584e;
+}
+
+.rent-payment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.rent-payment-option {
+  min-height: 92px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #fbfdfc;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+
+.rent-payment-option.cash {
+  border: 1px solid #e5d8bd;
+}
+
+.rent-payment-option.online {
+  border: 1px solid #d2e2ee;
+}
+
+.rent-payment-option:hover {
+  transform: translateY(-2px);
+}
+
+.rent-payment-option.cash:hover {
+  border-color: #d2ad6b;
+  background: #fffaf0;
+}
+
+.rent-payment-option.online:hover {
+  border-color: #8db8d7;
+  background: #f4f9fd;
+}
+
+.rent-payment-option:disabled {
+  opacity: 0.6;
+  cursor: wait;
+  transform: none;
+}
+
+.rent-payment-option-icon {
+  width: 43px;
+  height: 43px;
+  flex: 0 0 43px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rent-payment-option.cash .rent-payment-option-icon {
+  background: #fff2d9;
+  color: #ad7625;
+}
+
+.rent-payment-option.online .rent-payment-option-icon {
+  background: #e8f3fb;
+  color: #397ca9;
+}
+
+.rent-payment-option strong {
+  display: block;
+  color: #23483e;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.rent-payment-option small {
+  display: block;
+  margin-top: 4px;
+  color: #879b94;
+  font-size: 8px;
+  line-height: 1.35;
+}
+
+.rent-payment-cancel {
+  width: 100%;
+  min-height: 42px;
+  margin-top: 12px;
+  border: 1px solid #dce9e4;
+  border-radius: 10px;
+  background: #f4f8f6;
+  color: #557068;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.rent-payment-cancel:hover {
+  background: #eaf2ef;
+}
+
+.rent-payment-cancel:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@keyframes rentPaymentCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tenant-modal-overlay {
+
+ position: fixed;
+
+ inset: 0;
+
+ z-index: 1900;
+
+ padding: 20px;
+
+ background: rgba(8, 32, 26, 0.48);
+
+ backdrop-filter: blur(7px);
+
+ -webkit-backdrop-filter: blur(7px);
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+}
+
+
+
+.tenant-modal {
+
+ width: min(760px, 100%);
+
+ max-height: 90vh;
+
+ overflow-y: auto;
+
+ border-radius: 23px;
+
+ background: #fff;
+
+ box-shadow: 0 30px 90px rgba(0, 0, 0, 0.22);
+
+}
+
+
+
+.tenant-modal-header {
+
+ position: sticky;
+
+ top: 0;
+
+ z-index: 2;
+
+ padding: 23px 25px;
+
+ border-bottom: 1px solid #e8efed;
+
+ background: #fff;
+
+ display: flex;
+
+ align-items: flex-start;
+
+ justify-content: space-between;
+
+ gap: 20px;
+
+}
+
+
+
+.tenant-modal-header > div span {
+
+ color: #62bba5;
+
+ font-size: 8px;
+
+ font-weight: 800;
+
+ letter-spacing: 1.6px;
+
+}
+
+
+
+.tenant-modal-header h2 {
+
+ margin: 6px 0 0;
+
+ color: #173e34;
+
+ font-size: 23px;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenant-modal-header p {
+
+ margin: 6px 0 0;
+
+ color: #8a9d96;
+
+ font-size: 10px;
+
+ line-height: 1.5;
+
+}
+
+
+
+.tenant-modal-header > button {
+
+ width: 35px;
+
+ height: 35px;
+
+ border: none;
+
+ border-radius: 10px;
+
+ background: #eef5f2;
+
+ color: #527069;
+
+ display: flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ cursor: pointer;
+
+}
+
+
+
+.tenant-form {
+
+ padding: 5px 25px 25px;
+
+}
+
+
+
+.tenant-form-section {
+
+ padding: 20px 0;
+
+ border-bottom: 1px solid #edf2f0;
+
+}
+
+
+
+.tenant-form-section-title {
+
+ margin-bottom: 15px;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 7px;
+
+ color: #315d51;
+
+ font-size: 12px;
+
+ font-weight: 850;
+
+}
+
+
+
+.tenant-form-grid {
+
+ display: grid;
+
+ grid-template-columns: repeat(2, minmax(0, 1fr));
+
+ gap: 13px;
+
+}
+
+
+
+.tenant-form-group {
+
+ min-width: 0;
+
+}
+
+
+
+.tenant-form-group label {
+
+ display: block;
+
+ margin-bottom: 6px;
+
+ color: #3f6158;
+
+ font-size: 9px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenant-form-group input,
+
+.tenant-form-group select,
+
+.tenant-form-group textarea {
+
+ width: 100%;
+
+ border: 1px solid #dce9e4;
+
+ border-radius: 11px;
+
+ outline: none;
+
+ background: #fbfdfc;
+
+ color: #315249;
+
+ font-size: 10px;
+
+ transition: border-color 0.18s ease, box-shadow 0.18s ease;
+
+}
+
+
+
+.tenant-form-group input,
+
+.tenant-form-group select {
+
+ height: 43px;
+
+ padding: 0 12px;
+
+}
+
+
+
+.tenant-form-group textarea {
+
+ padding: 11px 12px;
+
+ resize: vertical;
+
+ min-height: 90px;
+
+}
+
+
+
+.tenant-form-group input:focus,
+
+.tenant-form-group select:focus,
+
+.tenant-form-group textarea:focus {
+
+ border-color: #74c5b0;
+
+ box-shadow: 0 0 0 3px rgba(116, 197, 176, 0.12);
+
+}
+
+
+
+.tenant-form-group input[readonly] {
+
+ background: #edf8f4;
+
+ color: #185441;
+
+ font-weight: 800;
+
+ cursor: not-allowed;
+
+}
+
+
+
+.tenant-select-wrapper {
+
+ position: relative;
+
+}
+
+
+
+.tenant-select-wrapper select {
+
+ appearance: none;
+
+ padding-right: 35px;
+
+}
+
+
+
+.tenant-select-wrapper svg {
+
+ position: absolute;
+
+ top: 50%;
+
+ right: 12px;
+
+ transform: translateY(-50%);
+
+ pointer-events: none;
+
+ color: #79938a;
+
+}
+
+
+
+.tenant-select-wrapper select:disabled {
+
+ opacity: 0.6;
+
+ cursor: not-allowed;
+
+}
+
+
+
+.tenant-assignment-success {
+
+ min-height: 43px;
+
+ grid-column: 1 / -1;
+
+ padding: 10px 12px;
+
+ border-radius: 10px;
+
+ background: #e9f7f1;
+
+ color: #23775f;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 7px;
+
+ font-size: 9px;
+
+ font-weight: 700;
+
+}
+
+
+
+.tenant-rent-info {
+
+ margin-bottom: 14px;
+
+ padding: 11px 12px;
+
+ border-radius: 11px;
+
+ background: #f4f8f6;
+
+ color: #59746b;
+
+ display: flex;
+
+ gap: 9px;
+
+}
+
+
+
+.tenant-rent-info svg {
+
+ flex: 0 0 auto;
+
+ color: #5b9e8a;
+
+}
+
+
+
+.tenant-rent-info strong,
+
+.tenant-rent-info span {
+
+ display: block;
+
+}
+
+
+
+.tenant-rent-info strong {
+
+ color: #34594f;
+
+ font-size: 9px;
+
+}
+
+
+
+.tenant-rent-info span {
+
+ margin-top: 3px;
+
+ color: #849891;
+
+ font-size: 8px;
+
+ line-height: 1.4;
+
+}
+
+
+
+.tenant-auto-rent {
+
+ position: relative;
+
+}
+
+
+
+.tenant-auto-rent svg {
+
+ position: absolute;
+
+ top: 50%;
+
+ left: 12px;
+
+ transform: translateY(-50%);
+
+ color: #31816a;
+
+ pointer-events: none;
+
+}
+
+
+
+.tenant-auto-rent input {
+
+ padding-left: 34px;
+
+}
+
+
+
+.tenant-field-hint {
+
+ display: block;
+
+ margin-top: 5px;
+
+ color: #879b94;
+
+ font-size: 8px;
+
+ line-height: 1.4;
+
+}
+
+
+
+.tenant-form-error {
+
+ margin-top: 16px;
+
+ padding: 10px 12px;
+
+ border-radius: 10px;
+
+ background: #fff1ef;
+
+ color: #c6544d;
+
+ display: flex;
+
+ align-items: center;
+
+ gap: 7px;
+
+ font-size: 9px;
+
+ font-weight: 700;
+
+}
+
+
+
+.tenant-modal-actions {
+
+ padding-top: 20px;
+
+ display: flex;
+
+ justify-content: flex-end;
+
+ gap: 9px;
+
+}
+
+
+
+.tenant-modal-cancel,
+
+.tenant-modal-submit {
+
+ min-height: 42px;
+
+ padding: 0 17px;
+
+ border-radius: 10px;
+
+ display: inline-flex;
+
+ align-items: center;
+
+ justify-content: center;
+
+ gap: 7px;
+
+ cursor: pointer;
+
+ font-size: 10px;
+
+ font-weight: 800;
+
+}
+
+
+
+.tenant-modal-cancel {
+
+ border: 1px solid #dce9e4;
+
+ background: #f5f8f7;
+
+ color: #557068;
+
+}
+
+
+
+.tenant-modal-submit {
+
+ border: none;
+
+ background: #185441;
+
+ color: #fff;
+
+}
+
+
+
+.tenant-modal-submit:disabled,
+
+.tenant-modal-cancel:disabled {
+
+ opacity: 0.6;
+
+ cursor: not-allowed;
+
+}
+
+
+
+.tenant-button-spinner {
+
+ animation: tenantSpin 0.9s linear infinite;
+
+}
+
+
+
+@keyframes tenantSpin {
+
+ to {
+
+  transform: rotate(360deg);
+
+ }
+
+}
+
+
+
+/* =====================================================
+
+ RESPONSIVE
+
+\===================================================== */
+
+
+
+@media (max-width: 1200px) {
+
+ .tenant-compact-row {
+
+  grid-template-columns:
+
+   45px
+
+   minmax(150px, 1fr)
+
+   110px
+
+   minmax(220px, auto)
+
+   auto;
+
+ }
+
+
+
+ .tenant-compact-info {
+
+  gap: 7px;
+
+ }
+
+}
+
+
+
+@media (max-width: 980px) {
+
+ .tenants-stat-grid {
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+ }
+
+
+
+ .tenants-page {
+
+  padding: 25px 24px 50px;
+
+ }
+
+
+
+ .tenant-compact-row {
+
+  grid-template-columns:
+
+   45px
+
+   minmax(160px, 1fr)
+
+   110px
+
+   auto;
+
+ }
+
+
+
+ .tenant-compact-status {
+
+  grid-column: 2 / 4;
+
+  justify-content: flex-start;
+
+ }
+
+
+
+ .tenant-compact-actions {
+
+  grid-column: 4;
+
+  grid-row: 1 / 3;
+
+ }
+
+
+
+ .tenant-detail-grid {
+
+  grid-template-columns: repeat(2, 1fr);
+
+ }
+
+}
+
+
+
+@media (max-width: 760px) {
+
+  .tenant-status-tabs {
+    gap: 20px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .tenant-status-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tenant-status-tabs button {
+    flex: 0 0 auto;
+    font-size: 10px;
+  }
+
+ .tenants-page {
+
+  padding: 20px 15px 40px;
+
+ }
+
+
+
+ .tenants-page-header {
+
+  align-items: flex-start;
+
+  flex-direction: column;
+
+  gap: 15px;
+
+ }
+
+
+
+ .tenants-page-header h1 {
+
+  font-size: 29px;
+
+ }
+
+
+
+ .tenants-add-button {
+
+  width: 100%;
+
+ }
+
+
+
+ .tenants-stat-grid {
+
+  grid-template-columns: 1fr;
+
+ }
+
+
+
+ .tenants-section {
+
+  padding: 16px;
+
+  border-radius: 18px;
+
+ }
+
+
+
+ .tenants-section-header {
+
+  align-items: flex-start;
+
+  flex-direction: column;
+
+  gap: 9px;
+
+ }
+
+
+
+ .tenants-toolbar {
+
+  grid-template-columns: 1fr 150px;
+
+ }
+
+
+
+ .tenant-compact-row {
+
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+
+  gap: 10px;
+
+  padding: 13px;
+
+ }
+
+
+
+ .tenant-avatar {
+
+  width: 42px;
+
+  height: 42px;
+
+ }
+
+
+
+ .tenant-compact-info {
+
+  gap: 5px 8px;
+
+ }
+
+
+
+ .tenant-compact-info span:nth-child(2),
+
+ .tenant-compact-info span:nth-child(3),
+
+ .tenant-compact-info span:nth-child(4) {
+
+  display: none;
+
+ }
+
+
+
+ .tenant-compact-rent {
+
+  grid-column: 2;
+
+  grid-row: 2;
+
+  padding: 0;
+
+  border-left: none;
+
+ }
+
+
+
+ .tenant-compact-status {
+
+  grid-column: 2;
+
+  grid-row: 3;
+
+  justify-content: flex-start;
+
+ }
+
+
+
+ .tenant-compact-actions {
+
+  grid-column: 3;
+
+  grid-row: 1 / 4;
+
+  flex-direction: column;
+
+ }
+
+
+
+ .tenant-expanded {
+
+  padding: 0 11px 12px;
+
+ }
+
+
+
+ .tenant-detail-grid,
+
+ .tenant-assignment-row,
+
+ .tenant-rent-detail-row {
+
+  grid-template-columns: 1fr 1fr;
+
+ }
+
+
+
+ .tenant-expanded-footer {
+
+  align-items: stretch;
+
+  flex-direction: column;
+
+ }
+
+
+
+ .tenant-expanded-actions {
+
+  width: 100%;
+
+ }
+
+
+
+ .tenant-edit-button,
+
+ .tenant-delete-button,
+
+ .tenant-vacate-button {
+
+  flex: 1;
+
+ }
+
+
+
+ .tenant-modal-overlay {
+
+  padding: 0;
+
+  align-items: flex-end;
+
+ }
+
+
+
+ .tenant-modal {
+
+  width: 100%;
+
+  max-height: 94vh;
+
+  border-radius: 22px 22px 0 0;
+
+ }
+
+
+
+ .tenant-modal-header {
+
+  padding: 19px;
+
+ }
+
+
+
+ .tenant-form {
+
+  padding: 0 19px 22px;
+
+ }
+
+}
+
+
+
+@media (max-width: 520px) {
+  .rent-payment-overlay {
+    padding: 15px;
+  }
+
+  .rent-payment-card {
+    width: 100%;
+    padding: 25px 18px 18px;
+    border-radius: 20px;
+  }
+
+  .rent-payment-options {
+    grid-template-columns: 1fr;
+  }
+
+  .rent-payment-option {
+    min-height: 76px;
+  }
+}
+
+@media (max-width: 520px) {
+
+ .tenant-compact-rent {
+
+  margin-top: 2px;
+
+ }
+
+
+
+ .rent-status-buttons {
+
+  width: 100%;
+
+ }
+
+
+
+ .rent-status-button {
+
+  flex: 1;
+
+ }
+
+
+
+ .tenant-detail-grid,
+
+ .tenant-assignment-row,
+
+ .tenant-rent-detail-row {
+
+  grid-template-columns: 1fr;
+
+ }
+
+
+
+ .tenant-form-grid {
+
+  grid-template-columns: 1fr;
+
+ }
+
+
+
+ .tenant-assignment-success {
+
+  grid-column: auto;
+
+ }
+
+
+
+ .tenant-modal-actions {
+
+  display: grid;
+
+  grid-template-columns: 1fr;
+
+ }
+
+
+
+ .tenant-modal-cancel,
+
+ .tenant-modal-submit {
+
+  width: 100%;
+
+ }
+
+}
+
+
+
+@media (max-width: 380px) {
+
+ .tenants-page {
+
+  padding-left: 11px;
+
+  padding-right: 11px;
+
+ }
+
+
+
+ .tenants-section {
+
+  padding: 12px;
+
+ }
+
+
+
+ .tenant-compact-row {
+
+  padding: 10px;
+
+ }
+
+
+
+ .tenant-icon-button,
+
+ .tenant-expand-button {
+
+  width: 30px;
+
+  height: 30px;
+
+ }
+
+
+
+ .tenant-compact-main h3 {
+
+  font-size: 13px;
+
+ }
+
+
+
+ .tenant-compact-rent strong {
+
+  font-size: 12px;
+
+ }
+
+}
+
+
+
+
+/* =====================================================
+   MONTHLY / YEARLY DROPDOWN
+===================================================== */
+
+.tenant-view-filter {
+  position: relative;
+  min-height: 46px;
+  border: 1px solid #dce9e4;
+  border-radius: 13px;
+  background: #fbfdfc;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  color: #769087;
+}
+
+.tenant-view-filter select {
+  width: 100%;
+  height: 100%;
+  padding-right: 22px;
+  border: none;
+  outline: none;
+  appearance: none;
+  background: transparent;
+  color: #46665d;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tenant-view-filter svg {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+}
+
+/* =====================================================
+   ACTIVE / VACATED / PAID / NOT PAID TABS
+===================================================== */
+
+.tenant-status-tabs {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin: -3px 0 20px;
+  padding: 0 2px;
+  border-bottom: 1px solid #e5eeeb;
+}
+
+.tenant-status-tabs button {
+  position: relative;
+  min-height: 38px;
+  padding: 0 2px;
+  border: none;
+  background: transparent;
+  color: #83958f;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition:
+    color 0.18s ease;
+}
+
+.tenant-status-tabs button:hover {
+  color: #185441;
+}
+
+.tenant-status-tabs button.active {
+  color: #185441;
+}
+
+.tenant-status-tabs button.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: #185441;
+}
+

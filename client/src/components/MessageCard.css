@@ -1,0 +1,411 @@
+/* =========================================================
+   MESSAGE CARD OVERLAY
+========================================================= */
+
+.message-card-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 2000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(7, 30, 24, 0.48);
+
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+
+  animation:
+    messageOverlayIn
+    0.18s ease;
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.message-card {
+  position: relative;
+
+  width: min(420px, 100%);
+
+  background: #ffffff;
+
+  border-radius: 22px;
+
+  padding: 30px;
+
+  box-sizing: border-box;
+
+  text-align: center;
+
+  box-shadow:
+    0 30px 90px
+    rgba(0, 0, 0, 0.24);
+
+  animation:
+    messageCardIn
+    0.22s ease;
+
+  overflow: hidden;
+}
+
+
+/* =========================================================
+   CLOSE BUTTON
+========================================================= */
+
+.message-card-close {
+  position: absolute;
+
+  top: 15px;
+  right: 15px;
+
+  width: 34px;
+  height: 34px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: #eef5f2;
+
+  color: #527069;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  transition:
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+
+.message-card-close:hover {
+  background: #e1eee9;
+
+  transform:
+    rotate(4deg);
+}
+
+
+/* =========================================================
+   ICON
+========================================================= */
+
+.message-card-icon {
+  width: 68px;
+  height: 68px;
+
+  margin: 0 auto 17px;
+
+  border-radius: 20px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+/* SUCCESS */
+
+.message-card-success
+.message-card-icon {
+  background: #e4f7ef;
+  color: #07966d;
+}
+
+
+/* ERROR */
+
+.message-card-error
+.message-card-icon {
+  background: #fff0f0;
+  color: #d64d4d;
+}
+
+
+/* WARNING */
+
+.message-card-warning
+.message-card-icon {
+  background: #fff4df;
+  color: #df821d;
+}
+
+
+/* CONFIRM */
+
+.message-card-confirm
+.message-card-icon {
+  background: #fff0f0;
+  color: #d64d4d;
+}
+
+
+/* =========================================================
+   CONTENT
+========================================================= */
+
+.message-card-content {
+  padding: 0 8px;
+}
+
+.message-card-label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  font-size: 9px;
+
+  font-weight: 800;
+
+  letter-spacing: 1.5px;
+
+  color: #8b9d98;
+}
+
+
+.message-card h2 {
+  margin: 0;
+
+  color: #173d33;
+
+  font-size: 22px;
+
+  line-height: 1.2;
+
+  font-weight: 800;
+}
+
+
+.message-card p {
+  margin: 9px auto 0;
+
+  max-width: 330px;
+
+  color: #718780;
+
+  font-size: 12px;
+
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   ACTIONS
+========================================================= */
+
+.message-card-actions {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 9px;
+
+  margin-top: 24px;
+}
+
+
+.message-card-actions button,
+.message-card-ok {
+  min-height: 44px;
+
+  border: none;
+
+  border-radius: 11px;
+
+  font-family: inherit;
+
+  font-size: 11px;
+
+  font-weight: 750;
+
+  cursor: pointer;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+
+.message-card-ok {
+  width: 100%;
+
+  margin-top: 24px;
+
+  background: #185441;
+
+  color: white;
+}
+
+
+.message-card-ok:hover {
+  background: #123f33;
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* CANCEL */
+
+.message-card-cancel {
+  background: #edf4f1;
+
+  color: #38564e;
+}
+
+.message-card-cancel:hover {
+  background: #e2ece8;
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* CONFIRM */
+
+.message-card-confirm {
+  background: #d95353;
+
+  color: white;
+}
+
+.message-card-confirm:hover {
+  background: #c94444;
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes messageOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+
+@keyframes messageCardIn {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(12px)
+      scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 600px) {
+
+  .message-card-overlay {
+    padding: 16px;
+  }
+
+  .message-card {
+    width: 100%;
+
+    max-width: 390px;
+
+    padding: 27px 21px;
+
+    border-radius: 20px;
+  }
+
+  .message-card-icon {
+    width: 60px;
+    height: 60px;
+
+    border-radius: 17px;
+
+    margin-bottom: 14px;
+  }
+
+  .message-card-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .message-card h2 {
+    font-size: 19px;
+  }
+
+  .message-card p {
+    font-size: 11px;
+
+    max-width: 290px;
+  }
+
+  .message-card-actions {
+    margin-top: 20px;
+  }
+
+  .message-card-actions button,
+  .message-card-ok {
+    min-height: 42px;
+
+    font-size: 10px;
+  }
+}
+
+
+/* =========================================================
+   SMALL PHONES
+========================================================= */
+
+@media (max-width: 380px) {
+
+  .message-card {
+    padding: 23px 17px;
+  }
+
+  .message-card h2 {
+    font-size: 18px;
+  }
+
+  .message-card p {
+    font-size: 10px;
+  }
+
+  .message-card-actions {
+    gap: 7px;
+  }
+}

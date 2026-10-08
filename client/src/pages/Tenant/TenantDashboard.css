@@ -1,0 +1,2203 @@
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+
+/* =====================================================
+   BASE
+===================================================== */
+
+.tenant-dashboard {
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: #f6f9f7;
+  color: #183f35;
+}
+
+.tenant-dashboard * {
+  box-sizing: border-box;
+}
+
+
+/* =====================================================
+   SIDEBAR
+===================================================== */
+
+.tenant-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 245px;
+
+  display: flex;
+  flex-direction: column;
+
+  background: #123f33;
+
+  z-index: 100;
+
+  overflow-y: auto;
+}
+
+.tenant-sidebar::-webkit-scrollbar {
+  width: 0;
+}
+
+
+/* =====================================================
+   BRAND
+===================================================== */
+
+.tenant-brand {
+  min-height: 76px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 18px 18px;
+
+  border-bottom: 1px solid
+    rgba(255, 255, 255, 0.08);
+}
+
+.tenant-brand-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: #72cdb6;
+  color: #123f33;
+}
+
+.tenant-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.tenant-brand-text strong {
+  color: white;
+
+  font-size: 18px;
+  line-height: 1.1;
+}
+
+.tenant-brand-text span {
+  margin-top: 3px;
+
+  color: #a8c9bf;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  letter-spacing: 0.1em;
+}
+
+.tenant-sidebar-close {
+  display: none;
+
+  margin-left: auto;
+
+  width: 32px;
+  height: 32px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  color: white;
+
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   PROPERTY
+===================================================== */
+
+.tenant-property-card {
+  margin: 18px 14px 12px;
+
+  padding: 13px;
+
+  border: 1px solid
+    rgba(255, 255, 255, 0.08);
+
+  border-radius: 13px;
+
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.tenant-property-card span {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #8eb9ad;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.09em;
+}
+
+.tenant-property-card strong {
+  display: block;
+
+  color: white;
+
+  font-size: 13px;
+}
+
+.tenant-property-card small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #9bbeb4;
+
+  font-size: 10px;
+}
+
+
+/* =====================================================
+   NAVIGATION
+===================================================== */
+
+.tenant-navigation {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  padding: 7px 12px;
+}
+
+.tenant-nav-item {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 11px;
+
+  padding: 11px 12px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: transparent;
+
+  color: #a9c6bd;
+
+  font-family: inherit;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.tenant-nav-item:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: white;
+}
+
+.tenant-nav-item.active {
+  background: #72cdb6;
+  color: #123f33;
+}
+
+.tenant-nav-item svg {
+  flex-shrink: 0;
+}
+
+
+/* =====================================================
+   SIDEBAR BOTTOM
+===================================================== */
+
+.tenant-sidebar-bottom {
+  margin-top: auto;
+
+  padding: 14px 12px;
+
+  border-top: 1px solid
+    rgba(255, 255, 255, 0.08);
+}
+
+.tenant-logout-button {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 11px 12px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: rgba(255, 255, 255, 0.05);
+
+  color: #a9c6bd;
+
+  font-family: inherit;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.tenant-logout-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+
+/* =====================================================
+   MAIN
+===================================================== */
+
+.tenant-main {
+  min-height: 100vh;
+
+  margin-left: 245px;
+}
+
+
+/* =====================================================
+   TOPBAR
+===================================================== */
+
+.tenant-topbar {
+  height: 76px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 30px;
+
+  background: white;
+
+  border-bottom: 1px solid #e6eeea;
+}
+
+.tenant-topbar h1 {
+  margin: 0;
+
+  color: #183f35;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.tenant-topbar p {
+  margin: 3px 0 0;
+
+  color: #81948e;
+
+  font-size: 11px;
+}
+
+.tenant-topbar-profile {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+}
+
+.tenant-topbar-avatar {
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #e5f5ef;
+  color: #176b55;
+
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.tenant-topbar-profile strong {
+  display: block;
+
+  color: #24483f;
+
+  font-size: 12px;
+}
+
+.tenant-topbar-profile span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #879b94;
+
+  font-size: 10px;
+}
+
+
+/* =====================================================
+   CONTENT
+===================================================== */
+
+.tenant-content {
+  max-width: 1250px;
+
+  margin: 0 auto;
+
+  padding: 28px;
+}
+
+.tenant-page {
+  width: 100%;
+}
+
+.tenant-mobile-page-title {
+  display: none;
+}
+
+.tenant-page-heading {
+  margin-bottom: 24px;
+}
+
+.tenant-page-heading > span {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #6f968a;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.1em;
+}
+
+.tenant-page-heading h1 {
+  margin: 0;
+
+  color: #123f33;
+
+  font-size: 29px;
+  font-weight: 800;
+}
+
+.tenant-page-heading p {
+  margin: 5px 0 0;
+
+  color: #7c918a;
+
+  font-size: 13px;
+}
+
+
+/* =====================================================
+   ERROR
+===================================================== */
+
+.tenant-error {
+  display: flex;
+  align-items: center;
+
+  gap: 8px;
+
+  margin-bottom: 18px;
+
+  padding: 11px 14px;
+
+  border-radius: 10px;
+
+  background: #fff0f0;
+  color: #b42318;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+
+/* =====================================================
+   ROOM HERO
+===================================================== */
+
+.tenant-room-hero {
+  display: flex;
+  align-items: center;
+
+  gap: 16px;
+
+  margin-bottom: 20px;
+
+  padding: 20px;
+
+  border-radius: 18px;
+
+  background: #123f33;
+
+  color: white;
+}
+
+.tenant-room-hero-icon {
+  width: 52px;
+  height: 52px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 14px;
+
+  background: rgba(114, 205, 182, 0.17);
+  color: #72cdb6;
+}
+
+.tenant-room-hero-info {
+  flex: 1;
+}
+
+.tenant-room-hero-info > span,
+.tenant-room-hero-bed > span {
+  display: block;
+
+  color: #91b8ad;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.09em;
+}
+
+.tenant-room-hero-info h2 {
+  margin: 4px 0 3px;
+
+  color: white;
+
+  font-size: 21px;
+}
+
+.tenant-room-hero-info p {
+  margin: 0;
+
+  color: #a9c8c0;
+
+  font-size: 11px;
+  text-transform: capitalize;
+}
+
+.tenant-room-hero-bed {
+  min-width: 70px;
+
+  padding-left: 18px;
+
+  border-left: 1px solid
+    rgba(255, 255, 255, 0.12);
+
+  text-align: center;
+}
+
+.tenant-room-hero-bed strong {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #72cdb6;
+
+  font-size: 20px;
+}
+
+
+/* =====================================================
+   STATS
+===================================================== */
+
+.tenant-stat-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 14px;
+
+  margin-bottom: 20px;
+}
+
+.tenant-stat-card {
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+
+  min-height: 92px;
+
+  padding: 15px;
+
+  border: 1px solid #e5eee9;
+  border-radius: 15px;
+
+  background: white;
+}
+
+.tenant-stat-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 11px;
+}
+
+.tenant-stat-icon.green {
+  background: #e5f6ef;
+  color: #218260;
+}
+
+.tenant-stat-icon.orange {
+  background: #fff3df;
+  color: #c57c18;
+}
+
+.tenant-stat-icon.blue {
+  background: #e8f2ff;
+  color: #3c76b8;
+}
+
+.tenant-stat-icon.red {
+  background: #fff0f0;
+  color: #c65050;
+}
+
+.tenant-stat-card strong {
+  display: block;
+
+  color: #183f35;
+
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.tenant-stat-card span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #7d928b;
+
+  font-size: 10px;
+}
+
+
+/* =====================================================
+   SECTIONS
+===================================================== */
+
+.tenant-section {
+  margin-bottom: 20px;
+
+  padding: 20px;
+
+  border: 1px solid #e5eee9;
+  border-radius: 17px;
+
+  background: white;
+}
+
+.tenant-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin-bottom: 15px;
+}
+
+.tenant-section-header h2 {
+  margin: 0;
+
+  color: #183f35;
+
+  font-size: 16px;
+}
+
+.tenant-section-header p {
+  margin: 4px 0 0;
+
+  color: #82958f;
+
+  font-size: 11px;
+}
+
+.tenant-view-all {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 3px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #21745c;
+
+  font-family: inherit;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+
+/* =====================================================
+   TWO COLUMN
+===================================================== */
+
+.tenant-two-column {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 18px;
+}
+
+
+/* =====================================================
+   INFO LIST
+===================================================== */
+
+.tenant-info-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 13px;
+}
+
+.tenant-info-list > div {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+}
+
+.tenant-info-list svg {
+  flex-shrink: 0;
+
+  margin-top: 2px;
+
+  color: #4c9e85;
+}
+
+.tenant-info-list span {
+  display: block;
+
+  color: #8a9b96;
+
+  font-size: 10px;
+}
+
+.tenant-info-list strong {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #31554a;
+
+  font-size: 12px;
+}
+
+
+/* =====================================================
+   PAYMENTS
+===================================================== */
+
+.tenant-payment-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.tenant-payment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 13px;
+
+  border-radius: 11px;
+
+  background: #f8fbf9;
+}
+
+.tenant-payment-item > div {
+  min-width: 0;
+}
+
+.tenant-payment-item strong {
+  display: block;
+
+  color: #23483e;
+
+  font-size: 13px;
+}
+
+.tenant-payment-item span {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #82958f;
+
+  font-size: 10px;
+}
+
+.tenant-payment-item small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #96a69f;
+
+  font-size: 9px;
+}
+
+.tenant-status-badge {
+  display: inline-flex !important;
+  align-items: center;
+
+  gap: 4px;
+
+  flex-shrink: 0;
+
+  padding: 5px 8px;
+
+  border-radius: 20px;
+
+  font-size: 9px !important;
+  font-weight: 700;
+
+  text-transform: capitalize;
+}
+
+.tenant-status-badge.paid,
+.tenant-status-badge.resolved {
+  background: #e7f7ef;
+  color: #207653;
+}
+
+.tenant-status-badge.pending,
+.tenant-status-badge.open {
+  background: #fff4df;
+  color: #a86c18;
+}
+
+.tenant-status-badge.overdue,
+.tenant-status-badge.closed {
+  background: #ffeded;
+  color: #b54646;
+}
+
+
+/* =====================================================
+   ROOM DETAIL
+===================================================== */
+
+.tenant-room-detail-card {
+  padding: 22px;
+
+  border-radius: 18px;
+
+  background: white;
+
+  border: 1px solid #e5eee9;
+}
+
+.tenant-room-detail-header {
+  display: flex;
+  align-items: center;
+
+  gap: 13px;
+
+  padding-bottom: 18px;
+
+  border-bottom: 1px solid #edf2ef;
+}
+
+.tenant-room-detail-icon {
+  width: 48px;
+  height: 48px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 13px;
+
+  background: #e7f6f0;
+  color: #237c63;
+}
+
+.tenant-room-detail-header span {
+  display: block;
+
+  color: #78948b;
+
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.tenant-room-detail-header h2 {
+  margin: 3px 0 0;
+
+  color: #183f35;
+
+  font-size: 20px;
+}
+
+.tenant-room-detail-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(0, 1fr));
+
+  gap: 15px;
+
+  padding-top: 20px;
+}
+
+.tenant-room-detail-grid span,
+.tenant-profile-info-grid span {
+  display: block;
+
+  color: #8b9b96;
+
+  font-size: 10px;
+}
+
+.tenant-room-detail-grid strong,
+.tenant-profile-info-grid strong {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #31554a;
+
+  font-size: 13px;
+}
+
+.tenant-room-description {
+  margin-top: 20px;
+
+  padding-top: 17px;
+
+  border-top: 1px solid #edf2ef;
+}
+
+.tenant-room-description > span {
+  color: #8b9b96;
+
+  font-size: 10px;
+}
+
+.tenant-room-description p {
+  margin: 5px 0 0;
+
+  color: #60776e;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+
+/* =====================================================
+   FOOD
+===================================================== */
+
+.tenant-food-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 15px;
+}
+
+.tenant-food-card {
+  padding: 17px;
+
+  border: 1px solid #e5eee9;
+  border-radius: 16px;
+
+  background: white;
+}
+
+.tenant-food-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  margin-bottom: 14px;
+}
+
+.tenant-food-icon {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 11px;
+
+  background: #e8f6f1;
+  color: #247d63;
+}
+
+.tenant-food-type {
+  padding: 5px 8px;
+
+  border-radius: 20px;
+
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.tenant-food-type.veg {
+  background: #e8f7ed;
+  color: #2d7c50;
+}
+
+.tenant-food-type.non_veg {
+  background: #fff0eb;
+  color: #b85538;
+}
+
+.tenant-food-card h3 {
+  margin: 0;
+
+  color: #21483d;
+
+  font-size: 15px;
+}
+
+.tenant-food-meal {
+  display: inline-block;
+
+  margin-top: 5px;
+
+  color: #739087;
+
+  font-size: 10px;
+
+  text-transform: capitalize;
+}
+
+.tenant-food-card p {
+  margin: 9px 0 0;
+
+  color: #83958f;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tenant-food-price {
+  display: block;
+
+  margin-top: 12px;
+
+  color: #176b55;
+
+  font-size: 13px;
+}
+
+
+/* =====================================================
+   NOTICES
+===================================================== */
+
+.tenant-notice-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 11px;
+}
+
+.tenant-notice-card {
+  display: flex;
+
+  gap: 13px;
+
+  padding: 16px;
+
+  border: 1px solid #e5eee9;
+  border-radius: 15px;
+
+  background: white;
+}
+
+.tenant-notice-icon {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 11px;
+
+  background: #e8f6f1;
+  color: #267c64;
+}
+
+.tenant-notice-content {
+  min-width: 0;
+}
+
+.tenant-notice-top {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  margin-bottom: 5px;
+}
+
+.tenant-notice-top > span:first-child {
+  color: #7c958c;
+
+  font-size: 9px;
+  font-weight: 700;
+
+  text-transform: capitalize;
+}
+
+.tenant-priority {
+  padding: 3px 7px;
+
+  border-radius: 20px;
+
+  font-size: 8px !important;
+  font-weight: 700 !important;
+
+  text-transform: capitalize;
+}
+
+.tenant-priority.low {
+  background: #edf5f1;
+  color: #557b6e;
+}
+
+.tenant-priority.medium {
+  background: #fff4df;
+  color: #a86c18;
+}
+
+.tenant-priority.high,
+.tenant-priority.urgent {
+  background: #ffeded;
+  color: #b54646;
+}
+
+.tenant-notice-content h3 {
+  margin: 0;
+
+  color: #23483e;
+
+  font-size: 14px;
+}
+
+.tenant-notice-content p {
+  margin: 6px 0 0;
+
+  color: #71867e;
+
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.tenant-notice-content small {
+  display: block;
+
+  margin-top: 9px;
+
+  color: #9aa8a4;
+
+  font-size: 9px;
+}
+
+
+/* =====================================================
+   COMPLAINTS
+===================================================== */
+
+.tenant-heading-with-button {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 15px;
+}
+
+.tenant-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  border: none;
+  border-radius: 10px;
+
+  padding: 10px 14px;
+
+  background: #123f33;
+  color: white;
+
+  font-family: inherit;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.tenant-primary-button:hover {
+  background: #185441;
+}
+
+.tenant-complaint-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 11px;
+}
+
+.tenant-complaint-card {
+  display: flex;
+
+  gap: 13px;
+
+  padding: 16px;
+
+  border: 1px solid #e5eee9;
+  border-radius: 15px;
+
+  background: white;
+}
+
+.tenant-complaint-card-icon {
+  width: 40px;
+  height: 40px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  border-radius: 11px;
+
+  background: #fff1ed;
+  color: #b95d42;
+}
+
+.tenant-complaint-card-content {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.tenant-complaint-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 6px;
+}
+
+.tenant-complaint-card-top > span:first-child {
+  color: #81958e;
+
+  font-size: 9px;
+
+  text-transform: capitalize;
+}
+
+.tenant-complaint-card-content h3 {
+  margin: 0;
+
+  color: #23483e;
+
+  font-size: 14px;
+}
+
+.tenant-complaint-card-content p {
+  margin: 6px 0 0;
+
+  color: #748980;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.tenant-complaint-card-content small {
+  display: block;
+
+  margin-top: 8px;
+
+  color: #9aa8a4;
+
+  font-size: 9px;
+}
+
+
+/* =====================================================
+   PROFILE
+===================================================== */
+
+.tenant-profile-card {
+  display: flex;
+  align-items: center;
+
+  gap: 15px;
+
+  margin-bottom: 18px;
+
+  padding: 20px;
+
+  border-radius: 17px;
+
+  background: #123f33;
+}
+
+.tenant-profile-avatar {
+  width: 58px;
+  height: 58px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background: #72cdb6;
+  color: #123f33;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.tenant-profile-card h2 {
+  margin: 0;
+
+  color: white;
+
+  font-size: 18px;
+}
+
+.tenant-profile-card span {
+  display: block;
+
+  margin-top: 4px;
+
+  color: #a8c9bf;
+
+  font-size: 10px;
+}
+
+.tenant-profile-info-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 15px;
+}
+
+.tenant-profile-info-grid > div {
+  padding: 14px;
+
+  border-radius: 11px;
+
+  background: #f7faf8;
+}
+
+
+/* =====================================================
+   EMPTY
+===================================================== */
+
+.tenant-empty-inline {
+  padding: 20px;
+
+  border-radius: 11px;
+
+  background: #f7faf8;
+
+  color: #879992;
+
+  font-size: 11px;
+
+  text-align: center;
+}
+
+.tenant-empty-state {
+  min-height: 260px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  border: 1px dashed #cbded6;
+  border-radius: 17px;
+
+  background: white;
+
+  color: #39836d;
+
+  text-align: center;
+}
+
+.tenant-empty-state h3 {
+  margin: 12px 0 4px;
+
+  color: #31554a;
+
+  font-size: 15px;
+}
+
+.tenant-empty-state p {
+  max-width: 360px;
+
+  margin: 0 0 15px;
+
+  color: #83958f;
+
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+
+/* =====================================================
+   LOADING
+===================================================== */
+
+.tenant-loading-page {
+  min-height: 100vh;
+
+  display: flex;
+}
+
+.tenant-loading-sidebar {
+  width: 245px;
+
+  flex-shrink: 0;
+
+  background: #123f33;
+}
+
+.tenant-loading-content {
+  flex: 1;
+
+  padding: 30px;
+}
+
+.tenant-loading-topbar {
+  width: 100%;
+  height: 55px;
+
+  margin-bottom: 25px;
+
+  border-radius: 12px;
+
+  background: #e6eeea;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+.tenant-loading-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, 1fr);
+
+  gap: 15px;
+}
+
+.tenant-loading-card {
+  height: 110px;
+
+  border-radius: 15px;
+
+  background: #e6eeea;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+.tenant-loading-large {
+  height: 280px;
+
+  margin-top: 18px;
+
+  border-radius: 17px;
+
+  background: #e6eeea;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+.tenant-loading-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.tenant-loading-list div {
+  height: 58px;
+
+  border-radius: 10px;
+
+  background: #edf3f0;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+.tenant-loading-food {
+  height: 180px;
+
+  border-radius: 16px;
+
+  background: #e8efec;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+.tenant-loading-notices {
+  display: flex;
+  flex-direction: column;
+
+  gap: 10px;
+}
+
+.tenant-loading-notices div {
+  height: 100px;
+
+  border-radius: 15px;
+
+  background: #e8efec;
+
+  animation: tenantPulse 1.4s infinite;
+}
+
+@keyframes tenantPulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+
+/* =====================================================
+   MODAL
+===================================================== */
+
+.tenant-modal-overlay {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(8, 35, 28, 0.5);
+
+  backdrop-filter: blur(5px);
+}
+
+.tenant-modal {
+  width: 100%;
+  max-width: 510px;
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  border-radius: 20px;
+
+  background: white;
+
+  box-shadow:
+    0 25px 70px
+    rgba(0, 0, 0, 0.2);
+}
+
+.tenant-modal::-webkit-scrollbar {
+  width: 0;
+}
+
+.tenant-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  padding: 20px;
+
+  border-bottom: 1px solid #edf2ef;
+}
+
+.tenant-modal-header span {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #78968b;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  letter-spacing: 0.09em;
+}
+
+.tenant-modal-header h2 {
+  margin: 0;
+
+  color: #183f35;
+
+  font-size: 19px;
+}
+
+.tenant-modal-header button {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 9px;
+
+  background: #f1f5f3;
+
+  color: #5d716a;
+
+  cursor: pointer;
+}
+
+.tenant-complaint-form {
+  padding: 20px;
+}
+
+.tenant-form-group {
+  margin-bottom: 14px;
+}
+
+.tenant-form-group label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #36584e;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tenant-form-group input,
+.tenant-form-group select,
+.tenant-form-group textarea {
+  width: 100%;
+
+  padding: 10px 11px;
+
+  border: 1px solid #dce8e3;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #fbfdfc;
+
+  color: #24483e;
+
+  font-family: inherit;
+
+  font-size: 12px;
+}
+
+.tenant-form-group input:focus,
+.tenant-form-group select:focus,
+.tenant-form-group textarea:focus {
+  border-color: #63b39a;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(99, 179, 154, 0.12);
+}
+
+.tenant-form-group textarea {
+  resize: vertical;
+}
+
+.tenant-form-row {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+}
+
+.tenant-form-error {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  margin-bottom: 13px;
+
+  padding: 10px 11px;
+
+  border-radius: 9px;
+
+  background: #fff0f0;
+
+  color: #b42318;
+
+  font-size: 11px;
+}
+
+.tenant-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  padding-top: 4px;
+}
+
+.tenant-modal-cancel,
+.tenant-modal-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  border: none;
+  border-radius: 9px;
+
+  padding: 10px 14px;
+
+  font-family: inherit;
+
+  font-size: 11px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.tenant-modal-cancel {
+  background: #eef3f1;
+  color: #536a61;
+}
+
+.tenant-modal-submit {
+  background: #123f33;
+  color: white;
+}
+
+.tenant-modal-submit:disabled,
+.tenant-modal-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tenant-spin {
+  animation: tenantSpin 0.8s linear infinite;
+}
+
+@keyframes tenantSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* =====================================================
+   MOBILE HEADER
+===================================================== */
+
+.tenant-mobile-header {
+  display: none;
+}
+
+
+/* =====================================================
+   TABLET
+===================================================== */
+
+@media (max-width: 1000px) {
+  .tenant-stat-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .tenant-food-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .tenant-room-detail-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 760px) {
+
+  .tenant-mobile-header {
+    height: 62px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 14px;
+
+    background: white;
+
+    border-bottom: 1px solid #e5eee9;
+
+    position: sticky;
+    top: 0;
+
+    z-index: 90;
+  }
+
+  .tenant-mobile-brand {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+  }
+
+  .tenant-mobile-brand-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 9px;
+
+    background: #123f33;
+    color: #72cdb6;
+  }
+
+  .tenant-mobile-brand strong {
+    display: block;
+
+    color: #123f33;
+
+    font-size: 15px;
+  }
+
+  .tenant-mobile-brand span {
+    display: block;
+
+    margin-top: 1px;
+
+    color: #81968e;
+
+    font-size: 8px;
+    font-weight: 700;
+  }
+
+  .tenant-mobile-header-right {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+  }
+
+  .tenant-mobile-avatar {
+    width: 31px;
+    height: 31px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: #e5f5ef;
+    color: #176b55;
+
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .tenant-menu-button {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 9px;
+
+    background: #123f33;
+    color: white;
+
+    cursor: pointer;
+  }
+
+
+  /* SIDEBAR */
+
+  .tenant-sidebar {
+    width: 245px;
+
+    transform: translateX(-100%);
+
+    transition:
+      transform 0.25s ease;
+  }
+
+  .tenant-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .tenant-sidebar-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tenant-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: 95;
+
+    background: rgba(8, 35, 28, 0.42);
+  }
+
+
+  /* MAIN */
+
+  .tenant-main {
+    margin-left: 0;
+  }
+
+  .tenant-topbar {
+    display: none;
+  }
+
+  .tenant-content {
+    padding: 18px 14px 30px;
+  }
+
+  .tenant-mobile-page-title {
+    display: block;
+
+    margin-bottom: 18px;
+  }
+
+  .tenant-mobile-page-title span {
+    display: block;
+
+    color: #78988d;
+
+    font-size: 9px;
+    font-weight: 800;
+
+    letter-spacing: 0.1em;
+  }
+
+  .tenant-mobile-page-title h1 {
+    margin: 4px 0 0;
+
+    color: #123f33;
+
+    font-size: 25px;
+  }
+
+  .tenant-mobile-page-title p {
+    margin: 5px 0 0;
+
+    color: #81948e;
+
+    font-size: 11px;
+  }
+
+
+  /* HERO */
+
+  .tenant-room-hero {
+    gap: 11px;
+
+    padding: 15px;
+
+    border-radius: 15px;
+  }
+
+  .tenant-room-hero-icon {
+    width: 43px;
+    height: 43px;
+
+    border-radius: 11px;
+  }
+
+  .tenant-room-hero-info h2 {
+    font-size: 17px;
+  }
+
+  .tenant-room-hero-bed {
+    min-width: 50px;
+
+    padding-left: 10px;
+  }
+
+  .tenant-room-hero-bed strong {
+    font-size: 17px;
+  }
+
+
+  /* STATS */
+
+  .tenant-stat-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 9px;
+  }
+
+  .tenant-stat-card {
+    min-height: 78px;
+
+    padding: 11px;
+
+    gap: 8px;
+
+    border-radius: 12px;
+  }
+
+  .tenant-stat-icon {
+    width: 32px;
+    height: 32px;
+
+    border-radius: 9px;
+  }
+
+  .tenant-stat-card strong {
+    font-size: 14px;
+  }
+
+  .tenant-stat-card span {
+    font-size: 9px;
+  }
+
+
+  /* SECTIONS */
+
+  .tenant-two-column {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+  .tenant-section {
+    padding: 15px;
+
+    border-radius: 14px;
+  }
+
+  .tenant-section-header h2 {
+    font-size: 14px;
+  }
+
+
+  /* PAGE */
+
+  .tenant-page-heading {
+    margin-bottom: 18px;
+  }
+
+  .tenant-page-heading h1 {
+    font-size: 25px;
+  }
+
+
+  /* ROOM */
+
+  .tenant-room-detail-card {
+    padding: 16px;
+  }
+
+  .tenant-room-detail-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 13px;
+  }
+
+
+  /* FOOD */
+
+  .tenant-food-grid {
+    grid-template-columns: 1fr;
+
+    gap: 10px;
+  }
+
+
+  /* COMPLAINT */
+
+  .tenant-heading-with-button {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .tenant-primary-button {
+    width: 100%;
+  }
+
+  .tenant-complaint-card {
+    padding: 13px;
+  }
+
+
+  /* PROFILE */
+
+  .tenant-profile-card {
+    padding: 16px;
+  }
+
+  .tenant-profile-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+
+  /* MODAL */
+
+  .tenant-modal-overlay {
+    align-items: flex-end;
+
+    padding: 0;
+  }
+
+  .tenant-modal {
+    max-height: 92vh;
+
+    border-radius:
+      20px 20px 0 0;
+  }
+
+  .tenant-modal-header,
+  .tenant-complaint-form {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .tenant-form-row {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+  .tenant-modal-actions {
+    position: sticky;
+    bottom: 0;
+
+    padding-top: 10px;
+
+    background: white;
+  }
+
+  .tenant-modal-cancel,
+  .tenant-modal-submit {
+    flex: 1;
+  }
+
+
+  /* LOADING */
+
+  .tenant-loading-sidebar {
+    display: none;
+  }
+
+  .tenant-loading-content {
+    padding: 15px;
+  }
+
+  .tenant-loading-grid {
+    grid-template-columns:
+      repeat(2, 1fr);
+
+    gap: 9px;
+  }
+
+}
