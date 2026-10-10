@@ -17,7 +17,8 @@ export const authorizeRoles = (
 
     }
 
-
+    console.log("Actual user role:", req.user.role);
+    console.log("Allowed roles:", allowedRoles);
     if (
       !allowedRoles.includes(
         req.user.role

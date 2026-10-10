@@ -1,5 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -9,43 +8,165 @@ import {
   Wallet,
   CalendarDays,
   TrendingDown,
+  TrendingUp,
   PieChart,
   Loader2,
+  Tag,
+  CreditCard,
+  Building2,
+  Pencil,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  ArrowDownRight,
+  ArrowUpRight,
+  Droplet,
+  Zap,
+  Utensils,
+  Wrench,
+  Wifi,
+  Users,
+  Package,
+  Sparkles,
+  LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 import {
   getMyExpensesApi,
   getExpenseSummaryApi,
   createExpenseApi,
+  updateExpenseApi,
   deleteExpenseApi,
 } from "../../services/api";
 
 import "./Expenses.css";
 
-
 const categories = [
-  { value: "all", label: "All Categories" },
-  { value: "rent", label: "Rent" },
-  { value: "electricity", label: "Electricity" },
-  { value: "water", label: "Water" },
-  { value: "maintenance", label: "Maintenance" },
-  { value: "food", label: "Food" },
-  { value: "salary", label: "Salary" },
-  { value: "internet", label: "Internet" },
-  { value: "cleaning", label: "Cleaning" },
-  { value: "supplies", label: "Supplies" },
-  { value: "other", label: "Other" },
+  { value: "rent", label: "Rent", color: "#16a34a" },
+  { value: "electricity", label: "Electricity", color: "#22c55e" },
+  { value: "water", label: "Water", color: "#3b82f6" },
+  { value: "maintenance", label: "Maintenance", color: "#a855f7" },
+  { value: "food", label: "Food", color: "#fbbf24" },
+  { value: "salary", label: "Staff Salary", color: "#0d9488" },
+  { value: "internet", label: "Internet", color: "#60a5fa" },
+  { value: "cleaning", label: "Cleaning", color: "#f97316" },
+  { value: "supplies", label: "Supplies", color: "#ec4899" },
+  { value: "other", label: "Others", color: "#9ca3af" },
 ];
-
 
 const paymentMethods = [
   { value: "cash", label: "Cash" },
   { value: "upi", label: "UPI" },
-  { value: "bank", label: "Bank Transfer" },
+  { value: "bank", label: "Bank" },
   { value: "card", label: "Card" },
   { value: "other", label: "Other" },
 ];
 
+const PAGE_SIZE = 8;
+
+const todayString = () => {
+  const date = new Date();
+  const localDate = new Date(
+    date.getTime() - date.getTimezoneOffset() * 60000
+  );
+
+  return localDate.toISOString().slice(0, 10);
+};
+
+const emptyForm = () => ({
+  title: "",
+  category: "maintenance",
+  amount: "",
+  expenseDate: todayString(),
+  paymentMethod: "cash",
+  notes: "",
+});
+
+const getMonthKey = (date) => {
+  if (!date) return "";
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) return "";
+
+  return `${parsed.getFullYear()}-${String(
+    parsed.getMonth() + 1
+  ).padStart(2, "0")}`;
+};
+
+const getMonthLabel = (key) => {
+  if (!key || key === "unknown") return "Unknown date";
+
+  const [year, month] = key.split("-").map(Number);
+
+  return new Date(year, month - 1, 1).toLocaleDateString(
+    "en-IN",
+    { month: "long", year: "numeric" }
+  );
+};
+
+const formatAmount = (amount) =>
+  `₹${Number(amount || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  })}`;
+
+const formatDate = (date) => {
+  if (!date) return "—";
+
+  const parsed = new Date(date);
+
+  if (Number.isNaN(parsed.getTime())) return "—";
+
+  return parsed.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const getCategory = (value) =>
+  categories.find((item) => item.value === value) ||
+  categories[categories.length - 1];
+
+const getPaymentLabel = (value) =>
+  paymentMethods.find((item) => item.value === value)?.label ||
+  "Other";
+
+const getExpenseIcon = (category) => {
+  const iconProps = { size: 19, strokeWidth: 2.1 };
+
+  switch (category) {
+    case "electricity":
+      return <Zap {...iconProps} className="expense-icon-electricity" />;
+
+    case "water":
+      return <Droplet {...iconProps} className="expense-icon-water" />;
+
+    case "food":
+    case "supplies":
+      return <Utensils {...iconProps} className="expense-icon-food" />;
+
+    case "maintenance":
+      return <Wrench {...iconProps} className="expense-icon-maintenance" />;
+
+    case "internet":
+      return <Wifi {...iconProps} className="expense-icon-internet" />;
+
+    case "salary":
+      return <Users {...iconProps} className="expense-icon-salary" />;
+
+    case "cleaning":
+      return <Sparkles {...iconProps} className="expense-icon-cleaning" />;
+
+    case "rent":
+      return <Building2 {...iconProps} className="expense-icon-rent" />;
+
+    default:
+      return <Receipt {...iconProps} />;
+  }
+};
 
 function Expenses() {
   const [expenses, setExpenses] = useState([]);
@@ -59,55 +180,51 @@ function Expenses() {
   });
 
   const [loading, setLoading] = useState(true);
-
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const [search, setSearch] = useState("");
+  const [monthFilter, setMonthFilter] = useState(
+    getMonthKey(todayString())
+  );
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const [categoryFilter, setCategoryFilter] =
-    useState("all");
+  const [showModal, setShowModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [form, setForm] = useState(emptyForm());
 
-  const [showAddExpense, setShowAddExpense] =
-    useState(false);
+  const [collapsedMonths, setCollapsedMonths] = useState({});
 
-  const [submitting, setSubmitting] =
-    useState(false);
+  /*
+   * IMPORTANT:
+   * Other owner pages use "pgmate_active_pg".
+   * Read the same key here so Expenses uses the PG
+   * that the owner has already selected.
+   */
+  const selectedPgId = useCallback(() => {
+    return localStorage.getItem("pgmate_active_pg") || "";
+  }, []);
 
-  const [form, setForm] = useState({
-    title: "",
-    category: "maintenance",
-    amount: "",
-    expenseDate: new Date()
-      .toISOString()
-      .split("T")[0],
-    paymentMethod: "cash",
-    notes: "",
-  });
-
-
-  // --------------------------------------------------
-  // LOAD DATA
-  // --------------------------------------------------
-
-  const loadExpenses = async () => {
+  const loadExpenses = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const [
-        expensesResponse,
-        summaryResponse,
-      ] = await Promise.all([
-        getMyExpensesApi("", categoryFilter),
-        getExpenseSummaryApi(""),
+      const pgId = selectedPgId();
+
+      const [expenseResponse, summaryResponse] = await Promise.all([
+        getMyExpensesApi(pgId, ""),
+        getExpenseSummaryApi(pgId),
       ]);
 
-      setExpenses(
-        expensesResponse.expenses || []
-      );
+      setExpenses(expenseResponse?.expenses || []);
 
       setSummary(
-        summaryResponse.summary || {
+        summaryResponse?.summary || {
           totalExpenses: 0,
           expenseCount: 0,
           monthlyTotal: 0,
@@ -116,62 +233,194 @@ function Expenses() {
         }
       );
     } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          "Failed to load expenses"
-      );
+      console.error("Failed to load expenses:", err);
+      setError(err.message || "Failed to load expenses.");
     } finally {
       setLoading(false);
     }
-  };
-
+  }, [selectedPgId]);
 
   useEffect(() => {
     loadExpenses();
-  }, [categoryFilter]);
+  }, [loadExpenses]);
 
+  const availableMonths = useMemo(() => {
+    const keys = new Set(
+      expenses.map((item) => getMonthKey(item.expenseDate))
+    );
 
-  // --------------------------------------------------
-  // SEARCH
-  // --------------------------------------------------
+    keys.add(getMonthKey(todayString()));
+
+    return [...keys]
+      .filter(Boolean)
+      .sort((a, b) => b.localeCompare(a));
+  }, [expenses]);
+
+  const monthlyTrend = useMemo(() => {
+    const selectedYear =
+      Number(monthFilter.slice(0, 4)) || new Date().getFullYear();
+
+    return Array.from({ length: 12 }, (_, monthIndex) => {
+      const total = expenses.reduce((sum, expense) => {
+        const date = new Date(expense.expenseDate);
+
+        if (
+          date.getFullYear() === selectedYear &&
+          date.getMonth() === monthIndex
+        ) {
+          return sum + Number(expense.amount || 0);
+        }
+
+        return sum;
+      }, 0);
+
+      return {
+        month: new Date(selectedYear, monthIndex, 1).toLocaleDateString(
+          "en-IN",
+          { month: "short" }
+        ),
+        total,
+      };
+    });
+  }, [expenses, monthFilter]);
+
+  const categoryBreakdown = useMemo(() => {
+    const totals = categories.map((category) => ({
+      ...category,
+      total: expenses.reduce(
+        (sum, expense) =>
+          expense.category === category.value
+            ? sum + Number(expense.amount || 0)
+            : sum,
+        0
+      ),
+    }));
+
+    const grandTotal = totals.reduce((sum, item) => sum + item.total, 0);
+
+    return totals
+      .map((item) => ({
+        ...item,
+        percentage: grandTotal
+          ? Math.round((item.total / grandTotal) * 100)
+          : 0,
+      }))
+      .filter((item) => item.total > 0)
+      .sort((a, b) => b.total - a.total);
+  }, [expenses]);
+
+  const categoryGradient = useMemo(() => {
+    const total = categoryBreakdown.reduce(
+      (sum, item) => sum + item.total,
+      0
+    );
+
+    if (!total) return "#e7f1ed";
+
+    let current = 0;
+
+    const segments = categoryBreakdown.map((item) => {
+      const start = current;
+      current += (item.total / total) * 100;
+
+      return `${item.color} ${start}% ${current}%`;
+    });
+
+    return `conic-gradient(${segments.join(", ")})`;
+  }, [categoryBreakdown]);
 
   const filteredExpenses = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
-
-    if (!query) {
-      return expenses;
-    }
+    const query = search.trim().toLowerCase();
 
     return expenses.filter((expense) => {
-      const title =
-        expense.title?.toLowerCase() || "";
-
-      const category =
-        expense.category?.toLowerCase() || "";
+      const category = getCategory(expense.category);
 
       const pgName =
-        expense.pgId?.name?.toLowerCase() || "";
+        typeof expense.pgId === "object"
+          ? expense.pgId?.name || ""
+          : "";
+
+      const matchesSearch =
+        !query ||
+        [
+          expense.title,
+          expense.category,
+          category.label,
+          pgName,
+          expense.notes,
+          getPaymentLabel(expense.paymentMethod),
+        ].some((value) =>
+          String(value || "").toLowerCase().includes(query)
+        );
+
+      const matchesMonth =
+        monthFilter === "all" ||
+        getMonthKey(expense.expenseDate) === monthFilter;
+
+      const matchesCategory =
+        categoryFilter === "all" ||
+        expense.category === categoryFilter;
+
+      const matchesPayment =
+        paymentFilter === "all" ||
+        expense.paymentMethod === paymentFilter;
 
       return (
-        title.includes(query) ||
-        category.includes(query) ||
-        pgName.includes(query)
+        matchesSearch &&
+        matchesMonth &&
+        matchesCategory &&
+        matchesPayment
       );
     });
-  }, [expenses, search]);
+  }, [
+    expenses,
+    search,
+    monthFilter,
+    categoryFilter,
+    paymentFilter,
+  ]);
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredExpenses.length / PAGE_SIZE)
+  );
 
-  // --------------------------------------------------
-  // FORM HANDLING
-  // --------------------------------------------------
+  useEffect(() => {
+    setPage(1);
+  }, [search, monthFilter, categoryFilter, paymentFilter]);
 
-  const handleChange = (event) => {
-    const { name, value } =
-      event.target;
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const paginatedExpenses = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+
+    return filteredExpenses.slice(start, start + PAGE_SIZE);
+  }, [filteredExpenses, page]);
+
+  const groupedExpenses = useMemo(() => {
+    const groups = new Map();
+
+    paginatedExpenses.forEach((expense) => {
+      const key = getMonthKey(expense.expenseDate) || "unknown";
+
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+
+      groups.get(key).push(expense);
+    });
+
+    return [...groups.entries()].sort((a, b) =>
+      b[0].localeCompare(a[0])
+    );
+  }, [paginatedExpenses]);
+
+  const handleFormChange = (event) => {
+    const { name, value } = event.target;
 
     setForm((previous) => ({
       ...previous,
@@ -179,808 +428,857 @@ function Expenses() {
     }));
   };
 
-
-  const resetForm = () => {
-    setForm({
-      title: "",
-      category: "maintenance",
-      amount: "",
-      expenseDate: new Date()
-        .toISOString()
-        .split("T")[0],
-      paymentMethod: "cash",
-      notes: "",
-    });
+  const openAddModal = () => {
+    setEditingExpense(null);
+    setForm(emptyForm());
+    setError("");
+    setShowModal(true);
   };
 
+  const openEditModal = (expense) => {
+    setEditingExpense(expense);
 
-  // --------------------------------------------------
-  // ADD EXPENSE
-  // --------------------------------------------------
+    setForm({
+      title: expense.title || "",
+      category: expense.category || "other",
+      amount: String(expense.amount ?? ""),
+      expenseDate: expense.expenseDate
+        ? (() => {
+            const date = new Date(expense.expenseDate);
+            const localDate = new Date(
+              date.getTime() - date.getTimezoneOffset() * 60000
+            );
 
-  const handleAddExpense = async (
-    event
-  ) => {
+            return localDate.toISOString().slice(0, 10);
+          })()
+        : todayString(),
+      paymentMethod: expense.paymentMethod || "cash",
+      notes: expense.notes || "",
+    });
+
+    setError("");
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (
-      !form.title.trim() ||
-      !form.amount ||
-      !form.expenseDate
-    ) {
-      setError(
-        "Please fill all required fields."
-      );
+    setError("");
+    setNotice("");
 
+    const title = form.title.trim();
+    const amount = Number(form.amount);
+    const expenseDate = form.expenseDate;
+
+    if (!title || !form.amount || !expenseDate) {
+      setError("Please fill in the title, amount and date.");
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+
+    /*
+     * Get the currently selected PG ID from the same key
+     * used by the other owner pages.
+     */
+    const pgId = selectedPgId();
+
+    if (!editingExpense && !pgId) {
+      setError(
+        "No PG is selected. Please select a PG first, then try again."
+      );
       return;
     }
 
     try {
       setSubmitting(true);
-      setError("");
 
-      /*
-       * For now this uses the owner's first PG.
-       * Once PG switcher is connected,
-       * pass the selected pgId here.
-       */
+      const expenseData = {
+        title,
+        category: form.category,
+        amount,
+        expenseDate,
+        paymentMethod: form.paymentMethod,
+        notes: form.notes.trim(),
+      };
 
-      const savedPgId =
-        localStorage.getItem(
-          "pgmate_selected_pg"
-        );
+      if (editingExpense) {
+        await updateExpenseApi(editingExpense._id, expenseData);
+        setNotice("Expense updated successfully.");
+      } else {
+        await createExpenseApi({
+          ...expenseData,
+          pgId,
+        });
 
-      if (!savedPgId) {
-        setError(
-          "Please select a PG before adding an expense."
-        );
-
-        setSubmitting(false);
-
-        return;
+        setNotice("Expense added successfully.");
       }
 
-      await createExpenseApi({
-        pgId: savedPgId,
-        title: form.title.trim(),
-        category: form.category,
-        amount: Number(form.amount),
-        expenseDate: form.expenseDate,
-        paymentMethod:
-          form.paymentMethod,
-        notes: form.notes.trim(),
-      });
-
-      setShowAddExpense(false);
-
-      resetForm();
+      setShowModal(false);
+      setEditingExpense(null);
+      setForm(emptyForm());
 
       await loadExpenses();
     } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          "Failed to add expense"
-      );
+      console.error("Unable to save expense:", err);
+      setError(err.message || "Unable to save the expense.");
     } finally {
       setSubmitting(false);
     }
   };
 
-
-  // --------------------------------------------------
-  // DELETE EXPENSE
-  // --------------------------------------------------
-
-  const handleDelete = async (
-    expenseId
-  ) => {
+  const handleDelete = async (expense) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this expense?"
+      `Delete "${expense.title}" (${formatAmount(
+        expense.amount
+      )})? This action cannot be undone.`
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     try {
+      setDeletingId(expense._id);
       setError("");
+      setNotice("");
 
-      await deleteExpenseApi(expenseId);
+      await deleteExpenseApi(expense._id);
+
+      setExpenses((previous) =>
+        previous.filter((item) => item._id !== expense._id)
+      );
+
+      setNotice("Expense deleted successfully.");
 
       await loadExpenses();
     } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          "Failed to delete expense"
-      );
+      console.error("Unable to delete expense:", err);
+      setError(err.message || "Unable to delete the expense.");
+    } finally {
+      setDeletingId("");
     }
   };
 
-
-  // --------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------
-
-  const formatAmount = (amount) => {
-    return `₹${Number(
-      amount || 0
-    ).toLocaleString("en-IN")}`;
+  const clearFilters = () => {
+    setSearch("");
+    setMonthFilter("all");
+    setCategoryFilter("all");
+    setPaymentFilter("all");
+    setPage(1);
   };
 
-
-  const formatDate = (date) => {
-    if (!date) return "-";
-
-    return new Date(date).toLocaleDateString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+  const toggleMonth = (key) => {
+    setCollapsedMonths((previous) => ({
+      ...previous,
+      [key]: !previous[key],
+    }));
   };
 
+  const currentMonthTotal = summary.monthlyTotal || 0;
 
-  const getCategoryLabel = (
-    category
-  ) => {
-    const found = categories.find(
-      (item) =>
-        item.value === category
-    );
-
-    return found?.label || "Other";
-  };
-
-
-  const getPaymentMethodLabel = (
-    method
-  ) => {
-    const found =
-      paymentMethods.find(
-        (item) =>
-          item.value === method
-      );
-
-    return found?.label || "Other";
-  };
-
-
-  // --------------------------------------------------
-  // LOADING
-  // --------------------------------------------------
+  const maxTrend = Math.max(
+    ...monthlyTrend.map((item) => item.total),
+    1
+  );
 
   if (loading) {
     return (
       <div className="expenses-page">
         <div className="expenses-loading-card">
           <div className="expenses-loading-icon">
-            <Loader2
-              size={24}
-              className="expenses-spinner"
-            />
+            <Loader2 size={24} className="expenses-spinner" />
           </div>
 
           <div>
             <h3>Loading expenses...</h3>
-
-            <p>
-              Fetching your expense records.
-            </p>
+            <p>Fetching your expense records.</p>
           </div>
         </div>
       </div>
     );
   }
 
-
   return (
     <div className="expenses-page">
-
-      {/* HEADER */}
-
-      <div className="expenses-header">
-
+      <header className="expenses-header">
         <div>
-          <span className="expenses-eyebrow">
-            FINANCE
-          </span>
-
+          <span className="expenses-eyebrow">FINANCE</span>
           <h1>Expenses</h1>
-
-          <p>
-            Track your PG operating expenses
-            and spending.
-          </p>
+          <p>Track your PG operating expenses and spending.</p>
         </div>
 
-        <button
-          className="expenses-add-btn"
-          onClick={() =>
-            setShowAddExpense(true)
-          }
-        >
-          <Plus size={18} />
-
+        <button className="expenses-add-btn" onClick={openAddModal}>
+          <Plus size={19} />
           Add Expense
         </button>
+      </header>
 
-      </div>
-
-
-      {/* ERROR */}
-
-      {error && (
-        <div className="expenses-error">
-          {error}
+      {error && !showModal && (
+        <div className="expenses-alert expenses-alert-error">
+          <span>{error}</span>
 
           <button
-            onClick={() =>
-              setError("")
-            }
+            onClick={() => setError("")}
+            aria-label="Dismiss error"
           >
-            <X size={16} />
+            <X size={17} />
           </button>
         </div>
       )}
 
+      {notice && (
+        <div className="expenses-alert expenses-alert-success">
+          <span>{notice}</span>
 
-      {/* SUMMARY */}
+          <button
+            onClick={() => setNotice("")}
+            aria-label="Dismiss message"
+          >
+            <X size={17} />
+          </button>
+        </div>
+      )}
 
-      <div className="expenses-stats">
-
-        <div className="expense-stat-card">
-
+      <section className="expenses-stats">
+        <article className="expense-stat-card">
           <div className="expense-stat-icon">
-            <TrendingDown
-              size={20}
-            />
+            <TrendingDown size={23} />
           </div>
 
-          <div>
-            <span>
-              Total Expenses
-            </span>
-
-            <strong>
-              {formatAmount(
-                summary.totalExpenses
-              )}
-            </strong>
+          <div className="expense-stat-content">
+            <span>Total Expenses</span>
+            <strong>{formatAmount(summary.totalExpenses)}</strong>
+            <small>Across your recorded expenses</small>
           </div>
+        </article>
 
-        </div>
-
-
-        <div className="expense-stat-card">
-
+        <article className="expense-stat-card">
           <div className="expense-stat-icon">
-            <CalendarDays
-              size={20}
-            />
+            <CalendarDays size={23} />
           </div>
 
-          <div>
-            <span>
-              This Month
-            </span>
-
-            <strong>
-              {formatAmount(
-                summary.monthlyTotal
-              )}
-            </strong>
+          <div className="expense-stat-content">
+            <span>This Month</span>
+            <strong>{formatAmount(currentMonthTotal)}</strong>
+            <small>Current calendar month</small>
           </div>
+        </article>
 
-        </div>
-
-
-        <div className="expense-stat-card">
-
+        <article className="expense-stat-card">
           <div className="expense-stat-icon">
-            <Receipt size={20} />
+            <Receipt size={23} />
           </div>
 
-          <div>
-            <span>
-              Total Records
-            </span>
-
-            <strong>
-              {summary.expenseCount}
-            </strong>
+          <div className="expense-stat-content">
+            <span>Total Records</span>
+            <strong>{summary.expenseCount || 0}</strong>
+            <small>All expense entries</small>
           </div>
+        </article>
 
-        </div>
-
-
-        <div className="expense-stat-card">
-
+        <article className="expense-stat-card">
           <div className="expense-stat-icon">
-            <PieChart size={20} />
+            <PieChart size={23} />
           </div>
 
-          <div>
-            <span>
-              Monthly Records
-            </span>
-
-            <strong>
-              {summary.monthlyCount}
-            </strong>
+          <div className="expense-stat-content">
+            <span>Monthly Records</span>
+            <strong>{summary.monthlyCount || 0}</strong>
+            <small>Entries this month</small>
           </div>
+        </article>
+      </section>
 
-        </div>
+      <section className="expenses-analytics">
+        <article className="expense-analytics-card expense-category-chart">
+          <h2>Expenses by Category</h2>
 
-      </div>
-
-
-      {/* TOOLBAR */}
-
-      <div className="expenses-toolbar">
-
-        <div className="expenses-search">
-
-          <Search size={18} />
-
-          <input
-            type="text"
-            placeholder="Search expenses..."
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-          />
-
-        </div>
-
-
-        <select
-          value={categoryFilter}
-          onChange={(event) =>
-            setCategoryFilter(
-              event.target.value
-            )
-          }
-          className="expenses-filter"
-        >
-          {categories.map(
-            (category) => (
-              <option
-                key={category.value}
-                value={category.value}
+          {categoryBreakdown.length === 0 ? (
+            <div className="expense-chart-empty">
+              <PieChart size={30} />
+              <span>No category data yet</span>
+            </div>
+          ) : (
+            <div className="expense-donut-layout">
+              <div
+                className="expense-donut"
+                style={{ background: categoryGradient }}
+                role="img"
+                aria-label="Expenses split by category"
               >
-                {category.label}
-              </option>
-            )
+                <div className="expense-donut-hole">
+                  <strong>{formatAmount(summary.totalExpenses)}</strong>
+                  <span>Total Expenses</span>
+                </div>
+              </div>
+
+              <div className="expense-category-legend">
+                {categoryBreakdown.map((item) => (
+                  <div className="expense-legend-row" key={item.value}>
+                    <span
+                      className="expense-legend-dot"
+                      style={{ background: item.color }}
+                    />
+
+                    <span className="expense-legend-name">
+                      {item.label}
+                    </span>
+
+                    <span className="expense-legend-percent">
+                      {item.percentage}%
+                    </span>
+
+                    <strong>{formatAmount(item.total)}</strong>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </select>
+        </article>
 
-      </div>
+        <article className="expense-analytics-card expense-trend-chart">
+          <div className="expense-chart-heading">
+            <h2>Monthly Spending Trend</h2>
 
+            <span>
+              {monthFilter === "all"
+                ? "All years"
+                : monthFilter.slice(0, 4)}
+            </span>
+          </div>
 
-      {/* EXPENSE LIST */}
+          <div className="expense-bar-chart">
+            <div className="expense-chart-y-labels">
+              {[1, 0.75, 0.5, 0.25, 0].map((factor) => (
+                <span key={factor}>
+                  {factor === 0
+                    ? "₹0"
+                    : `₹${Math.round((maxTrend * factor) / 1000)}K`}
+                </span>
+              ))}
+            </div>
 
-      <div className="expenses-list-card">
+            <div className="expense-bars">
+              {monthlyTrend.map((item, index) => {
+                const activeMonth =
+                  monthFilter !== "all" &&
+                  Number(monthFilter.slice(5, 7)) === index + 1;
 
-        <div className="expenses-list-header">
+                const height = Math.max(
+                  item.total > 0
+                    ? (item.total / maxTrend) * 100
+                    : 0,
+                  item.total > 0 ? 4 : 0
+                );
+
+                return (
+                  <div className="expense-bar-column" key={item.month}>
+                    <div className="expense-bar-track">
+                      <div
+                        className={`expense-bar ${
+                          activeMonth ? "is-active" : ""
+                        }`}
+                        style={{ height: `${height}%` }}
+                        title={`${item.month}: ${formatAmount(item.total)}`}
+                      />
+                    </div>
+
+                    <span className="expense-bar-label">
+                      {item.month}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section className="expenses-list-section">
+        <div className="expenses-list-heading">
           <div>
-            <h2>Expense History</h2>
-
+            <h2>Expense Records</h2>
             <p>
               {filteredExpenses.length}{" "}
-              records found
+              {filteredExpenses.length === 1 ? "record" : "records"} found
             </p>
           </div>
+
+          <button
+            type="button"
+            className="expenses-refresh-btn"
+            onClick={loadExpenses}
+            title="Refresh expenses"
+          >
+            <RefreshCw size={16} />
+            Refresh
+          </button>
         </div>
 
+        <div className="expenses-filters">
+          <div className="expenses-search">
+            <Search size={18} />
+
+            <input
+              type="search"
+              placeholder="Search expenses..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          <select
+            value={monthFilter}
+            onChange={(event) => setMonthFilter(event.target.value)}
+            aria-label="Filter by month"
+          >
+            <option value="all">All Months</option>
+
+            {availableMonths.map((month) => (
+              <option key={month} value={month}>
+                {getMonthLabel(month)}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
+            aria-label="Filter by category"
+          >
+            <option value="all">All Categories</option>
+
+            {categories.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={paymentFilter}
+            onChange={(event) => setPaymentFilter(event.target.value)}
+            aria-label="Filter by payment method"
+          >
+            <option value="all">All Payment Methods</option>
+
+            {paymentMethods.map((method) => (
+              <option key={method.value} value={method.value}>
+                {method.label}
+              </option>
+            ))}
+          </select>
+
+          {(search ||
+            monthFilter !== getMonthKey(todayString()) &&
+              monthFilter !== "all" ||
+            categoryFilter !== "all" ||
+            paymentFilter !== "all") && (
+            <button
+              type="button"
+              className="expenses-clear-filters"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
 
         {filteredExpenses.length === 0 ? (
-          <div className="expenses-empty">
-
+          <div className="expenses-empty-state">
             <div className="expenses-empty-icon">
-              <Wallet size={28} />
+              <Receipt size={32} />
             </div>
 
             <h3>
-              No expenses found
+              {expenses.length === 0
+                ? "No expenses recorded yet"
+                : "No matching expenses"}
             </h3>
 
             <p>
-              Start tracking your PG
-              expenses by adding one.
+              {expenses.length === 0
+                ? "Add your first expense to start tracking your PG spending."
+                : "Try changing your search or filters."}
             </p>
 
-            <button
-              onClick={() =>
-                setShowAddExpense(true)
-              }
-            >
-              <Plus size={17} />
-
-              Add Expense
-            </button>
-
+            {expenses.length === 0 ? (
+              <button
+                type="button"
+                className="expenses-add-btn"
+                onClick={openAddModal}
+              >
+                <Plus size={18} />
+                Add your first expense
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="expenses-clear-filters"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
+          <>
+            <div className="expenses-groups">
+              {groupedExpenses.map(([monthKey, monthExpenses]) => {
+                const isCollapsed = Boolean(collapsedMonths[monthKey]);
 
-          <div className="expenses-table-wrapper">
+                const monthTotal = monthExpenses.reduce(
+                  (sum, expense) => sum + Number(expense.amount || 0),
+                  0
+                );
 
-            <table className="expenses-table">
-
-              <thead>
-                <tr>
-                  <th>Expense</th>
-                  <th>Category</th>
-                  <th>PG</th>
-                  <th>Date</th>
-                  <th>Payment</th>
-                  <th>Amount</th>
-                  <th></th>
-                </tr>
-              </thead>
-
-              <tbody>
-
-                {filteredExpenses.map(
-                  (expense) => (
-                    <tr
-                      key={
-                        expense._id
-                      }
+                return (
+                  <div className="expense-month-group" key={monthKey}>
+                    <button
+                      type="button"
+                      className="expense-month-heading"
+                      onClick={() => toggleMonth(monthKey)}
                     >
-
-                      <td>
-                        <div className="expense-title-cell">
-
-                          <div className="expense-row-icon">
-                            <Receipt
-                              size={17}
-                            />
-                          </div>
-
-                          <div>
-                            <strong>
-                              {
-                                expense.title
-                              }
-                            </strong>
-
-                            {expense.notes && (
-                              <span>
-                                {
-                                  expense.notes
-                                }
-                              </span>
-                            )}
-                          </div>
-
-                        </div>
-                      </td>
-
-
-                      <td>
-                        <span className="expense-category">
-                          {getCategoryLabel(
-                            expense.category
-                          )}
-                        </span>
-                      </td>
-
-
-                      <td>
-                        <span className="expense-pg">
-                          {
-                            expense.pgId
-                              ?.name ||
-                            "-"
-                          }
-                        </span>
-                      </td>
-
-
-                      <td>
-                        {formatDate(
-                          expense.expenseDate
+                      <div className="expense-month-title">
+                        {isCollapsed ? (
+                          <ChevronRight size={18} />
+                        ) : (
+                          <ChevronDown size={18} />
                         )}
-                      </td>
 
+                        <div>
+                          <strong>{getMonthLabel(monthKey)}</strong>
+                          <span>
+                            {monthExpenses.length}{" "}
+                            {monthExpenses.length === 1
+                              ? "expense"
+                              : "expenses"}
+                          </span>
+                        </div>
+                      </div>
 
-                      <td>
-                        <span className="expense-payment">
-                          {getPaymentMethodLabel(
-                            expense.paymentMethod
-                          )}
-                        </span>
-                      </td>
+                      <strong>{formatAmount(monthTotal)}</strong>
+                    </button>
 
+                    {!isCollapsed && (
+                      <div className="expenses-record-list">
+                        {monthExpenses.map((expense) => {
+                          const category = getCategory(expense.category);
 
-                      <td>
-                        <strong className="expense-amount">
-                          {formatAmount(
-                            expense.amount
-                          )}
-                        </strong>
-                      </td>
+                          return (
+                            <article
+                              className="expense-record-card"
+                              key={expense._id}
+                            >
+                              <div className="expense-record-icon">
+                                {getExpenseIcon(expense.category)}
+                              </div>
 
+                              <div className="expense-record-main">
+                                <div className="expense-record-title-row">
+                                  <h3>{expense.title}</h3>
 
-                      <td>
-                        <button
-                          className="expense-delete-btn"
-                          onClick={() =>
-                            handleDelete(
-                              expense._id
-                            )
-                          }
-                          title="Delete expense"
-                        >
-                          <Trash2
-                            size={17}
-                          />
-                        </button>
-                      </td>
+                                  <span
+                                    className="expense-category-badge"
+                                    style={{
+                                      "--category-color": category.color,
+                                    }}
+                                  >
+                                    {category.label}
+                                  </span>
+                                </div>
 
-                    </tr>
-                  )
-                )}
+                                <div className="expense-record-meta">
+                                  <span>
+                                    <CalendarDays size={14} />
+                                    {formatDate(expense.expenseDate)}
+                                  </span>
 
-              </tbody>
+                                  <span>
+                                    <CreditCard size={14} />
+                                    {getPaymentLabel(expense.paymentMethod)}
+                                  </span>
 
-            </table>
+                                  {expense.pgId?.name && (
+                                    <span>
+                                      <Building2 size={14} />
+                                      {expense.pgId.name}
+                                    </span>
+                                  )}
+                                </div>
 
-          </div>
+                                {expense.notes && (
+                                  <p className="expense-record-notes">
+                                    {expense.notes}
+                                  </p>
+                                )}
+                              </div>
 
+                              <div className="expense-record-right">
+                                <strong className="expense-record-amount">
+                                  {formatAmount(expense.amount)}
+                                </strong>
+
+                                <div className="expense-record-actions">
+                                  <button
+                                    type="button"
+                                    className="expense-edit-btn"
+                                    onClick={() => openEditModal(expense)}
+                                    title="Edit expense"
+                                    aria-label={`Edit ${expense.title}`}
+                                  >
+                                    <Pencil size={16} />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    className="expense-delete-btn"
+                                    onClick={() => handleDelete(expense)}
+                                    disabled={deletingId === expense._id}
+                                    title="Delete expense"
+                                    aria-label={`Delete ${expense.title}`}
+                                  >
+                                    {deletingId === expense._id ? (
+                                      <Loader2
+                                        size={16}
+                                        className="expenses-spinner"
+                                      />
+                                    ) : (
+                                      <Trash2 size={16} />
+                                    )}
+                                  </button>
+                                </div>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="expenses-pagination">
+                <span>
+                  Page {page} of {totalPages}
+                </span>
+
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setPage((previous) => previous - 1)}
+                    disabled={page <= 1}
+                    aria-label="Previous page"
+                  >
+                    <ChevronLeft size={18} />
+                    Previous
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPage((previous) => previous + 1)}
+                    disabled={page >= totalPages}
+                    aria-label="Next page"
+                  >
+                    Next
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
+      </section>
 
-      </div>
-
-
-      {/* ADD EXPENSE MODAL */}
-
-      {showAddExpense && (
+      {showModal && (
         <div
           className="expense-modal-overlay"
-          onMouseDown={() =>
-            !submitting &&
-            setShowAddExpense(false)
-          }
+          onMouseDown={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !submitting
+            ) {
+              setShowModal(false);
+            }
+          }}
         >
-
           <div
             className="expense-modal"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="expense-modal-title"
           >
-
             <div className="expense-modal-header">
-
               <div>
-                <h2>
-                  Add Expense
+                <span className="expenses-eyebrow">
+                  FINANCE MANAGEMENT
+                </span>
+
+                <h2 id="expense-modal-title">
+                  {editingExpense ? "Edit Expense" : "Add Expense"}
                 </h2>
 
                 <p>
-                  Record a new PG expense.
+                  {editingExpense
+                    ? "Update the details of this expense."
+                    : "Enter the details of your PG expense."}
                 </p>
               </div>
 
               <button
-                onClick={() =>
-                  !submitting &&
-                  setShowAddExpense(false)
-                }
+                type="button"
+                className="expense-modal-close"
+                onClick={() => !submitting && setShowModal(false)}
+                disabled={submitting}
+                aria-label="Close modal"
               >
                 <X size={20} />
               </button>
-
             </div>
 
+            {error && (
+              <div className="expenses-alert expenses-alert-error">
+                <span>{error}</span>
 
-            <form
-              onSubmit={
-                handleAddExpense
-              }
-              className="expense-form"
-            >
+                <button
+                  type="button"
+                  onClick={() => setError("")}
+                  aria-label="Dismiss error"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
 
+            <form className="expense-form" onSubmit={handleSubmit}>
               <div className="expense-form-group">
-
-                <label>
-                  Expense Title *
-                </label>
+                <label htmlFor="expense-title">Expense Title *</label>
 
                 <input
+                  id="expense-title"
                   name="title"
                   type="text"
                   placeholder="e.g. Electricity bill"
                   value={form.title}
-                  onChange={
-                    handleChange
-                  }
+                  onChange={handleFormChange}
+                  maxLength={100}
                   required
                 />
-
               </div>
 
-
               <div className="expense-form-row">
-
                 <div className="expense-form-group">
-
-                  <label>
-                    Category *
-                  </label>
+                  <label htmlFor="expense-category">Category *</label>
 
                   <select
+                    id="expense-category"
                     name="category"
-                    value={
-                      form.category
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.category}
+                    onChange={handleFormChange}
+                    required
                   >
-                    {categories
-                      .filter(
-                        (item) =>
-                          item.value !==
-                          "all"
-                      )
-                      .map(
-                        (category) => (
-                          <option
-                            key={
-                              category.value
-                            }
-                            value={
-                              category.value
-                            }
-                          >
-                            {
-                              category.label
-                            }
-                          </option>
-                        )
-                      )}
+                    {categories.map((category) => (
+                      <option
+                        key={category.value}
+                        value={category.value}
+                      >
+                        {category.label}
+                      </option>
+                    ))}
                   </select>
-
                 </div>
 
-
                 <div className="expense-form-group">
-
-                  <label>
-                    Amount *
-                  </label>
-
-                  <div className="amount-input">
-
-                    <span>₹</span>
-
-                    <input
-                      name="amount"
-                      type="number"
-                      min="1"
-                      placeholder="0"
-                      value={
-                        form.amount
-                      }
-                      onChange={
-                        handleChange
-                      }
-                      required
-                    />
-
-                  </div>
-
-                </div>
-
-              </div>
-
-
-              <div className="expense-form-row">
-
-                <div className="expense-form-group">
-
-                  <label>
-                    Expense Date *
-                  </label>
+                  <label htmlFor="expense-amount">Amount (₹) *</label>
 
                   <input
-                    name="expenseDate"
-                    type="date"
-                    value={
-                      form.expenseDate
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    id="expense-amount"
+                    name="amount"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={handleFormChange}
                     required
                   />
+                </div>
+              </div>
 
+              <div className="expense-form-row">
+                <div className="expense-form-group">
+                  <label htmlFor="expense-date">Expense Date *</label>
+
+                  <input
+                    id="expense-date"
+                    name="expenseDate"
+                    type="date"
+                    value={form.expenseDate}
+                    onChange={handleFormChange}
+                    required
+                  />
                 </div>
 
-
                 <div className="expense-form-group">
-
-                  <label>
-                    Payment Method
+                  <label htmlFor="expense-payment">
+                    Payment Method *
                   </label>
 
                   <select
+                    id="expense-payment"
                     name="paymentMethod"
-                    value={
-                      form.paymentMethod
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.paymentMethod}
+                    onChange={handleFormChange}
+                    required
                   >
-                    {paymentMethods.map(
-                      (method) => (
-                        <option
-                          key={
-                            method.value
-                          }
-                          value={
-                            method.value
-                          }
-                        >
-                          {
-                            method.label
-                          }
-                        </option>
-                      )
-                    )}
+                    {paymentMethods.map((method) => (
+                      <option
+                        key={method.value}
+                        value={method.value}
+                      >
+                        {method.label}
+                      </option>
+                    ))}
                   </select>
-
                 </div>
-
               </div>
 
-
               <div className="expense-form-group">
-
-                <label>
-                  Notes
+                <label htmlFor="expense-notes">
+                  Description / Notes
                 </label>
 
                 <textarea
+                  id="expense-notes"
                   name="notes"
-                  placeholder="Optional notes..."
-                  rows="3"
-                  value={
-                    form.notes
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  placeholder="Add an optional description..."
+                  value={form.notes}
+                  onChange={handleFormChange}
+                  rows={3}
+                  maxLength={500}
                 />
-
               </div>
 
-
               <div className="expense-form-actions">
-
                 <button
                   type="button"
                   className="expense-cancel-btn"
-                  onClick={() =>
-                    setShowAddExpense(
-                      false
-                    )
-                  }
-                  disabled={
-                    submitting
-                  }
+                  onClick={() => !submitting && setShowModal(false)}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
@@ -988,41 +1286,28 @@ function Expenses() {
                 <button
                   type="submit"
                   className="expense-submit-btn"
-                  disabled={
-                    submitting
-                  }
+                  disabled={submitting}
                 >
-
                   {submitting ? (
-                    <>
-                      <Loader2
-                        size={17}
-                        className="expenses-spinner"
-                      />
-
-                      Saving...
-                    </>
+                    <Loader2
+                      size={17}
+                      className="expenses-spinner"
+                    />
                   ) : (
-                    <>
-                      <Plus
-                        size={17}
-                      />
-
-                      Add Expense
-                    </>
+                    <Plus size={17} />
                   )}
 
+                  {submitting
+                    ? "Saving..."
+                    : editingExpense
+                      ? "Save Changes"
+                      : "Add Expense"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

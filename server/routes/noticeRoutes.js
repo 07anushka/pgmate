@@ -6,6 +6,7 @@ import {
   createNotice,
   updateNotice,
   deleteNotice,
+  dismissMyNotice,
 } from "../controllers/noticeController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -61,5 +62,11 @@ router.delete(
   deleteNotice
 );
 
+router.delete(
+  "/my/:noticeId/dismiss",
+  protect,
+  authorizeRoles("tenant"),
+  dismissMyNotice
+);
 
 export default router;

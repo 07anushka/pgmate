@@ -2,7 +2,8 @@ import mongoose from "mongoose";
 
 import Notice from "../models/Notice.js";
 import PG from "../models/PG.js";
-
+import NoticeDismissal from "../models/NoticeDismissal.js";
+import Tenant from "../models/Tenant.js";
 
 // --------------------------------------------------
 // GET MY NOTICES
@@ -670,3 +671,113 @@ export const deleteNotice =
       });
     }
   };
+
+// TENANT: DISMISS ONE NOTICE
+export const dismissMyNotice = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { noticeId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(noticeId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid notice ID",
+      });
+    }
+
+    const notice = await Notice.findById(noticeId);
+
+    if (!notice || !notice.isPublished) {
+      return res.status(404).json({
+        success: false,
+        message: "Notice not found",
+      });
+    }
+
+    await NoticeDismissal.updateOne(
+      { noticeId, userId },
+      { $setOnInsert: { noticeId, userId } },
+      { upsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Notice dismissed successfully",
+    });
+  } catch (error) {
+    console.error("Dismiss notice error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to dismiss notice",
+    });
+  }
+};
+
+// GET NOTICES FOR THE LOGGED-IN TENANT,
+// EXCLUDING NOTICES THEY HAVE DISMISSED
+export const getTenantNotices = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const tenant = await Tenant.findOne({
+      userId,
+      status: "active",
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Active tenant record not found.",
+      });
+    }
+
+    const dismissed = await NoticeDismissal.find({
+      userId,
+    }).select("noticeId");
+
+    const dismissedIds = dismissed.map(
+      (item) => item.noticeId
+    );
+
+    const now = new Date();
+
+    const notices = await Notice.find({
+      ownerId: tenant.ownerId,
+      pgId: tenant.pgId,
+      isPublished: true,
+      publishDate: { $lte: now },
+      $and: [
+        {
+          $or: [
+            { expiryDate: null },
+            { expiryDate: { $gte: now } },
+          ],
+        },
+        {
+          _id: { $nin: dismissedIds },
+        },
+        {
+          $or: [
+            { audience: "all" },
+            { audience: "tenant" },
+          ],
+        },
+      ],
+    })
+      .populate("pgId", "name city")
+      .sort({ publishDate: -1, createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: notices.length,
+      notices,
+    });
+  } catch (error) {
+    console.error("Get tenant notices error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch tenant notices.",
+    });
+  }
+};

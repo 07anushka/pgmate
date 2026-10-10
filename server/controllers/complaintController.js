@@ -11,84 +11,27 @@ import PG from "../models/PG.js";
 
 export const getMyComplaints = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
+    const userId = req.user.userId;
 
-    const {
-      pgId,
-      status,
-      category,
-      priority,
-    } = req.query;
+    const tenant = await Tenant.findOne({
+      userId,
+      status: "active",
+    });
 
-    const filter = {
-      ownerId,
-    };
-
-    // ----------------------------------------------
-    // PG FILTER
-    // ----------------------------------------------
-
-    if (pgId) {
-      if (!mongoose.Types.ObjectId.isValid(pgId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid PG ID",
-        });
-      }
-
-      const pg = await PG.findOne({
-        _id: pgId,
-        ownerId,
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "No active tenant record found for this account.",
       });
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You do not have access to this PG",
-        });
-      }
-
-      filter.pgId = pgId;
     }
 
-    // ----------------------------------------------
-    // STATUS FILTER
-    // ----------------------------------------------
-
-    if (status && status !== "all") {
-      filter.status = status;
-    }
-
-    // ----------------------------------------------
-    // CATEGORY FILTER
-    // ----------------------------------------------
-
-    if (category && category !== "all") {
-      filter.category = category;
-    }
-
-    // ----------------------------------------------
-    // PRIORITY FILTER
-    // ----------------------------------------------
-
-    if (priority && priority !== "all") {
-      filter.priority = priority;
-    }
-
-    const complaints = await Complaint.find(filter)
-      .populate({
-        path: "tenantId",
-        populate: {
-          path: "userId",
-          select: "name mobile",
-        },
-      })
-      .populate("userId", "name mobile")
+    const complaints = await Complaint.find({
+      tenantId: tenant._id,
+      userId,
+    })
       .populate("pgId", "name city")
-      .sort({
-        createdAt: -1,
-      });
+      .populate("tenantId", "roomId bedId")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -96,14 +39,11 @@ export const getMyComplaints = async (req, res) => {
       complaints,
     });
   } catch (error) {
-    console.error(
-      "Get complaints error:",
-      error
-    );
+    console.error("Get my complaints error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch complaints",
+      message: "Failed to fetch your complaints.",
     });
   }
 };
@@ -311,153 +251,68 @@ export const getComplaintTenants = async (
 // CREATE COMPLAINT
 // --------------------------------------------------
 
-export const createComplaint = async (
-  req,
-  res
-) => {
+export const createComplaint = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
+    const userId = req.user.userId;
 
     const {
-      pgId,
-      tenantId,
       title,
       category,
       description,
       priority,
-      notes,
     } = req.body;
 
-    // ----------------------------------------------
-    // REQUIRED FIELDS
-    // ----------------------------------------------
-
     if (
-      !pgId ||
-      !tenantId ||
-      !title ||
-      !description
+      !title?.trim() ||
+      !description?.trim()
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "PG, tenant, title and description are required",
+        message: "Title and description are required.",
       });
     }
-
-    // ----------------------------------------------
-    // VALIDATE IDS
-    // ----------------------------------------------
-
-    if (
-      !mongoose.Types.ObjectId.isValid(pgId)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid PG ID",
-      });
-    }
-
-    if (
-      !mongoose.Types.ObjectId.isValid(
-        tenantId
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid tenant ID",
-      });
-    }
-
-    // ----------------------------------------------
-    // VERIFY PG
-    // ----------------------------------------------
-
-    const pg = await PG.findOne({
-      _id: pgId,
-      ownerId,
-    });
-
-    if (!pg) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "You do not have access to this PG",
-      });
-    }
-
-    // ----------------------------------------------
-    // VERIFY TENANT
-    // ----------------------------------------------
 
     const tenant = await Tenant.findOne({
-      _id: tenantId,
-      ownerId,
-      pgId,
+      userId,
       status: "active",
     });
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message:
-          "Active tenant not found in this PG",
+        message: "No active tenant record found for this account.",
       });
     }
 
-    // ----------------------------------------------
-    // CREATE
-    // ----------------------------------------------
-
     const complaint = await Complaint.create({
-      ownerId,
-      pgId,
-      tenantId,
-      userId: tenant.userId,
+      ownerId: tenant.ownerId,
+      pgId: tenant.pgId,
+      tenantId: tenant._id,
+      userId,
       title: title.trim(),
       category: category || "other",
       description: description.trim(),
       priority: priority || "medium",
       status: "open",
-      notes: notes || "",
     });
 
-    const populatedComplaint =
-      await Complaint.findById(
-        complaint._id
-      )
-        .populate({
-          path: "tenantId",
-          populate: {
-            path: "userId",
-            select: "name mobile",
-          },
-        })
-        .populate(
-          "userId",
-          "name mobile"
-        )
-        .populate(
-          "pgId",
-          "name city"
-        );
+    const populatedComplaint = await Complaint.findById(
+      complaint._id
+    )
+      .populate("pgId", "name city")
+      .populate("tenantId", "roomId bedId");
 
     return res.status(201).json({
       success: true,
-      message:
-        "Complaint created successfully",
+      message: "Complaint submitted successfully.",
       complaint: populatedComplaint,
     });
   } catch (error) {
-    console.error(
-      "Create complaint error:",
-      error
-    );
+    console.error("Create complaint error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to create complaint",
+      message: "Failed to create complaint.",
     });
   }
 };
@@ -658,6 +513,141 @@ export const deleteComplaint = async (
       success: false,
       message:
         "Failed to delete complaint",
+    });
+  }
+};
+
+// TENANT: UPDATE OWN COMPLAINT
+export const updateMyComplaint = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { complaintId } = req.params;
+    const { title, category, priority, description } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint ID",
+      });
+    }
+
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      userId,
+    });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found",
+      });
+    }
+
+    if (complaint.status !== "open") {
+      return res.status(400).json({
+        success: false,
+        message: "Only open complaints can be edited.",
+      });
+    }
+
+    if (!title?.trim() || !description?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Title and description are required.",
+      });
+    }
+
+    const categories = [
+      "maintenance", "electricity", "water", "cleaning",
+      "food", "internet", "room", "noise", "security", "other",
+    ];
+
+    const priorities = ["low", "medium", "high", "urgent"];
+
+    if (category && !categories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid category",
+      });
+    }
+
+    if (priority && !priorities.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid priority",
+      });
+    }
+
+    complaint.title = title.trim();
+    complaint.description = description.trim();
+    complaint.category = category || complaint.category;
+    complaint.priority = priority || complaint.priority;
+
+    await complaint.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Complaint updated successfully.",
+      complaint,
+    });
+  } catch (error) {
+    console.error("Update tenant complaint error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update complaint.",
+    });
+  }
+};
+
+
+// TENANT: DELETE OWN COMPLAINT
+export const deleteMyComplaint = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { complaintId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint ID",
+      });
+    }
+
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      userId,
+    });
+
+    if (!complaint) {
+      return res.status(404).json({
+        success: false,
+        message: "Complaint not found.",
+      });
+    }
+
+    if (complaint.status !== "open") {
+      return res.status(400).json({
+        success: false,
+        message: "Only open complaints can be deleted.",
+      });
+    }
+
+    await Complaint.deleteOne({
+      _id: complaint._id,
+      userId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Complaint deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete tenant complaint error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete complaint.",
     });
   }
 };

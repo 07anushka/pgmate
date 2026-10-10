@@ -1,36 +1,53 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import {
-    Building2,
-    LayoutDashboard,
-    BedDouble,
-    Users,
-    CreditCard,
-    Receipt,
-    MessageSquareWarning,
-    Utensils,
-    Bell,
-    LogOut,
-    Menu,
-    X,
-    MapPin,
-    Phone,
-    Plus,
-    ArrowUpRight,
-    CheckCircle2,
-    Clock3,
-    AlertCircle,
-    Wallet,
-    TrendingUp,
-    UserCircle,
-    ChevronDown,
-    Check,
+  Building2,
+  LayoutDashboard,
+  BedDouble,
+  Users,
+  CreditCard,
+  Receipt,
+  MessageSquareWarning,
+  Utensils,
+  Bell,
+  LogOut,
+  Menu,
+  X,
+  MapPin,
+  Phone,
+  Plus,
+  ArrowRight,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock3,
+  AlertCircle,
+  Wallet,
+  TrendingUp,
+  UserCircle,
+  ChevronDown,
+  Check,
+  CalendarDays,
+  KeyRound,
+  Wrench,
+  RefreshCw,
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 
+import {
+  getMyPGsApi,
+  createPGApi,
+  getMyRoomsApi,
+  getMyPaymentsApi,
+  getPaymentSummaryApi,
+  getMyExpensesApi,
+  getExpenseSummaryApi,
+  getMyComplaintsApi,
+} from "../../services/api";
+
 import "./OwnerDashboard.css";
+
 import RoomsBeds from "./RoomsBeds";
 import Tenants from "./Tenants";
 import Payments from "./Payments";
@@ -39,2058 +56,1710 @@ import Complaints from "./Complaints";
 import FoodMenu from "./FoodMenu";
 import Notices from "./Notices";
 
+/* --------------------------------------------------
+   GENERAL HELPERS
+-------------------------------------------------- */
+
+const money = (value) =>
+  `₹${Number(value || 0).toLocaleString("en-IN", {
+    maximumFractionDigits: 0,
+  })}`;
+
+const asArray = (response, key) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.[key])) return response[key];
+  if (Array.isArray(response?.data?.[key])) return response.data[key];
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.results)) return response.results;
+  return [];
+};
+
+const safeNumber = (value) => {
+  const result = Number(value);
+  return Number.isFinite(result) ? result : 0;
+};
+
+const validDate = (value) => {
+  if (!value) return null;
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const paymentDate = (payment) =>
+  payment?.paymentDate ||
+  payment?.paidAt ||
+  payment?.date ||
+  payment?.createdAt ||
+  payment?.updatedAt ||
+  null;
+
+const paymentAmount = (payment) =>
+  safeNumber(
+    payment?.amount ??
+      payment?.paidAmount ??
+      payment?.rentAmount ??
+      payment?.totalAmount
+  );
+
+const paymentStatus = (payment) =>
+  String(payment?.status || "").toLowerCase();
+
+const isPaid = (payment) =>
+  ["paid", "success", "successful", "completed", "complete"].includes(
+    paymentStatus(payment)
+  );
+
+const isOverdue = (payment) =>
+  ["overdue", "late"].includes(paymentStatus(payment));
+
+const isPending = (payment) =>
+  ["pending", "unpaid", "due", "overdue", "late"].includes(
+    paymentStatus(payment)
+  );
+
+const getMonthKey = (value) => {
+  const date = validDate(value);
+
+  if (!date) return "";
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}`;
+};
+
+const getRoomBeds = (room) =>
+  Array.isArray(room?.beds) ? room.beds : [];
+
+const isOccupiedBed = (bed) =>
+  Boolean(
+    bed?.tenantId ||
+      bed?.tenant ||
+      ["occupied", "booked", "filled"].includes(
+        String(bed?.status || "").toLowerCase()
+      )
+  );
+
+const roomCapacity = (room) => {
+  const beds = getRoomBeds(room);
+
+  if (beds.length) return beds.length;
+
+  return safeNumber(
+    room?.totalBeds ??
+      room?.capacity ??
+      room?.bedCapacity ??
+      room?.numberOfBeds ??
+      room?.bedCount
+  );
+};
+
+const roomOccupied = (room) => {
+  const beds = getRoomBeds(room);
+
+  if (beds.length) {
+    return beds.filter(isOccupiedBed).length;
+  }
+
+  return safeNumber(
+    room?.occupiedBeds ??
+      room?.occupiedCount ??
+      room?.currentOccupancy ??
+      room?.occupied
+  );
+};
+
+const roomVacant = (room) => {
+  const beds = getRoomBeds(room);
+
+  if (beds.length) {
+    return Math.max(0, beds.length - beds.filter(isOccupiedBed).length);
+  }
+
+  if (room?.availableBeds != null) {
+    return safeNumber(room.availableBeds);
+  }
+
+  if (room?.vacantBeds != null) {
+    return safeNumber(room.vacantBeds);
+  }
+
+  return Math.max(0, roomCapacity(room) - roomOccupied(room));
+};
+
+const getTenantName = (payment) => {
+  const tenant =
+    payment?.tenantId ||
+    payment?.tenant ||
+    payment?.userId ||
+    payment?.user ||
+    {};
+
+  if (typeof tenant === "string") {
+    return payment?.tenantName || "Tenant";
+  }
+
+  return (
+    payment?.tenantName ||
+    tenant?.name ||
+    tenant?.fullName ||
+    tenant?.userId?.name ||
+    payment?.userName ||
+    payment?.name ||
+    "Tenant"
+  );
+};
+
+const getRoomName = (payment) => {
+  const room =
+    payment?.roomId ||
+    payment?.room ||
+    payment?.tenantId?.roomId ||
+    payment?.tenant?.roomId;
+
+  if (typeof room === "string") {
+    return `Room ${room.slice(-4)}`;
+  }
+
+  if (room && typeof room === "object") {
+    const value =
+      room.roomNumber ||
+      room.name ||
+      room.roomName ||
+      room.number;
+
+    if (value) {
+      return String(value).toLowerCase().startsWith("room")
+        ? value
+        : `Room ${value}`;
+    }
+  }
+
+  return payment?.roomNumber || payment?.roomName || "—";
+};
+
+const getStatusLabel = (payment) => {
+  if (isPaid(payment)) return "Paid";
+  if (isOverdue(payment)) return "Overdue";
+  return "Pending";
+};
+
+const getSummaryObject = (response) =>
+  response?.summary ??
+  response?.data?.summary ??
+  response?.data ??
+  response ??
+  {};
+
+const findSummaryNumber = (summary, keys) => {
+  for (const key of keys) {
+    const value = summary?.[key];
+
+    if (value !== undefined && value !== null && value !== "") {
+      const parsed = Number(value);
+
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+
+  return null;
+};
+
+const isComplaintOpen = (complaint) =>
+  !["resolved", "closed", "completed"].includes(
+    String(complaint?.status || "").toLowerCase()
+  );
+
+const dateLabel = (value) => {
+  const date = validDate(value);
+
+  if (!date) return "—";
+
+  return date.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+/* --------------------------------------------------
+   DASHBOARD COMPONENT
+-------------------------------------------------- */
+
 function OwnerDashboard() {
+  const navigate = useNavigate();
+  const { user, token, logout } = useAuth();
 
-    const navigate = useNavigate();
+  /* Navigation */
 
-    const {
-        user,
-        token,
-        logout,
-    } = useAuth();
+  const [activeSection, setActiveSection] = useState("overview");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  /* Properties */
 
-    /* =========================================
-       MENU
-    ========================================= */
+  const [pgs, setPGs] = useState([]);
+  const [pgLoading, setPgLoading] = useState(true);
 
-    const [
-        activeSection,
-        setActiveSection,
-    ] = useState("overview");
+  const [activePGId, setActivePGId] = useState(
+    () => localStorage.getItem("pgmate_active_pg") || "all"
+  );
 
-    const [
-        mobileMenuOpen,
-        setMobileMenuOpen,
-    ] = useState(false);
+  const activePG = pgs.find(
+    (pg) => String(pg._id) === String(activePGId)
+  );
 
+  /* Add property modal */
 
-    /* =========================================
-       PGs
-    ========================================= */
+  const [showPGModal, setShowPGModal] = useState(false);
+  const [creatingPG, setCreatingPG] = useState(false);
+  const [pgError, setPGError] = useState("");
 
-    const [pgs, setPGs] = useState([]);
+  const [pgForm, setPGForm] = useState({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    contactNumber: "",
+    description: "",
+  });
 
-    const [pgLoading, setPgLoading] =
-        useState(true);
+  /* Overview data */
 
-    const [activePGId, setActivePGId] =
-        useState(() => {
+  const [overviewData, setOverviewData] = useState({
+    rooms: [],
+    payments: [],
+    expenses: [],
+    complaints: [],
+    paymentSummaries: [],
+    expenseSummaries: [],
+    loading: true,
+    error: "",
+  });
 
-            return (
-                localStorage.getItem(
-                    "pgmate_active_pg"
-                ) || "all"
-            );
+  const [chartPeriod, setChartPeriod] = useState(6);
+  const [refreshing, setRefreshing] = useState(false);
 
-        });
+  /* Fetch properties */
 
+  const fetchPGs = useCallback(async () => {
+    if (!token) {
+      setPGs([]);
+      setPgLoading(false);
+      return;
+    }
 
-    /* =========================================
-       ADD PG MODAL
-    ========================================= */
+    setPgLoading(true);
 
-    const [
-        showPGModal,
-        setShowPGModal,
-    ] = useState(false);
+    try {
+      const response = await getMyPGsApi();
+      const propertyList = asArray(response, "pgs");
 
-    const [
-        creatingPG,
-        setCreatingPG,
-    ] = useState(false);
+      setPGs(propertyList);
 
-    const [
-        pgError,
-        setPGError,
-    ] = useState("");
+      const savedPGId = localStorage.getItem("pgmate_active_pg") || "all";
 
-    const [
-        pgForm,
-        setPGForm,
-    ] = useState({
+      if (
+        savedPGId !== "all" &&
+        !propertyList.some(
+          (pg) => String(pg._id) === String(savedPGId)
+        )
+      ) {
+        setActivePGId("all");
+        localStorage.setItem("pgmate_active_pg", "all");
+      }
+    } catch (error) {
+      console.error("Fetch PGs error:", error);
+      setPGs([]);
+    } finally {
+      setPgLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchPGs();
+  }, [fetchPGs]);
+
+  /* Change selected property */
+
+  const handlePropertyChange = (pgId) => {
+    setActivePGId(pgId);
+    localStorage.setItem("pgmate_active_pg", pgId);
+  };
+
+  /* Create property */
+
+  const handlePGChange = (event) => {
+    const { name, value } = event.target;
+
+    setPGForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handleCreatePG = async (event) => {
+    event.preventDefault();
+
+    setPGError("");
+    setCreatingPG(true);
+
+    try {
+      const response = await createPGApi(pgForm);
+      const newPG = response?.pg || response?.data?.pg;
+
+      if (!newPG?._id) {
+        throw new Error("The server did not return the new property.");
+      }
+
+      setPGs((previous) => [newPG, ...previous]);
+      setActivePGId(newPG._id);
+      localStorage.setItem("pgmate_active_pg", newPG._id);
+
+      setPGForm({
         name: "",
         address: "",
         city: "",
         state: "",
         contactNumber: "",
         description: "",
+      });
+
+      setShowPGModal(false);
+    } catch (error) {
+      setPGError(error.message || "Failed to create property.");
+    } finally {
+      setCreatingPG(false);
+    }
+  };
+
+  /* Logout */
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
+  /* Navigation items */
+
+  const navigationItems = [
+    { label: "Overview", icon: LayoutDashboard, key: "overview" },
+    { label: "Rooms & Beds", icon: BedDouble, key: "rooms" },
+    { label: "Tenants", icon: Users, key: "tenants" },
+    { label: "Payments", icon: CreditCard, key: "payments" },
+    { label: "Expenses", icon: Receipt, key: "expenses" },
+    { label: "Complaints", icon: MessageSquareWarning, key: "complaints" },
+    { label: "Food Menu", icon: Utensils, key: "food" },
+    { label: "Notices", icon: Bell, key: "notices" },
+    { label: "Profile", icon: UserCircle, key: "profile" },
+  ];
+
+  /* Fetch overview data */
+
+  const loadOverview = useCallback(
+    async (manual = false) => {
+      if (manual) setRefreshing(true);
+
+      setOverviewData((previous) => ({
+        ...previous,
+        loading: true,
+        error: "",
+      }));
+
+      try {
+        const properties =
+          activePGId === "all"
+            ? pgs
+            : pgs.filter(
+                (pg) => String(pg._id) === String(activePGId)
+              );
+
+        if (!properties.length) {
+          setOverviewData({
+            rooms: [],
+            payments: [],
+            expenses: [],
+            complaints: [],
+            paymentSummaries: [],
+            expenseSummaries: [],
+            loading: false,
+            error: "",
+          });
+
+          return;
+        }
+
+        const now = new Date();
+        const month = String(now.getMonth() + 1);
+        const year = String(now.getFullYear());
+
+        const results = await Promise.all(
+          properties.map(async (pg) => {
+            const requests = await Promise.allSettled([
+              getMyRoomsApi(pg._id),
+              getMyPaymentsApi(pg._id),
+              getPaymentSummaryApi(pg._id, month, year),
+              getMyExpensesApi(pg._id),
+              getExpenseSummaryApi(pg._id),
+              getMyComplaintsApi(pg._id),
+            ]);
+
+            const resultAt = (index) =>
+              requests[index].status === "fulfilled"
+                ? requests[index].value
+                : null;
+
+            const roomResponse = resultAt(0);
+            const paymentResponse = resultAt(1);
+            const paymentSummaryResponse = resultAt(2);
+            const expenseResponse = resultAt(3);
+            const expenseSummaryResponse = resultAt(4);
+            const complaintResponse = resultAt(5);
+
+            return {
+              rooms: asArray(roomResponse, "rooms"),
+              payments: asArray(paymentResponse, "payments"),
+              paymentSummary: getSummaryObject(paymentSummaryResponse),
+              expenses: asArray(expenseResponse, "expenses"),
+              expenseSummary: getSummaryObject(expenseSummaryResponse),
+              complaints: asArray(complaintResponse, "complaints"),
+            };
+          })
+        );
+
+        setOverviewData({
+          rooms: results.flatMap((item) => item.rooms),
+          payments: results.flatMap((item) => item.payments),
+          expenses: results.flatMap((item) => item.expenses),
+          complaints: results.flatMap((item) => item.complaints),
+          paymentSummaries: results.map((item) => item.paymentSummary),
+          expenseSummaries: results.map((item) => item.expenseSummary),
+          loading: false,
+          error: "",
+        });
+      } catch (error) {
+        console.error("Overview loading error:", error);
+
+        setOverviewData((previous) => ({
+          ...previous,
+          loading: false,
+          error: error.message || "Could not load overview data.",
+        }));
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [activePGId, pgs]
+  );
+
+  useEffect(() => {
+    if (!pgLoading) {
+      loadOverview();
+    }
+  }, [pgLoading, loadOverview]);
+
+  /* Dynamic totals */
+
+  const dashboard = useMemo(() => {
+    const rooms = overviewData.rooms;
+    const payments = overviewData.payments;
+    const expenses = overviewData.expenses;
+    const complaints = overviewData.complaints;
+
+    const capacity = rooms.reduce(
+      (sum, room) => sum + roomCapacity(room),
+      0
+    );
+
+    const occupied = rooms.reduce(
+      (sum, room) => sum + roomOccupied(room),
+      0
+    );
+
+    const vacant = rooms.reduce(
+      (sum, room) => sum + roomVacant(room),
+      0
+    );
+
+    const currentMonth = getMonthKey(new Date());
+
+    const currentMonthPayments = payments.filter(
+      (payment) => getMonthKey(paymentDate(payment)) === currentMonth
+    );
+
+    const collectedFromRecords = currentMonthPayments
+      .filter(isPaid)
+      .reduce((sum, payment) => sum + paymentAmount(payment), 0);
+
+    const pendingFromRecords = currentMonthPayments
+      .filter(isPending)
+      .reduce((sum, payment) => sum + paymentAmount(payment), 0);
+
+    const expenseFromRecords = expenses
+      .filter((expense) =>
+        getMonthKey(
+          expense?.expenseDate ||
+            expense?.date ||
+            expense?.createdAt
+        ) === currentMonth
+      )
+      .reduce((sum, expense) => sum + safeNumber(expense?.amount), 0);
+
+    const collectedFromSummary = overviewData.paymentSummaries.reduce(
+      (sum, summary) =>
+        sum +
+        (findSummaryNumber(summary, [
+          "monthlyCollected",
+          "monthlyPaid",
+          "paidAmount",
+          "totalCollected",
+          "totalPaid",
+          "collectedAmount",
+        ]) ?? 0),
+      0
+    );
+
+    const pendingFromSummary = overviewData.paymentSummaries.reduce(
+      (sum, summary) =>
+        sum +
+        (findSummaryNumber(summary, [
+          "pendingAmount",
+          "overdueAmount",
+          "totalPending",
+        ]) ?? 0),
+      0
+    );
+
+    const expensesFromSummary = overviewData.expenseSummaries.reduce(
+      (sum, summary) =>
+        sum +
+        (findSummaryNumber(summary, [
+          "monthlyTotal",
+          "currentMonthTotal",
+          "totalThisMonth",
+          "monthlyExpenses",
+        ]) ?? 0),
+      0
+    );
+
+    const collected = collectedFromSummary || collectedFromRecords;
+    const pendingAmount = pendingFromSummary || pendingFromRecords;
+    const expenseTotal = expensesFromSummary || expenseFromRecords;
+
+    const recentPayments = [...payments]
+      .filter((payment) => paymentDate(payment))
+      .sort((a, b) => {
+        const dateA = validDate(paymentDate(a))?.getTime() || 0;
+        const dateB = validDate(paymentDate(b))?.getTime() || 0;
+        return dateB - dateA;
+      })
+      .slice(0, 4);
+
+    return {
+      capacity,
+      occupied,
+      vacant,
+      occupancyPercent: capacity
+        ? Math.min(100, Math.round((occupied / capacity) * 100))
+        : 0,
+      collected,
+      pendingAmount,
+      netIncome: collected - expenseTotal,
+      overdueCount: payments.filter(isOverdue).length,
+      openComplaints: complaints.filter(isComplaintOpen),
+      payments,
+      recentPayments,
+    };
+  }, [overviewData]);
+
+  /* Date and greeting */
+
+  const now = new Date();
+
+  const greeting =
+    now.getHours() < 12
+      ? "Good morning"
+      : now.getHours() < 17
+        ? "Good afternoon"
+        : "Good evening";
+
+  const ownerName = user?.name || user?.fullName || "Owner";
+
+  const propertyName =
+    activePGId === "all"
+      ? "All Properties"
+      : activePG?.name || "Select a property";
+
+  const propertyLocation =
+    activePGId === "all"
+      ? `${pgs.length} properties combined`
+      : [activePG?.city, activePG?.state].filter(Boolean).join(", ") ||
+        activePG?.address ||
+        "Property location";
+
+  const todayLabel = now.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+
+  const goTo = (section) => {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
+  };
+
+  const monthlyRevenue = useMemo(() => {
+    const currentDate = new Date();
+
+    return Array.from({ length: chartPeriod }, (_, index) => {
+      const date = new Date(
+        currentDate.getFullYear(),
+        currentDate.getMonth() - chartPeriod + index + 1,
+        1
+      );
+
+      const key = getMonthKey(date);
+
+      const total = dashboard.payments
+        .filter(
+          (payment) =>
+            isPaid(payment) &&
+            getMonthKey(paymentDate(payment)) === key
+        )
+        .reduce((sum, payment) => sum + paymentAmount(payment), 0);
+
+      return {
+        key,
+        label: date.toLocaleDateString("en-IN", { month: "short" }),
+        total,
+      };
     });
+  }, [dashboard.payments, chartPeriod]);
 
+  const revenueMax = Math.max(
+    1,
+    ...monthlyRevenue.map((item) => item.total)
+  );
 
-    /* =========================================
-       FETCH PGs
-    ========================================= */
+  const revenuePoints = monthlyRevenue.map((item, index) => {
+    const width = 600;
+    const height = 160;
+    const left = 10;
+    const right = 10;
+    const top = 12;
+    const bottom = 25;
+    const plotWidth = width - left - right;
+    const plotHeight = height - top - bottom;
 
-    useEffect(() => {
-
-        const fetchPGs = async () => {
-
-            try {
-
-                setPgLoading(true);
-
-                const response =
-                    await fetch(
-                        "http://localhost:5000/api/pg/my",
-                        {
-                            headers: {
-                                Authorization:
-                                    `Bearer ${token}`,
-                            },
-                        }
-                    );
-
-                const data =
-                    await response.json();
-
-                if (!response.ok) {
-                    throw new Error(
-                        data.message ||
-                        "Failed to fetch properties."
-                    );
-                }
-
-                const propertyList =
-                    data.pgs || [];
-
-                setPGs(propertyList);
-
-
-                /*
-                  Make sure saved active PG
-                  still exists.
-                */
-
-                if (
-                    activePGId !== "all" &&
-                    !propertyList.some(
-                        (pg) =>
-                            pg._id ===
-                            activePGId
-                    )
-                ) {
-
-                    setActivePGId("all");
-
-                    localStorage.setItem(
-                        "pgmate_active_pg",
-                        "all"
-                    );
-
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Fetch PGs error:",
-                    error
-                );
-
-            } finally {
-
-                setPgLoading(false);
-
-            }
-
-        };
-
-
-        if (token) {
-            fetchPGs();
-        }
-
-    }, [token]);
-
-
-    /* =========================================
-       ACTIVE PG
-    ========================================= */
-
-    const activePG =
-        pgs.find(
-            (pg) =>
-                pg._id ===
-                activePGId
-        );
-
-
-    /* =========================================
-       SWITCH PG
-    ========================================= */
-
-    const handlePropertyChange = (
-        pgId
-    ) => {
-
-        setActivePGId(pgId);
-
-        localStorage.setItem(
-            "pgmate_active_pg",
-            pgId
-        );
-
+    return {
+      ...item,
+      x:
+        left +
+        (index / Math.max(monthlyRevenue.length - 1, 1)) * plotWidth,
+      y: top + plotHeight - (item.total / revenueMax) * plotHeight,
     };
-
-
-    /* =========================================
-       PG FORM
-    ========================================= */
-
-    const handlePGChange = (
-        event
-    ) => {
-
-        const {
-            name,
-            value,
-        } = event.target;
-
-        setPGForm(
-            (previous) => ({
-                ...previous,
-                [name]: value,
-            })
-        );
-
-    };
-
-
-    /* =========================================
-       CREATE PG
-    ========================================= */
-
-    const handleCreatePG = async (
-        event
-    ) => {
-
-        event.preventDefault();
-
-        setPGError("");
-
-        setCreatingPG(true);
-
-        try {
-
-            const response =
-                await fetch(
-                    "http://localhost:5000/api/pg",
-                    {
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-
-                            Authorization:
-                                `Bearer ${token}`,
-                        },
-
-                        body:
-                            JSON.stringify(
-                                pgForm
-                            ),
-                    }
-                );
-
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-
-                throw new Error(
-                    data.message ||
-                    "Failed to create PG."
-                );
-
-            }
-
-
-            /* Add new PG */
-
-            setPGs(
-                (previous) => [
-                    data.pg,
-                    ...previous,
-                ]
-            );
-
-
-            /* Make new PG active */
-
-            setActivePGId(
-                data.pg._id
-            );
-
-            localStorage.setItem(
-                "pgmate_active_pg",
-                data.pg._id
-            );
-
-
-            /* Close modal */
-
-            setShowPGModal(false);
-
-
-            /* Reset form */
-
-            setPGForm({
-                name: "",
-                address: "",
-                city: "",
-                state: "",
-                contactNumber: "",
-                description: "",
-            });
-
-        } catch (error) {
-
-            setPGError(
-                error.message
-            );
-
-        } finally {
-
-            setCreatingPG(false);
-
-        }
-
-    };
-
-
-    /* =========================================
-       LOGOUT
-    ========================================= */
-
-    const handleLogout = () => {
-
-        logout();
-
-        navigate("/login");
-
-    };
-
-
-    /* =========================================
-       NAVIGATION ITEMS
-    ========================================= */
-
-    const navigationItems = [
-        {
-            label: "Overview",
-            icon: LayoutDashboard,
-            key: "overview",
-        },
-        {
-            label: "Rooms & Beds",
-            icon: BedDouble,
-            key: "rooms",
-        },
-        {
-            label: "Tenants",
-            icon: Users,
-            key: "tenants",
-        },
-        {
-            label: "Payments",
-            icon: CreditCard,
-            key: "payments",
-        },
-        {
-            label: "Expenses",
-            icon: Receipt,
-            key: "expenses",
-        },
-        {
-            label: "Complaints",
-            icon: MessageSquareWarning,
-            key: "complaints",
-        },
-        {
-            label: "Food Menu",
-            icon: Utensils,
-            key: "food",
-        },
-        {
-            label: "Notices",
-            icon: Bell,
-            key: "notices",
-        },
-        {
-            label: "Profile",
-            icon: UserCircle,
-            key: "profile",
-        },
-    ];
-
-
-    /* =========================================
-       DEMO DATA
-    ========================================= */
-
-    const recentPayments = [
-        {
-            name: "Rahul Sharma",
-            room: "Room 101",
-            method: "UPI",
-            date: "02 Jul 2026",
-            amount: "₹12,500",
-        },
-        {
-            name: "Priya Sundaram",
-            room: "Room 102",
-            method: "Bank Transfer",
-            date: "03 Jul 2026",
-            amount: "₹18,000",
-        },
-        {
-            name: "Siddharth Rao",
-            room: "Room 201",
-            method: "UPI",
-            date: "05 Jul 2026",
-            amount: "₹13,000",
-        },
-        {
-            name: "Rohan Gupta",
-            room: "Room 201",
-            method: "Cash",
-            date: "06 Jul 2026",
-            amount: "₹13,000",
-        },
-    ];
-
-
-    const tenantRentStatus = [
-        {
-            name: "Rahul Sharma",
-            room: "Room 101 • Bed A",
-            status: "Paid",
-        },
-        {
-            name: "Amit Verma",
-            room: "Room 101 • Bed B",
-            status: "Pending",
-            due: "₹12,500",
-        },
-        {
-            name: "Priya Sundaram",
-            room: "Room 102 • Bed A",
-            status: "Paid",
-        },
-        {
-            name: "Vikram Reddy",
-            room: "Room 103 • Bed A",
-            status: "Overdue",
-            due: "₹9,500",
-        },
-    ];
-
-
-    const rooms = [
-        {
-            room: "Room 101",
-            floor: "Floor 1",
-            type: "Double Sharing",
-            ac: "AC",
-            occupancy: "2 / 2",
-            rent: "₹12,500",
-        },
-        {
-            room: "Room 102",
-            floor: "Floor 1",
-            type: "Single Room",
-            ac: "AC",
-            occupancy: "1 / 1",
-            rent: "₹18,000",
-        },
-        {
-            room: "Room 103",
-            floor: "Floor 1",
-            type: "Triple Sharing",
-            ac: "Non-AC",
-            occupancy: "2 / 3",
-            rent: "₹9,500",
-        },
-        {
-            room: "Room 201",
-            floor: "Floor 2",
-            type: "Double Sharing",
-            ac: "AC",
-            occupancy: "2 / 2",
-            rent: "₹13,000",
-        },
-    ];
-
-
-    const complaints = [
-        {
-            id: "TKT-801",
-            title:
-                "WiFi internet lagging during evening hours",
-            tenant: "Rahul Sharma",
-            room: "Room 101",
-            date: "22 Jul 2026",
-            status: "In Progress",
-        },
-        {
-            id: "TKT-802",
-            title:
-                "Bathroom tap leaking continuously",
-            tenant: "Vikram Reddy",
-            room: "Room 103",
-            date: "24 Jul 2026",
-            status: "Open",
-        },
-        {
-            id: "TKT-803",
-            title:
-                "AC remote battery replacement",
-            tenant: "Karthik Raja",
-            room: "Room 201",
-            date: "18 Jul 2026",
-            status: "Resolved",
-        },
-    ];
-
-
-    /* =========================================
-       RENDER
-    ========================================= */
-
-    return (
-        <div className="owner-dashboard">
-
-
-            {/* MOBILE HEADER */}
-
-            <header className="owner-mobile-header">
-
-                <div className="owner-mobile-brand">
-
-                    <div className="owner-mobile-brand-icon">
-                        <Building2 size={18} />
-                    </div>
-
-                    <div>
-                        <strong>
-                            PGmate
-                        </strong>
-
-                        <span>
-                            Owner Portal
-                        </span>
-                    </div>
-
-                </div>
-
-
-                <div className="owner-mobile-header-right">
-
-                    <div className="owner-mobile-avatar">
-                        {user?.name
-                            ?.charAt(0)
-                            ?.toUpperCase() ||
-                            "O"}
-                    </div>
-
-                    <button
-                        className="owner-menu-button"
-                        onClick={() =>
-                            setMobileMenuOpen(
-                                true
-                            )
-                        }
-                    >
-                        <Menu size={20} />
-                    </button>
-
-                </div>
-
-            </header>
-
-
-            {/* MOBILE OVERLAY */}
-
-            {mobileMenuOpen && (
-                <div
-                    className="owner-sidebar-overlay"
-                    onClick={() =>
-                        setMobileMenuOpen(
-                            false
-                        )
-                    }
-                />
-            )}
-
-
-            {/* SIDEBAR */}
-
-            <aside
-                className={`owner-sidebar ${mobileMenuOpen
-                    ? "owner-sidebar-open"
-                    : ""
-                    }`}
+  });
+
+  const revenueLine = revenuePoints
+    .map((point) => `${point.x},${point.y}`)
+    .join(" ");
+
+  const revenueArea = revenuePoints.length
+    ? `10,135 ${revenueLine} 590,135`
+    : "";
+
+  /* --------------------------------------------------
+     RENDER
+  -------------------------------------------------- */
+
+  return (
+    <div className="owner-dashboard">
+      {/* MOBILE HEADER */}
+
+      <header className="owner-mobile-header">
+        <div className="owner-mobile-brand">
+          <div className="owner-mobile-brand-icon">
+            <Building2 size={18} />
+          </div>
+
+          <div>
+            <strong>PGmate</strong>
+            <span>Owner Portal</span>
+          </div>
+        </div>
+
+        <div className="owner-mobile-header-right">
+          <div className="owner-mobile-avatar">
+            {ownerName.charAt(0).toUpperCase()}
+          </div>
+
+          <button
+            className="owner-menu-button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open navigation"
+          >
+            <Menu size={20} />
+          </button>
+        </div>
+      </header>
+
+      {mobileMenuOpen && (
+        <div
+          className="owner-sidebar-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR */}
+
+      <aside
+        className={`owner-sidebar ${
+          mobileMenuOpen ? "owner-sidebar-open" : ""
+        }`}
+      >
+        <div className="owner-brand">
+          <div className="owner-brand-icon">
+            <Building2 size={20} />
+          </div>
+
+          <div className="owner-brand-text">
+            <strong>PGmate</strong>
+            <span>OWNER PORTAL</span>
+          </div>
+
+          <button
+            className="owner-sidebar-close"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close navigation"
+          >
+            <X size={17} />
+          </button>
+        </div>
+
+        <div className="owner-property-selector">
+          <span className="owner-property-label">ACTIVE PROPERTY</span>
+
+          <div className="owner-property-select-wrapper">
+            <Building2 size={16} />
+
+            <select
+              value={activePGId}
+              onChange={(event) =>
+                handlePropertyChange(event.target.value)
+              }
+              aria-label="Select property"
             >
+              <option value="all">All Properties (Combined)</option>
 
-                {/* BRAND */}
+              {pgs.map((pg) => (
+                <option key={pg._id} value={pg._id}>
+                  {pg.name}
+                </option>
+              ))}
+            </select>
 
-                <div className="owner-brand">
+            <ChevronDown
+              size={16}
+              className="owner-property-chevron"
+            />
+          </div>
+        </div>
 
-                    <div className="owner-brand-icon">
-                        <Building2 size={20} />
-                    </div>
+        <nav className="owner-navigation">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
 
-                    <div className="owner-brand-text">
+            return (
+              <button
+                key={item.key}
+                className={`owner-nav-item ${
+                  activeSection === item.key ? "active" : ""
+                }`}
+                onClick={() => goTo(item.key)}
+              >
+                <Icon size={17} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-                        <strong>
-                            PGmate
-                        </strong>
+        <div className="owner-sidebar-bottom">
+          <button
+            className="owner-logout-button"
+            onClick={handleLogout}
+          >
+            <LogOut size={16} />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
 
-                        <span>
-                            OWNER PORTAL
-                        </span>
+      {/* MAIN CONTENT */}
 
-                    </div>
+      <main className="owner-main">
+        <header className="owner-topbar">
+          <div>
+            <h1>
+              {activeSection === "overview"
+                ? `${greeting}, ${ownerName} 👋`
+                : navigationItems.find(
+                    (item) => item.key === activeSection
+                  )?.label || "Dashboard"}
+            </h1>
 
-                    <button
-                        className="owner-sidebar-close"
-                        onClick={() =>
-                            setMobileMenuOpen(
-                                false
-                            )
-                        }
-                    >
-                        <X size={17} />
-                    </button>
+            <p>
+              {activeSection === "overview"
+                ? "Here's what's happening at your property today."
+                : activeSection === "profile"
+                  ? "Manage your account and properties"
+                  : propertyName}
+            </p>
+          </div>
 
+          <div className="owner-topbar-right">
+            <div className="ov-date">
+              <CalendarDays size={17} />
+              <span>{todayLabel}</span>
+            </div>
+
+            <div className="owner-profile">
+              <div className="owner-avatar">
+                {ownerName.charAt(0).toUpperCase()}
+              </div>
+
+              <div className="owner-profile-info">
+                <strong>{ownerName}</strong>
+                <span>PG Owner</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section className="owner-content">
+          {/* OTHER EXISTING PAGES */}
+
+          {activeSection === "rooms" ? (
+            <RoomsBeds />
+          ) : activeSection === "tenants" ? (
+            <Tenants />
+          ) : activeSection === "payments" ? (
+            <Payments />
+          ) : activeSection === "expenses" ? (
+            <Expenses />
+          ) : activeSection === "complaints" ? (
+            <Complaints />
+          ) : activeSection === "food" ? (
+            <FoodMenu />
+          ) : activeSection === "notices" ? (
+            <Notices />
+          ) : activeSection === "profile" ? (
+            <div className="owner-profile-page">
+              <div className="owner-mobile-page-title">
+                <span>ACCOUNT</span>
+                <h1>Profile</h1>
+                <p>Manage your account and properties.</p>
+              </div>
+
+              <section className="owner-section">
+                <div className="owner-section-header">
+                  <div>
+                    <h2>Account Information</h2>
+                    <p>Your PGmate owner account</p>
+                  </div>
                 </div>
 
+                <div className="owner-account-info">
+                  <div>
+                    <span>Name</span>
+                    <strong>{user?.name || "—"}</strong>
+                  </div>
 
-                {/* ACTIVE PROPERTY */}
+                  <div>
+                    <span>Mobile</span>
+                    <strong>{user?.mobile || "—"}</strong>
+                  </div>
 
-                <div className="owner-property-selector">
+                  <div>
+                    <span>Role</span>
+                    <strong>PG Owner</strong>
+                  </div>
+                </div>
+              </section>
 
-                    <span className="owner-property-label">
-                        ACTIVE PROPERTY
-                    </span>
+              <section className="owner-section">
+                <div className="owner-section-header">
+                  <div>
+                    <h2>My Properties</h2>
+                    <p>Add and manage your PGs</p>
+                  </div>
 
+                  <button
+                    className="owner-profile-add-button"
+                    onClick={() => {
+                      setPGError("");
+                      setShowPGModal(true);
+                    }}
+                  >
+                    <Plus size={14} />
+                    Add PG
+                  </button>
+                </div>
 
-                    <div className="owner-property-select-wrapper">
+                <div className="owner-properties-list">
+                  {pgLoading ? (
+                    <div className="owner-empty-state">
+                      Loading properties...
+                    </div>
+                  ) : pgs.length === 0 ? (
+                    <div className="owner-empty-state">
+                      <Building2 size={30} />
+                      <strong>No properties yet</strong>
+                      <span>Add your first PG to get started.</span>
+                      <button onClick={() => setShowPGModal(true)}>
+                        <Plus size={14} />
+                        Add Your First PG
+                      </button>
+                    </div>
+                  ) : (
+                    pgs.map((pg) => (
+                      <div
+                        className={`owner-property-card ${
+                          String(activePGId) === String(pg._id)
+                            ? "selected"
+                            : ""
+                        }`}
+                        key={pg._id}
+                      >
+                        <div className="owner-property-card-icon">
+                          <Building2 size={19} />
+                        </div>
 
-                        <Building2
-                            size={16}
-                        />
-
-
-                        <select
-                            value={activePGId}
-                            onChange={(event) =>
-                                handlePropertyChange(
-                                    event.target.value
-                                )
-                            }
-                        >
-
-                            <option value="all">
-                                All Properties (Combined)
-                            </option>
-
-
-                            {pgs.map(
-                                (pg) => (
-                                    <option
-                                        key={pg._id}
-                                        value={pg._id}
-                                    >
-                                        {pg.name}
-                                    </option>
-                                )
+                        <div className="owner-property-card-info">
+                          <div className="owner-property-card-title">
+                            <strong>{pg.name}</strong>
+                            {String(activePGId) === String(pg._id) && (
+                              <span>Active</span>
                             )}
+                          </div>
 
-                        </select>
+                          <p>
+                            <MapPin size={12} />
+                            {[pg.address, pg.city, pg.state]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </p>
 
+                          <p>
+                            <Phone size={12} />
+                            {pg.contactNumber || "No contact number"}
+                          </p>
+                        </div>
 
-                        <ChevronDown
-                            size={16}
-                            className="owner-property-chevron"
-                        />
-
-                    </div>
-
+                        <button
+                          className="owner-switch-property"
+                          onClick={() => {
+                            handlePropertyChange(pg._id);
+                            goTo("overview");
+                          }}
+                        >
+                          {String(activePGId) === String(pg._id) ? (
+                            <>
+                              <Check size={12} />
+                              Active
+                            </>
+                          ) : (
+                            "Switch"
+                          )}
+                        </button>
+                      </div>
+                    ))
+                  )}
                 </div>
-
-
-                {/* NAVIGATION */}
-
-                <nav className="owner-navigation">
-
-                    {navigationItems.map(
-                        (item) => {
-
-                            const Icon =
-                                item.icon;
-
-                            return (
-                                <button
-                                    key={item.key}
-                                    className={`owner-nav-item ${activeSection ===
-                                        item.key
-                                        ? "active"
-                                        : ""
-                                        }`}
-                                    onClick={() => {
-
-                                        setActiveSection(
-                                            item.key
-                                        );
-
-                                        setMobileMenuOpen(
-                                            false
-                                        );
-
-                                    }}
-                                >
-
-                                    <Icon size={16} />
-
-                                    <span>
-                                        {item.label}
-                                    </span>
-
-                                </button>
-                            );
-
-                        }
-                    )}
-
-                </nav>
-
-
-                {/* LOGOUT */}
-
-                <div className="owner-sidebar-bottom">
+              </section>
+            </div>
+          ) : (
+            <>
+            {pgLoading || overviewData.loading ? (
+              <div className="ov-loading">
+                Loading your dashboard...
+              </div>
+            ) : (
+              <>
+                {overviewData.error && (
+                  <div className="ov-error">
+                    <AlertCircle size={17} />
+                    <span>{overviewData.error}</span>
 
                     <button
-                        className="owner-logout-button"
-                        onClick={
-                            handleLogout
-                        }
+                      onClick={() => loadOverview(true)}
+                      disabled={refreshing}
                     >
-
-                        <LogOut size={16} />
-
-                        <span>
-                            Logout
-                        </span>
-
+                      <RefreshCw size={14} />
+                      {refreshing ? "Loading..." : "Retry"}
                     </button>
+                  </div>
+                )}
 
-                </div>
+                {pgs.length === 0 ? (
+                  <section className="ov-panel ov-no-property">
+                    <Building2 size={38} />
+                    <h2>Welcome to PGmate!</h2>
+                    <p>Add your first PG property to start managing rooms, tenants, and rent.</p>
 
-            </aside>
+                    <button
+                      className="ov-property-link"
+                      onClick={() => {
+                        setPGError("");
+                        setShowPGModal(true);
+                      }}
+                    >
+                      <Plus size={16} />
+                      Add your first property
+                    </button>
+                  </section>
+                ) : (
+                  <>
+                    {/* ACTIVE PROPERTY BANNER */}
 
+                    <section className="ov-property-banner">
+                      <div className="ov-property-art">
+                        <Building2 size={68} strokeWidth={1.1} />
+                      </div>
 
-            {/* MAIN */}
-
-            <main className="owner-main">
-
-
-                {/* DESKTOP TOPBAR */}
-
-                <header className="owner-topbar">
-
-                    <div>
-
-                        <h1>
-                            {activeSection ===
-                                "profile"
-                                ? "Profile"
-                                : "Dashboard"}
-                        </h1>
+                      <div className="ov-property-main">
+                        <span>ACTIVE PROPERTY</span>
+                        <h2>{propertyName}</h2>
 
                         <p>
-
-                            {activeSection ===
-                                "profile"
-                                ? "Manage your account and properties"
-                                : activePGId ===
-                                    "all"
-                                    ? "All properties combined"
-                                    : activePG?.name ||
-                                    "Select a property"}
-
+                          <MapPin size={15} />
+                          {propertyLocation}
                         </p>
+                      </div>
 
-                    </div>
-
-
-                    <div className="owner-profile">
-
-                        <div className="owner-avatar">
-
-                            {user?.name
-                                ?.charAt(0)
-                                ?.toUpperCase() ||
-                                "O"}
-
+                      <div className="ov-property-metrics">
+                        <div>
+                          <Building2 size={22} />
+                          <strong>{dashboard.capacity}</strong>
+                          <span>Total Capacity</span>
                         </div>
 
-
-                        <div className="owner-profile-info">
-
-                            <strong>
-                                {user?.name ||
-                                    "Owner"}
-                            </strong>
-
-                            <span>
-                                PG Owner
-                            </span>
-
+                        <div>
+                          <Users size={23} />
+                          <strong>{dashboard.occupied}</strong>
+                          <span>Current Occupancy</span>
                         </div>
 
-                    </div>
-
-                </header>
-
-
-                {/* CONTENT */}
-
-                <section className="owner-content">
-
-
-                    {/* =================================
-              PROFILE
-          ================================= */}
-
-                    {activeSection === "rooms" ? (
-                        <RoomsBeds />
-                    ) : activeSection === "tenants" ? (
-                        <Tenants />
-                    ) : activeSection === "payments" ? (
-                        <Payments />
-                    ) : activeSection === "expenses" ? (
-                        <Expenses />
-                    ) : activeSection === "complaints" ? (
-                        <Complaints />
-                    ) : activeSection === "food" ? (
-                        <FoodMenu />
-                    ) : activeSection === "notices" ? (
-                        <Notices />
-                    ) : activeSection === "profile" ? (
-
-                        <div className="owner-profile-page">
-
-
-                            <div className="owner-mobile-page-title">
-
-                                <span>
-                                    ACCOUNT
-                                </span>
-
-                                <h1>
-                                    Profile
-                                </h1>
-
-                                <p>
-                                    Manage your account
-                                    and properties.
-                                </p>
-
-                            </div>
-
-
-                            {/* ACCOUNT */}
-
-                            <section className="owner-section">
-
-                                <div className="owner-section-header">
-
-                                    <div>
-
-                                        <h2>
-                                            Account Information
-                                        </h2>
-
-                                        <p>
-                                            Your PGmate owner account
-                                        </p>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-profile-account">
-
-                                    <div className="owner-profile-large-avatar">
-
-                                        {user?.name
-                                            ?.charAt(0)
-                                            ?.toUpperCase() ||
-                                            "O"}
-
-                                    </div>
-
-
-                                    <div>
-
-                                        <h2>
-                                            {user?.name ||
-                                                "Owner"}
-                                        </h2>
-
-                                        <span>
-                                            PG Owner
-                                        </span>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-account-info">
-
-                                    <div>
-
-                                        <span>
-                                            Name
-                                        </span>
-
-                                        <strong>
-                                            {user?.name ||
-                                                "-"}
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div>
-
-                                        <span>
-                                            Mobile
-                                        </span>
-
-                                        <strong>
-                                            {user?.mobile ||
-                                                "-"}
-                                        </strong>
-
-                                    </div>
-
-
-                                    <div>
-
-                                        <span>
-                                            Role
-                                        </span>
-
-                                        <strong>
-                                            PG Owner
-                                        </strong>
-
-                                    </div>
-
-                                </div>
-
-                            </section>
-
-
-                            {/* PROPERTIES */}
-
-                            <section className="owner-section">
-
-                                <div className="owner-section-header">
-
-                                    <div>
-
-                                        <h2>
-                                            My Properties
-                                        </h2>
-
-                                        <p>
-                                            Add and manage your PGs
-                                        </p>
-
-                                    </div>
-
-
-                                    <button
-                                        className="owner-profile-add-button"
-                                        onClick={() => {
-
-                                            setPGError("");
-
-                                            setShowPGModal(
-                                                true
-                                            );
-
-                                        }}
-                                    >
-
-                                        <Plus size={14} />
-
-                                        Add PG
-
-                                    </button>
-
-                                </div>
-
-
-                                <div className="owner-properties-list">
-
-                                    {pgLoading ? (
-
-                                        <div className="owner-empty-state">
-
-                                            Loading properties...
-
-                                        </div>
-
-                                    ) : pgs.length ===
-                                        0 ? (
-
-                                        <div className="owner-empty-state">
-
-                                            <Building2
-                                                size={30}
-                                            />
-
-                                            <strong>
-                                                No properties yet
-                                            </strong>
-
-                                            <span>
-                                                Add your first PG to get started.
-                                            </span>
-
-
-                                            <button
-                                                onClick={() =>
-                                                    setShowPGModal(
-                                                        true
-                                                    )
-                                                }
-                                            >
-
-                                                <Plus size={14} />
-
-                                                Add Your First PG
-
-                                            </button>
-
-                                        </div>
-
-                                    ) : (
-
-                                        pgs.map(
-                                            (pg) => (
-
-                                                <div
-                                                    className={`owner-property-card ${activePGId ===
-                                                        pg._id
-                                                        ? "selected"
-                                                        : ""
-                                                        }`}
-                                                    key={pg._id}
-                                                >
-
-                                                    <div className="owner-property-card-icon">
-
-                                                        <Building2
-                                                            size={19}
-                                                        />
-
-                                                    </div>
-
-
-                                                    <div className="owner-property-card-info">
-
-                                                        <div className="owner-property-card-title">
-
-                                                            <strong>
-                                                                {pg.name}
-                                                            </strong>
-
-
-                                                            {activePGId ===
-                                                                pg._id && (
-                                                                    <span>
-                                                                        Active
-                                                                    </span>
-                                                                )}
-
-                                                        </div>
-
-
-                                                        <p>
-
-                                                            <MapPin
-                                                                size={12}
-                                                            />
-
-                                                            {pg.address},{" "}
-                                                            {pg.city},{" "}
-                                                            {pg.state}
-
-                                                        </p>
-
-
-                                                        <p>
-
-                                                            <Phone
-                                                                size={12}
-                                                            />
-
-                                                            {pg.contactNumber}
-
-                                                        </p>
-
-                                                    </div>
-
-
-                                                    <button
-                                                        className="owner-switch-property"
-                                                        onClick={() =>
-                                                            handlePropertyChange(
-                                                                pg._id
-                                                            )
-                                                        }
-                                                    >
-
-                                                        {activePGId ===
-                                                            pg._id ? (
-                                                            <>
-                                                                <Check
-                                                                    size={12}
-                                                                />
-
-                                                                Active
-                                                            </>
-                                                        ) : (
-                                                            "Switch"
-                                                        )}
-
-                                                    </button>
-
-                                                </div>
-
-                                            )
-                                        )
-
-                                    )}
-
-                                </div>
-
-                            </section>
-
+                        <div>
+                          <KeyRound size={22} />
+                          <strong>{dashboard.vacant}</strong>
+                          <span>Vacant Beds</span>
+                        </div>
+                      </div>
+
+                      <button
+                        className="ov-property-link"
+                        onClick={() => goTo("profile")}
+                      >
+                        View property
+                        <ArrowRight size={16} />
+                      </button>
+                    </section>
+
+                    {/* SUMMARY CARDS */}
+
+                    <section className="ov-stats-grid">
+                      <article className="ov-stat-card">
+                        <div className="ov-stat-icon ov-orange">
+                          <BedDouble size={23} />
                         </div>
 
-                    ) : (
-
-                        <>
-
-                            {/* MOBILE TITLE */}
-
-                            <div className="owner-mobile-page-title">
-
-                                <span>
-                                    {activePGId ===
-                                        "all"
-                                        ? "ALL PROPERTIES"
-                                        : "ACTIVE PROPERTY"}
-                                </span>
-
-                                <h1>
-                                    Dashboard
-                                </h1>
-
-                                <p>
-
-                                    {activePGId ===
-                                        "all"
-                                        ? "Combined overview of all your PG properties."
-                                        : activePG?.name ||
-                                        "Select a property."}
-
-                                </p>
-
-                            </div>
-
-
-                            {/* ACTIVE PROPERTY */}
-
-                            <section className="owner-active-property-card">
-
-                                <div className="owner-active-property-icon">
-
-                                    <Building2
-                                        size={23}
-                                    />
-
-                                </div>
-
-
-                                <div className="owner-active-property-info">
-
-                                    <span>
-                                        ACTIVE PROPERTY
-                                    </span>
-
-                                    <h2>
-
-                                        {activePGId ===
-                                            "all"
-                                            ? "All Properties"
-                                            : activePG?.name ||
-                                            "No property selected"}
-
-                                    </h2>
-
-                                    <p>
-
-                                        {activePGId ===
-                                            "all"
-                                            ? `${pgs.length} ${pgs.length ===
-                                                1
-                                                ? "property"
-                                                : "properties"
-                                            } combined`
-                                            : activePG
-                                                ? `${activePG.city}, ${activePG.state}`
-                                                : "Select a property"}
-
-                                    </p>
-
-                                </div>
-
-
-                                <div className="owner-active-property-badge">
-
-                                    {activePGId ===
-                                        "all"
-                                        ? "Combined"
-                                        : "Active"}
-
-                                </div>
-
-                            </section>
-
-
-                            {/* STATS */}
-
-                            <div className="owner-stat-grid">
-
-                                <div className="owner-stat-card">
-
-                                    <div className="owner-stat-icon orange">
-
-                                        <BedDouble
-                                            size={19}
-                                        />
-
-                                    </div>
-
-                                    <div>
-
-                                        <strong>
-                                            42 / 48
-                                        </strong>
-
-                                        <span>
-                                            Total Occupancy
-                                        </span>
-
-                                        <small className="stat-positive">
-                                            88% Occupied
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-stat-card">
-
-                                    <div className="owner-stat-icon green">
-
-                                        <Wallet
-                                            size={19}
-                                        />
-
-                                    </div>
-
-                                    <div>
-
-                                        <strong>
-                                            ₹94,000
-                                        </strong>
-
-                                        <span>
-                                            Rent Collected
-                                        </span>
-
-                                        <small>
-                                            Current Month
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-stat-card">
-
-                                    <div className="owner-stat-icon red">
-
-                                        <AlertCircle
-                                            size={19}
-                                        />
-
-                                    </div>
-
-                                    <div>
-
-                                        <strong>
-                                            ₹28,000
-                                        </strong>
-
-                                        <span>
-                                            Pending Rent
-                                        </span>
-
-                                        <small className="stat-danger">
-                                            3 tenants pending
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-stat-card">
-
-                                    <div className="owner-stat-icon blue">
-
-                                        <TrendingUp
-                                            size={19}
-                                        />
-
-                                    </div>
-
-                                    <div>
-
-                                        <strong>
-                                            ₹48,810
-                                        </strong>
-
-                                        <span>
-                                            Net Income
-                                        </span>
-
-                                        <small>
-                                            After expenses
-                                        </small>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-
-                            {/* QUICK ACTIONS */}
-
-                            <section className="owner-section">
-
-                                <div className="owner-section-header">
-
-                                    <div>
-
-                                        <h2>
-                                            Quick Actions
-                                        </h2>
-
-                                        <p>
-                                            Manage your PG operations
-                                        </p>
-
-                                    </div>
-
-                                </div>
-
-
-                                <div className="owner-quick-actions">
-
-                                    <button className="quick-primary">
-
-                                        <Plus size={17} />
-
-                                        Add Tenant
-
-                                    </button>
-
-
-                                    <button>
-
-                                        <BedDouble size={17} />
-
-                                        Add Room
-
-                                    </button>
-
-
-                                    <button>
-
-                                        <CreditCard size={17} />
-
-                                        Record Payment
-
-                                    </button>
-
-
-                                    <button>
-
-                                        <Receipt size={17} />
-
-                                        Log Expense
-
-                                    </button>
-
-                                </div>
-
-                            </section>
-
-
-                            {/* TWO COLUMNS */}
-
-                            <div className="owner-two-column">
-
-
-                                {/* PAYMENTS */}
-
-                                <section className="owner-section">
-
-                                    <div className="owner-section-header">
-
-                                        <div>
-
-                                            <h2>
-                                                Recent Rent Payments
-                                            </h2>
-
-                                            <p>
-                                                Latest collections
-                                            </p>
-
-                                        </div>
-
-                                        <button className="owner-view-all">
-
-                                            View All
-
-                                            <ArrowUpRight
-                                                size={13}
-                                            />
-
-                                        </button>
-
-                                    </div>
-
-
-                                    <div className="owner-payment-list">
-
-                                        {recentPayments.map(
-                                            (payment) => (
-
-                                                <div
-                                                    className="owner-payment-item"
-                                                    key={`${payment.name}-${payment.date}`}
-                                                >
-
-                                                    <div className="owner-payment-main">
-
-                                                        <strong>
-                                                            {payment.name}
-                                                        </strong>
-
-                                                        <span>
-                                                            {payment.room}
-                                                            {" • "}
-                                                            {payment.method}
-                                                        </span>
-
-                                                        <small>
-                                                            {payment.date}
-                                                        </small>
-
-                                                    </div>
-
-
-                                                    <div className="owner-payment-right">
-
-                                                        <strong>
-                                                            +{payment.amount}
-                                                        </strong>
-
-                                                        <span className="status-success">
-                                                            Successful
-                                                        </span>
-
-                                                    </div>
-
-                                                </div>
-
-                                            )
-                                        )}
-
-                                    </div>
-
-                                </section>
-
-
-                                {/* RENT STATUS */}
-
-                                <section className="owner-section">
-
-                                    <div className="owner-section-header">
-
-                                        <div>
-
-                                            <h2>
-                                                Tenant Rent Status
-                                            </h2>
-
-                                            <p>
-                                                Current payments
-                                            </p>
-
-                                        </div>
-
-                                        <button className="owner-view-all">
-
-                                            Manage
-
-                                            <ArrowUpRight
-                                                size={13}
-                                            />
-
-                                        </button>
-
-                                    </div>
-
-
-                                    <div className="owner-rent-status-list">
-
-                                        {tenantRentStatus.map(
-                                            (tenant) => (
-
-                                                <div
-                                                    className="owner-rent-item"
-                                                    key={tenant.name}
-                                                >
-
-                                                    <div>
-
-                                                        <strong>
-                                                            {tenant.name}
-                                                        </strong>
-
-                                                        <span>
-                                                            {tenant.room}
-                                                        </span>
-
-                                                    </div>
-
-
-                                                    <div className="owner-rent-status">
-
-                                                        <span
-                                                            className={`rent-badge ${tenant.status.toLowerCase()
-                                                                }`}
-                                                        >
-
-                                                            {tenant.status ===
-                                                                "Paid" && (
-                                                                    <CheckCircle2
-                                                                        size={11}
-                                                                    />
-                                                                )}
-
-                                                            {tenant.status ===
-                                                                "Pending" && (
-                                                                    <Clock3
-                                                                        size={11}
-                                                                    />
-                                                                )}
-
-                                                            {tenant.status ===
-                                                                "Overdue" && (
-                                                                    <AlertCircle
-                                                                        size={11}
-                                                                    />
-                                                                )}
-
-                                                            {tenant.status}
-
-                                                        </span>
-
-
-                                                        {tenant.due && (
-                                                            <small>
-                                                                Due:{" "}
-                                                                {tenant.due}
-                                                            </small>
-                                                        )}
-
-                                                    </div>
-
-                                                </div>
-
-                                            )
-                                        )}
-
-                                    </div>
-
-                                </section>
-
-                            </div>
-
-
-                            {/* ROOMS */}
-
-                            <section className="owner-section">
-
-                                <div className="owner-section-header">
-
-                                    <div>
-
-                                        <h2>
-                                            Rooms Overview
-                                        </h2>
-
-                                        <p>
-                                            Current room occupancy
-                                        </p>
-
-                                    </div>
-
-                                    <button className="owner-view-all">
-
-                                        View All
-
-                                        <ArrowUpRight
-                                            size={13}
-                                        />
-
-                                    </button>
-
-                                </div>
-
-
-                                <div className="owner-room-list">
-
-                                    {rooms.map(
-                                        (room) => (
-
-                                            <div
-                                                className="owner-room-item"
-                                                key={room.room}
-                                            >
-
-                                                <div className="owner-room-icon">
-
-                                                    <BedDouble
-                                                        size={17}
-                                                    />
-
-                                                </div>
-
-
-                                                <div className="owner-room-info">
-
-                                                    <strong>
-                                                        {room.room}
-                                                    </strong>
-
-                                                    <span>
-                                                        {room.floor}
-                                                        {" • "}
-                                                        {room.type}
-                                                        {" • "}
-                                                        {room.ac}
-                                                    </span>
-
-                                                </div>
-
-
-                                                <div className="owner-room-rent">
-
-                                                    <strong>
-                                                        {room.rent}
-                                                    </strong>
-
-                                                </div>
-
-
-                                                <span className="room-occupancy available">
-
-                                                    {room.occupancy}
-
-                                                    <small>
-                                                        occupied
-                                                    </small>
-
-                                                </span>
-
-                                            </div>
-
-                                        )
-                                    )}
-
-                                </div>
-
-                            </section>
-
-
-                            {/* COMPLAINTS */}
-
-                            <section className="owner-section">
-
-                                <div className="owner-section-header">
-
-                                    <div>
-
-                                        <h2>
-                                            Recent Complaints
-                                        </h2>
-
-                                        <p>
-                                            Latest maintenance tickets
-                                        </p>
-
-                                    </div>
-
-                                    <button className="owner-view-all">
-
-                                        View All
-
-                                        <ArrowUpRight
-                                            size={13}
-                                        />
-
-                                    </button>
-
-                                </div>
-
-
-                                <div className="owner-complaint-list">
-
-                                    {complaints.map(
-                                        (complaint) => (
-
-                                            <div
-                                                className="owner-complaint-item"
-                                                key={complaint.id}
-                                            >
-
-                                                <div className="owner-complaint-icon">
-
-                                                    <MessageSquareWarning
-                                                        size={16}
-                                                    />
-
-                                                </div>
-
-
-                                                <div className="owner-complaint-content">
-
-                                                    <div className="owner-complaint-top">
-
-                                                        <span className="complaint-id">
-                                                            {complaint.id}
-                                                        </span>
-
-                                                        <span
-                                                            className={`complaint-status ${complaint.status
-                                                                .toLowerCase()
-                                                                .replace(
-                                                                    " ",
-                                                                    "-"
-                                                                )
-                                                                }`}
-                                                        >
-                                                            {complaint.status}
-                                                        </span>
-
-                                                    </div>
-
-
-                                                    <strong>
-                                                        {complaint.title}
-                                                    </strong>
-
-
-                                                    <span>
-                                                        {complaint.tenant}
-                                                        {" • "}
-                                                        {complaint.room}
-                                                        {" • "}
-                                                        {complaint.date}
-                                                    </span>
-
-                                                </div>
-
-                                            </div>
-
-                                        )
-                                    )}
-
-                                </div>
-
-                            </section>
-
-                        </>
-
-                    )}
-
-                </section>
-
-            </main>
-
-
-            {/* =========================================
-          ADD PG MODAL
-      ========================================= */}
-
-            {showPGModal && (
-
-                <div className="owner-modal-overlay">
-
-                    <div className="owner-modal">
-
-                        <div className="owner-modal-header">
-
-                            <div>
-
-                                <span>
-                                    PROPERTY MANAGEMENT
-                                </span>
-
-                                <h2>
-                                    Add New PG
-                                </h2>
-
-                            </div>
-
-
+                        <div className="ov-stat-content">
+                          <span className="ov-stat-label">Occupancy</span>
+
+                          <strong className="ov-stat-value">
+                            {dashboard.occupied} / {dashboard.capacity}
+                          </strong>
+
+                          <div className="ov-progress-track">
+                            <span
+                              style={{
+                                width: `${dashboard.occupancyPercent}%`,
+                              }}
+                            />
+                          </div>
+
+                          <small>
+                            {dashboard.occupancyPercent}% occupied
+                          </small>
+                        </div>
+                      </article>
+
+                      <article className="ov-stat-card">
+                        <div className="ov-stat-icon ov-green">
+                          <Wallet size={23} />
+                        </div>
+
+                        <div className="ov-stat-content">
+                          <span className="ov-stat-label">
+                            Rent Collected
+                          </span>
+
+                          <strong className="ov-stat-value">
+                            {money(dashboard.collected)}
+                          </strong>
+
+                          <small>Current month</small>
+                        </div>
+                      </article>
+
+                      <article className="ov-stat-card">
+                        <div className="ov-stat-icon ov-red">
+                          <AlertCircle size={23} />
+                        </div>
+
+                        <div className="ov-stat-content">
+                          <span className="ov-stat-label">
+                            Pending Rent
+                          </span>
+
+                          <strong className="ov-stat-value">
+                            {money(dashboard.pendingAmount)}
+                          </strong>
+
+                          <small>
+                            {dashboard.overdueCount} overdue payments
+                          </small>
+                        </div>
+                      </article>
+
+                      <article className="ov-stat-card">
+                        <div className="ov-stat-icon ov-blue">
+                          <TrendingUp size={23} />
+                        </div>
+
+                        <div className="ov-stat-content">
+                          <span className="ov-stat-label">Net Income</span>
+
+                          <strong className="ov-stat-value">
+                            {money(dashboard.netIncome)}
+                          </strong>
+
+                          <small>After expenses</small>
+                        </div>
+                      </article>
+                    </section>
+
+                    {/* REVENUE AND OCCUPANCY */}
+
+                    <section className="ov-analytics-grid">
+                      <article className="ov-panel ov-revenue-card">
+                        <div className="ov-panel-heading">
+                          <div>
+                            <h2>Revenue Overview</h2>
+                            <p>Rent collection trend over time</p>
+                          </div>
+
+                          <div className="ov-period-switch">
                             <button
-                                onClick={() =>
-                                    setShowPGModal(
-                                        false
-                                    )
-                                }
+                              type="button"
+                              className={
+                                chartPeriod === 6 ? "active" : ""
+                              }
+                              onClick={() => setChartPeriod(6)}
                             >
-                                <X size={18} />
+                              6 months
                             </button>
 
+                            <button
+                              type="button"
+                              className={
+                                chartPeriod === 12 ? "active" : ""
+                              }
+                              onClick={() => setChartPeriod(12)}
+                            >
+                              12 months
+                            </button>
+                          </div>
                         </div>
 
+                        <div className="ov-chart-layout">
+                          <div className="ov-chart-axis">
+                            <span>{money(revenueMax)}</span>
+                            <span>{money(revenueMax * 0.66)}</span>
+                            <span>{money(revenueMax * 0.33)}</span>
+                            <span>₹0</span>
+                          </div>
 
-                        <form
-                            className="owner-pg-form"
-                            onSubmit={
-                                handleCreatePG
-                            }
-                        >
-
-                            <div className="owner-form-group">
-
-                                <label>
-                                    PG Name
-                                </label>
-
-                                <input
-                                    type="text"
-                                    name="name"
-                                    value={
-                                        pgForm.name
-                                    }
-                                    onChange={
-                                        handlePGChange
-                                    }
-                                    placeholder="Example: Sunrise Luxury PG"
-                                    required
+                          <svg
+                            className="ov-chart-svg"
+                            viewBox="0 0 600 160"
+                            role="img"
+                            aria-label="Monthly rent collection chart"
+                          >
+                            <defs>
+                              <linearGradient
+                                id="ov-revenue-gradient"
+                                x1="0"
+                                y1="0"
+                                x2="0"
+                                y2="1"
+                              >
+                                <stop
+                                  offset="0%"
+                                  stopColor="#08a66a"
+                                  stopOpacity="0.35"
                                 />
 
-                            </div>
-
-
-                            <div className="owner-form-group">
-
-                                <label>
-                                    Address
-                                </label>
-
-                                <input
-                                    type="text"
-                                    name="address"
-                                    value={
-                                        pgForm.address
-                                    }
-                                    onChange={
-                                        handlePGChange
-                                    }
-                                    placeholder="Enter full address"
-                                    required
+                                <stop
+                                  offset="100%"
+                                  stopColor="#08a66a"
+                                  stopOpacity="0.04"
                                 />
+                              </linearGradient>
+                            </defs>
 
-                            </div>
+                            {[12, 53, 94, 135].map((y) => (
+                              <line
+                                key={y}
+                                x1="10"
+                                x2="590"
+                                y1={y}
+                                y2={y}
+                                className="ov-grid-line"
+                              />
+                            ))}
 
+                            {revenuePoints.map((point) => (
+                              <line
+                                key={`grid-${point.key}`}
+                                x1={point.x}
+                                x2={point.x}
+                                y1="12"
+                                y2="135"
+                                className="ov-grid-line ov-grid-vertical"
+                              />
+                            ))}
 
-                            <div className="owner-form-row">
-
-                                <div className="owner-form-group">
-
-                                    <label>
-                                        City
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="city"
-                                        value={
-                                            pgForm.city
-                                        }
-                                        onChange={
-                                            handlePGChange
-                                        }
-                                        placeholder="Bengaluru"
-                                        required
-                                    />
-
-                                </div>
-
-
-                                <div className="owner-form-group">
-
-                                    <label>
-                                        State
-                                    </label>
-
-                                    <input
-                                        type="text"
-                                        name="state"
-                                        value={
-                                            pgForm.state
-                                        }
-                                        onChange={
-                                            handlePGChange
-                                        }
-                                        placeholder="Karnataka"
-                                        required
-                                    />
-
-                                </div>
-
-                            </div>
-
-
-                            <div className="owner-form-group">
-
-                                <label>
-                                    Contact Number
-                                </label>
-
-                                <input
-                                    type="tel"
-                                    name="contactNumber"
-                                    value={
-                                        pgForm.contactNumber
-                                    }
-                                    onChange={
-                                        handlePGChange
-                                    }
-                                    placeholder="PG contact number"
-                                    required
-                                />
-
-                            </div>
-
-
-                            <div className="owner-form-group">
-
-                                <label>
-                                    Description
-                                </label>
-
-                                <textarea
-                                    name="description"
-                                    value={
-                                        pgForm.description
-                                    }
-                                    onChange={
-                                        handlePGChange
-                                    }
-                                    placeholder="Short description of your PG"
-                                    rows="3"
-                                />
-
-                            </div>
-
-
-                            {pgError && (
-
-                                <div className="owner-form-error">
-                                    {pgError}
-                                </div>
-
+                            {revenueArea && (
+                              <polygon
+                                points={revenueArea}
+                                fill="url(#ov-revenue-gradient)"
+                              />
                             )}
 
+                            <polyline
+                              points={revenueLine}
+                              className="ov-chart-line"
+                            />
 
-                            <div className="owner-modal-actions">
+                            {revenuePoints.map((point) => (
+                              <g key={point.key}>
+                                <circle
+                                  cx={point.x}
+                                  cy={point.y}
+                                  r="4.5"
+                                  className="ov-chart-point"
+                                />
 
-                                <button
-                                    type="button"
-                                    className="owner-modal-cancel"
-                                    onClick={() =>
-                                        setShowPGModal(
-                                            false
-                                        )
-                                    }
+                                <text
+                                  x={point.x}
+                                  y="155"
+                                  textAnchor="middle"
+                                  className="ov-chart-label"
                                 >
-                                    Cancel
-                                </button>
+                                  {point.label}
+                                </text>
+                              </g>
+                            ))}
+                          </svg>
+                        </div>
 
+                        {dashboard.payments.length === 0 && (
+                          <div className="ov-chart-empty">
+                            No payment records available yet.
+                          </div>
+                        )}
+                      </article>
 
-                                <button
-                                    type="submit"
-                                    className="owner-modal-submit"
-                                    disabled={
-                                        creatingPG
-                                    }
-                                >
+                      <article className="ov-panel ov-occupancy-card">
+                        <div className="ov-panel-heading">
+                          <div>
+                            <h2>Occupancy Snapshot</h2>
+                            <p>Current room occupancy status</p>
+                          </div>
+                        </div>
 
-                                    {creatingPG
-                                        ? "Saving..."
-                                        : "Add PG"}
+                        <div className="ov-occupancy-layout">
+                          <div
+                            className="ov-donut"
+                            style={{
+                              background: `conic-gradient(#08a66a ${
+                                dashboard.occupancyPercent * 3.6
+                              }deg, #a9ead8 0deg)`,
+                            }}
+                          >
+                            <div className="ov-donut-inner">
+                              <strong>
+                                {dashboard.occupancyPercent}%
+                              </strong>
+                              <span>Occupied</span>
+                            </div>
+                          </div>
 
-                                </button>
-
+                          <div className="ov-legend">
+                            <div className="ov-legend-row">
+                              <i className="ov-dot ov-dot-green" />
+                              <span>Occupied Beds</span>
+                              <strong>{dashboard.occupied}</strong>
+                              <small>
+                                {dashboard.occupancyPercent}%
+                              </small>
                             </div>
 
-                        </form>
+                            <div className="ov-legend-row">
+                              <i className="ov-dot ov-dot-mint" />
+                              <span>Vacant Beds</span>
+                              <strong>{dashboard.vacant}</strong>
+                              <small>
+                                {dashboard.capacity
+                                  ? Math.round(
+                                      (dashboard.vacant /
+                                        dashboard.capacity) *
+                                        100
+                                    )
+                                  : 0}
+                                %
+                              </small>
+                            </div>
 
-                    </div>
+                            <div className="ov-capacity-row">
+                              <BedDouble size={22} />
+                              <span>Total Capacity</span>
+                              <strong>{dashboard.capacity}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    </section>
 
-                </div>
+                    {/* RECENT RENT PAYMENTS */}
 
+                    <section className="ov-panel ov-payments-panel">
+                      <div className="ov-panel-heading">
+                        <div>
+                          <h2>Recent Rent Payments</h2>
+                          <p>Latest rent collections</p>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="ov-text-link"
+                          onClick={() => goTo("payments")}
+                        >
+                          View All
+                          <ArrowRight size={15} />
+                        </button>
+                      </div>
+
+                      <div className="ov-table-wrap">
+                        <table className="ov-payments-table">
+                          <thead>
+                            <tr>
+                              <th>Tenant</th>
+                              <th>Room</th>
+                              <th>Amount</th>
+                              <th>Date</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {dashboard.recentPayments.map(
+                              (payment, index) => {
+                                const status = getStatusLabel(payment);
+
+                                return (
+                                  <tr
+                                    key={
+                                      payment._id ||
+                                      payment.id ||
+                                      `${paymentDate(payment)}-${index}`
+                                    }
+                                  >
+                                    <td>
+                                      <div className="ov-tenant-cell">
+                                        <span
+                                          className={`ov-initial ov-initial-${
+                                            index % 4
+                                          }`}
+                                        >
+                                          {getTenantName(payment)
+                                            .charAt(0)
+                                            .toUpperCase()}
+                                        </span>
+
+                                        <strong>
+                                          {getTenantName(payment)}
+                                        </strong>
+                                      </div>
+                                    </td>
+
+                                    <td>{getRoomName(payment)}</td>
+
+                                    <td className="ov-amount-cell">
+                                      {money(paymentAmount(payment))}
+                                    </td>
+
+                                    <td>
+                                      {dateLabel(paymentDate(payment))}
+                                    </td>
+
+                                    <td>
+                                      <span
+                                        className={`ov-status ${status.toLowerCase()}`}
+                                      >
+                                        {status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                            )}
+
+                            {dashboard.recentPayments.length === 0 && (
+                              <tr>
+                                <td colSpan={5}>
+                                  No rent payments found.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+
+                    {/* NEEDS ATTENTION */}
+
+                    <section className="ov-panel ov-attention-panel">
+                      <div className="ov-panel-heading">
+                        <div>
+                          <h2>Needs Attention</h2>
+                          <p>Items that require your action</p>
+                        </div>
+                      </div>
+
+                      <div className="ov-attention-grid">
+                        <button
+                          type="button"
+                          className="ov-attention-item ov-attention-red"
+                          onClick={() => goTo("payments")}
+                        >
+                          <span className="ov-attention-icon">
+                            <AlertCircle size={23} />
+                          </span>
+
+                          <span className="ov-attention-text">
+                            <strong>
+                              {dashboard.overdueCount} Rent Payments
+                              Overdue
+                            </strong>
+
+                            <small>
+                              Follow up with tenants for pending payments
+                            </small>
+                          </span>
+
+                          <ArrowRight size={17} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ov-attention-item ov-attention-orange"
+                          onClick={() => goTo("complaints")}
+                        >
+                          <span className="ov-attention-icon">
+                            <Wrench size={23} />
+                          </span>
+
+                          <span className="ov-attention-text">
+                            <strong>
+                              {dashboard.openComplaints.length} Maintenance
+                              Requests
+                            </strong>
+
+                            <small>
+                              Address reported issues in rooms
+                            </small>
+                          </span>
+
+                          <ArrowRight size={17} />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="ov-attention-item ov-attention-blue"
+                          onClick={() => goTo("rooms")}
+                        >
+                          <span className="ov-attention-icon">
+                            <BedDouble size={23} />
+                          </span>
+
+                          <span className="ov-attention-text">
+                            <strong>
+                              {dashboard.vacant} Beds Available
+                            </strong>
+
+                            <small>
+                              View available space for new tenants
+                            </small>
+                          </span>
+
+                          <ArrowRight size={17} />
+                        </button>
+                      </div>
+                    </section>
+                  </>
+                )}
+              </>
+            )}
+          </>
+        )}
+      </section>
+    </main>
+
+    {/* ADD PROPERTY MODAL */}
+
+    {showPGModal && (
+      <div
+        className="owner-modal-overlay"
+        onClick={() => {
+          if (!creatingPG) setShowPGModal(false);
+        }}
+      >
+        <div
+          className="owner-modal"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="owner-modal-header">
+            <div>
+              <h2>Add New PG</h2>
+              <p>Enter your property details</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPGModal(false)}
+              disabled={creatingPG}
+              aria-label="Close modal"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleCreatePG}>
+            <div className="owner-form-group">
+              <label>PG Name</label>
+              <input
+                type="text"
+                name="name"
+                value={pgForm.name}
+                onChange={handlePGChange}
+                placeholder="Enter PG name"
+                required
+              />
+            </div>
+
+            <div className="owner-form-group">
+              <label>Address</label>
+              <input
+                type="text"
+                name="address"
+                value={pgForm.address}
+                onChange={handlePGChange}
+                placeholder="Enter full address"
+                required
+              />
+            </div>
+
+            <div className="owner-form-row">
+              <div className="owner-form-group">
+                <label>City</label>
+                <input
+                  type="text"
+                  name="city"
+                  value={pgForm.city}
+                  onChange={handlePGChange}
+                  placeholder="City"
+                  required
+                />
+              </div>
+
+              <div className="owner-form-group">
+                <label>State</label>
+                <input
+                  type="text"
+                  name="state"
+                  value={pgForm.state}
+                  onChange={handlePGChange}
+                  placeholder="State"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="owner-form-group">
+              <label>Contact Number</label>
+              <input
+                type="tel"
+                name="contactNumber"
+                value={pgForm.contactNumber}
+                onChange={handlePGChange}
+                placeholder="PG contact number"
+                required
+              />
+            </div>
+
+            <div className="owner-form-group">
+              <label>Description</label>
+              <textarea
+                name="description"
+                value={pgForm.description}
+                onChange={handlePGChange}
+                placeholder="Short description of your PG"
+                rows={3}
+              />
+            </div>
+
+            {pgError && (
+              <div className="owner-form-error">{pgError}</div>
             )}
 
-        </div>
-    );
-}
+            <div className="owner-modal-actions">
+              <button
+                type="button"
+                className="owner-modal-cancel"
+                onClick={() => setShowPGModal(false)}
+                disabled={creatingPG}
+              >
+                Cancel
+              </button>
 
+              <button
+                type="submit"
+                className="owner-modal-submit"
+                disabled={creatingPG}
+              >
+                {creatingPG ? "Saving..." : "Add PG"}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+  </div>
+);
+}
 
 export default OwnerDashboard;

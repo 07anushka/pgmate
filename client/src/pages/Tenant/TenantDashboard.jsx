@@ -28,6 +28,11 @@ import {
 import { useAuth } from "../../context/AuthContext";
 
 import "./TenantDashboard.css";
+import TenantMyRoom from "./TenantMyRoom";
+import TenantPayments from "./TenantPayments";
+import TenantFoodMenu from "./TenantFoodMenu";
+import TenantNotices from "./TenantNotices";
+import TenantComplaints from "./TenantComplaints";
 
 
 const API_URL =
@@ -65,6 +70,8 @@ function TenantDashboard() {
 
   const [tenant, setTenant] =
     useState(null);
+
+  const [roommates, setRoommates] = useState([]);
 
   const [payments, setPayments] =
     useState([]);
@@ -189,6 +196,31 @@ function TenantDashboard() {
       setProfileLoading(false);
     }
   };
+  
+const fetchRoommates = async () => {
+  try {
+    const response = await fetch(
+      `${API_URL}/tenants/my-roommates`,
+      {
+        headers: getHeaders(),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to load roommates."
+      );
+    }
+
+    setRoommates(data.roommates || []);
+  } catch (err) {
+    console.error("Roommates error:", err);
+    setRoommates([]);
+  }
+};
+
 
 
   /* =========================================
@@ -395,6 +427,10 @@ function TenantDashboard() {
 
     if (activeSection === "payments") {
       fetchPayments();
+    }
+
+    if (activeSection === "room") {
+      fetchRoommates();
     }
 
     if (activeSection === "food") {
@@ -1553,765 +1589,59 @@ function TenantDashboard() {
               MY ROOM
           ================================= */}
 
-          {activeSection ===
-            "room" && (
 
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <span>
-                    ACCOMMODATION
-                  </span>
-
-                  <h1>
-                    My Room
-                  </h1>
-
-                  <p>
-                    Your current room and
-                    bed assignment.
-                  </p>
-
-                </div>
-
-
-                <section className="tenant-room-detail-card">
-
-                  <div className="tenant-room-detail-header">
-
-                    <div className="tenant-room-detail-icon">
-
-                      <BedDouble
-                        size={25}
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <span>
-                        ROOM
-                      </span>
-
-                      <h2>
-                        {room?.roomNumber
-                          ? `Room ${room.roomNumber}`
-                          : "Not Assigned"}
-                      </h2>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="tenant-room-detail-grid">
-
-                    <div>
-
-                      <span>
-                        Room Type
-                      </span>
-
-                      <strong>
-                        {room?.roomType ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Floor
-                      </span>
-
-                      <strong>
-                        {room?.floor ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Monthly Rent
-                      </span>
-
-                      <strong>
-                        ₹
-                        {Number(
-                          tenant?.monthlyRent ||
-                          room?.monthlyRent ||
-                          0
-                        ).toLocaleString(
-                          "en-IN"
-                        )}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Bed
-                      </span>
-
-                      <strong>
-                        {bed?.bedNumber ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-
-                  {room?.description && (
-                    <div className="tenant-room-description">
-
-                      <span>
-                        Room Description
-                      </span>
-
-                      <p>
-                        {room.description}
-                      </p>
-
-                    </div>
-                  )}
-
-                </section>
-
-              </div>
-            )}
-
+{activeSection === "room" && (
+  <TenantMyRoom
+    room={room}
+    tenant={tenant}
+    pg={pg}
+    roommates={roommates}
+  />
+)}
 
           {/* =================================
               PAYMENTS
           ================================= */}
 
-          {activeSection ===
-            "payments" && (
-
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <span>
-                    RENT & PAYMENTS
-                  </span>
-
-                  <h1>
-                    Payments
-                  </h1>
-
-                  <p>
-                    Track your rent payments
-                    and payment status.
-                  </p>
-
-                </div>
-
-
-                <div className="tenant-stat-grid">
-
-                  <div className="tenant-stat-card">
-
-                    <div className="tenant-stat-icon green">
-
-                      <CheckCircle2
-                        size={18}
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <strong>
-                        ₹
-                        {totalPaid.toLocaleString(
-                          "en-IN"
-                        )}
-                      </strong>
-
-                      <span>
-                        Total Paid
-                      </span>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="tenant-stat-card">
-
-                    <div className="tenant-stat-icon orange">
-
-                      <Clock3
-                        size={18}
-                      />
-
-                    </div>
-
-                    <div>
-
-                      <strong>
-                        ₹
-                        {pendingAmount.toLocaleString(
-                          "en-IN"
-                        )}
-                      </strong>
-
-                      <span>
-                        Pending / Overdue
-                      </span>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-
-                <section className="tenant-section">
-
-                  <div className="tenant-section-header">
-
-                    <div>
-
-                      <h2>
-                        Payment History
-                      </h2>
-
-                      <p>
-                        Your payment records
-                      </p>
-
-                    </div>
-
-                  </div>
-
-
-                  {paymentsLoading ? (
-
-                    <div className="tenant-loading-list">
-
-                      <div />
-                      <div />
-                      <div />
-
-                    </div>
-
-                  ) : payments.length ===
-                    0 ? (
-
-                    <div className="tenant-empty-inline">
-                      No payments found.
-                    </div>
-
-                  ) : (
-
-                    <div className="tenant-payment-list">
-
-                      {payments.map(
-                        (payment) => (
-
-                          <div
-                            className="tenant-payment-item"
-                            key={
-                              payment._id
-                            }
-                          >
-
-                            <div>
-
-                              <strong>
-                                ₹
-                                {Number(
-                                  payment.amount
-                                ).toLocaleString(
-                                  "en-IN"
-                                )}
-                              </strong>
-
-                              <span>
-                                {payment.paymentMethod ||
-                                  "Payment"}
-                                {" • "}
-                                {formatDate(
-                                  payment.paymentDate
-                                )}
-                              </span>
-
-                              {payment.notes && (
-                                <small>
-                                  {payment.notes}
-                                </small>
-                              )}
-
-                            </div>
-
-
-                            <span
-                              className={`tenant-status-badge ${getStatusClass(
-                                payment.status
-                              )}`}
-                            >
-                              {payment.status}
-                            </span>
-
-                          </div>
-
-                        )
-                      )}
-
-                    </div>
-
-                  )}
-
-                </section>
-
-              </div>
-            )}
+{activeSection === "payments" && (
+  <TenantPayments
+    payments={payments}
+    tenant={tenant}
+    loading={paymentsLoading}
+  />
+)}
 
 
           {/* =================================
               FOOD MENU
           ================================= */}
 
-          {activeSection ===
-            "food" && (
-
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <span>
-                    DAILY MEALS
-                  </span>
-
-                  <h1>
-                    Food Menu
-                  </h1>
-
-                  <p>
-                    View today's available
-                    food options.
-                  </p>
-
-                </div>
-
-
-                {foodLoading ? (
-
-                  <div className="tenant-food-grid">
-
-                    <div className="tenant-loading-food" />
-                    <div className="tenant-loading-food" />
-                    <div className="tenant-loading-food" />
-                    <div className="tenant-loading-food" />
-
-                  </div>
-
-                ) : foodMenu.length ===
-                  0 ? (
-
-                  <div className="tenant-empty-state">
-
-                    <Utensils
-                      size={30}
-                    />
-
-                    <h3>
-                      No food menu available
-                    </h3>
-
-                    <p>
-                      Your PG has not added
-                      any available food items.
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div className="tenant-food-grid">
-
-                    {foodMenu.map(
-                      (item) => (
-
-                        <div
-                          className="tenant-food-card"
-                          key={
-                            item._id
-                          }
-                        >
-
-                          <div className="tenant-food-card-top">
-
-                            <div className="tenant-food-icon">
-
-                              <Utensils
-                                size={18}
-                              />
-
-                            </div>
-
-                            <span
-                              className={`tenant-food-type ${item.foodType}`}
-                            >
-                              {item.foodType ===
-                                "non_veg"
-                                ? "Non-Veg"
-                                : "Veg"}
-                            </span>
-
-                          </div>
-
-
-                          <h3>
-                            {item.name}
-                          </h3>
-
-                          <span className="tenant-food-meal">
-
-                            {item.mealType}
-
-                          </span>
-
-
-                          {item.description && (
-                            <p>
-                              {item.description}
-                            </p>
-                          )}
-
-
-                          {item.price > 0 && (
-                            <strong className="tenant-food-price">
-                              ₹
-                              {Number(
-                                item.price
-                              ).toLocaleString(
-                                "en-IN"
-                              )}
-                            </strong>
-                          )}
-
-                        </div>
-
-                      )
-                    )}
-
-                  </div>
-
-                )}
-
-              </div>
-            )}
-
+{activeSection === "food" && (
+  <TenantFoodMenu
+    foodMenu={foodMenu}
+    tenant={tenant}
+    pg={pg}
+    loading={foodLoading}
+  />
+)}
 
           {/* =================================
               NOTICES
           ================================= */}
 
-          {activeSection ===
-            "notices" && (
-
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <span>
-                    PG UPDATES
-                  </span>
-
-                  <h1>
-                    Notices
-                  </h1>
-
-                  <p>
-                    Important updates from
-                    your PG.
-                  </p>
-
-                </div>
-
-
-                {noticesLoading ? (
-
-                  <div className="tenant-loading-notices">
-
-                    <div />
-                    <div />
-                    <div />
-
-                  </div>
-
-                ) : notices.length ===
-                  0 ? (
-
-                  <div className="tenant-empty-state">
-
-                    <Bell
-                      size={30}
-                    />
-
-                    <h3>
-                      No notices
-                    </h3>
-
-                    <p>
-                      There are no active
-                      notices for your PG.
-                    </p>
-
-                  </div>
-
-                ) : (
-
-                  <div className="tenant-notice-list">
-
-                    {notices.map(
-                      (notice) => (
-
-                        <article
-                          className="tenant-notice-card"
-                          key={
-                            notice._id
-                          }
-                        >
-
-                          <div className="tenant-notice-icon">
-
-                            <Bell
-                              size={18}
-                            />
-
-                          </div>
-
-
-                          <div className="tenant-notice-content">
-
-                            <div className="tenant-notice-top">
-
-                              <span>
-                                {notice.noticeType}
-                              </span>
-
-                              <span
-                                className={`tenant-priority ${getStatusClass(
-                                  notice.priority
-                                )}`}
-                              >
-                                {notice.priority}
-                              </span>
-
-                            </div>
-
-
-                            <h3>
-                              {notice.title}
-                            </h3>
-
-                            <p>
-                              {notice.description}
-                            </p>
-
-
-                            <small>
-                              Published{" "}
-                              {formatDate(
-                                notice.publishDate
-                              )}
-                            </small>
-
-                          </div>
-
-                        </article>
-
-                      )
-                    )}
-
-                  </div>
-
-                )}
-
-              </div>
-            )}
+{activeSection === "notices" && (
+  <TenantNotices
+    notices={notices}
+    loading={noticesLoading}
+  />
+)}
 
 
           {/* =================================
               COMPLAINTS
           ================================= */}
 
-          {activeSection ===
-            "complaints" && (
-
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <div className="tenant-heading-with-button">
-
-                    <div>
-
-                      <span>
-                        SUPPORT
-                      </span>
-
-                      <h1>
-                        Complaints
-                      </h1>
-
-                      <p>
-                        Report and track
-                        your issues.
-                      </p>
-
-                    </div>
-
-
-                    <button
-                      className="tenant-primary-button"
-                      onClick={
-                        openComplaintModal
-                      }
-                    >
-
-                      <Plus
-                        size={17}
-                      />
-
-                      New Complaint
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-
-                {complaintsLoading ? (
-
-                  <div className="tenant-loading-notices">
-
-                    <div />
-                    <div />
-                    <div />
-
-                  </div>
-
-                ) : complaints.length ===
-                  0 ? (
-
-                  <div className="tenant-empty-state">
-
-                    <MessageSquareWarning
-                      size={30}
-                    />
-
-                    <h3>
-                      No complaints
-                    </h3>
-
-                    <p>
-                      You haven't submitted
-                      any complaints yet.
-                    </p>
-
-                    <button
-                      className="tenant-primary-button"
-                      onClick={
-                        openComplaintModal
-                      }
-                    >
-                      <Plus
-                        size={16}
-                      />
-                      Submit Complaint
-                    </button>
-
-                  </div>
-
-                ) : (
-
-                  <div className="tenant-complaint-list">
-
-                    {complaints.map(
-                      (complaint) => (
-
-                        <div
-                          className="tenant-complaint-card"
-                          key={
-                            complaint._id
-                          }
-                        >
-
-                          <div className="tenant-complaint-card-icon">
-
-                            <MessageSquareWarning
-                              size={18}
-                            />
-
-                          </div>
-
-
-                          <div className="tenant-complaint-card-content">
-
-                            <div className="tenant-complaint-card-top">
-
-                              <span>
-                                {complaint.category ||
-                                  "Other"}
-                              </span>
-
-                              <span
-                                className={`tenant-status-badge ${getStatusClass(
-                                  complaint.status
-                                )}`}
-                              >
-                                {complaint.status}
-                              </span>
-
-                            </div>
-
-
-                            <h3>
-                              {complaint.title}
-                            </h3>
-
-                            <p>
-                              {complaint.description}
-                            </p>
-
-
-                            <small>
-                              Submitted{" "}
-                              {formatDate(
-                                complaint.createdAt
-                              )}
-                            </small>
-
-                          </div>
-
-                        </div>
-
-                      )
-                    )}
-
-                  </div>
-
-                )}
-
-              </div>
-            )}
-
+{activeSection === "complaints" && <TenantComplaints />}
 
           {/* =================================
               PROFILE

@@ -7,6 +7,8 @@ import {
   createComplaint,
   updateComplaint,
   deleteComplaint,
+  updateMyComplaint,
+  deleteMyComplaint,
 } from "../controllers/complaintController.js";
 
 import { protect } from "../middleware/authMiddleware.js";
@@ -22,7 +24,7 @@ const router = express.Router();
 router.get(
   "/my",
   protect,
-  authorizeRoles("owner"),
+  authorizeRoles("tenant"),
   getMyComplaints
 );
 
@@ -49,7 +51,7 @@ router.get(
 router.post(
   "/",
   protect,
-  authorizeRoles("owner"),
+  authorizeRoles("tenant"),
   createComplaint
 );
 
@@ -71,5 +73,18 @@ router.delete(
   deleteComplaint
 );
 
+router.patch(
+  "/my/:complaintId",
+  protect,
+  authorizeRoles("tenant"),
+  updateMyComplaint
+);
+
+router.delete(
+  "/my/:complaintId",
+  protect,
+  authorizeRoles("tenant"),
+  deleteMyComplaint
+);
 
 export default router;

@@ -1415,3 +1415,56 @@ export const deleteTenant = async (
     });
   }
 };
+
+
+/* =========================================
+   GET MY ROOMMATES
+   TENANT ONLY
+========================================= */
+
+export const getMyRoommates = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Find the logged-in tenant's active assignment
+    const currentTenant = await Tenant.findOne({
+      userId,
+      status: "active",
+    });
+
+    if (!currentTenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Active tenant assignment not found.",
+      });
+    }
+
+    // Find other active tenants in the same room
+    const roommates = await Tenant.find({
+      _id: { $ne: currentTenant._id },
+      roomId: currentTenant.roomId,
+      pgId: currentTenant.pgId,
+      status: "active",
+    })
+      .populate("userId", "name")
+      .populate("bedId", "bedNumber")
+      .select("userId bedId roomId pgId status")
+      .sort({ createdAt: 1 });
+
+    return res.status(200).json({
+      success: true,
+      roommates: roommates.map((item) => ({
+        _id: item._id,
+        name: item.userId?.name || "Tenant",
+        bedNumber: item.bedId?.bedNumber || "—",
+      })),
+    });
+  } catch (error) {
+    console.error("Get my roommates error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch roommates.",
+    });
+  }
+};
