@@ -503,6 +503,7 @@
   color: #087c54;
   font-size: 10px;
   font-weight: 800;
+  margin-right: 10px;
 }
 
 .tc-complaint-card {
@@ -836,12 +837,25 @@
     letter-spacing: 1.2px;
   }
 
-  .tc-heading > .tc-primary-btn {
-    min-height: 38px;
-    padding: 0 10px;
-    gap: 5px;
-    font-size: 10px;
-    white-space: nowrap;
+  .tc-heading > .tc-primary-btn,
+.tc-panel .tc-primary-btn {
+  display: inline-flex !important;
+  width: fit-content !important;
+  min-width: 0 !important;
+  min-height: 30px !important;
+  height: 30px !important;
+  padding: 0 10px !important;
+  margin: 0 !important;
+  gap: 5px !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+}
+  .tc-heading > .tc-primary-btn svg {
+    width: 12px;
+    height: 12px;
   }
 
   .tc-heading > .tc-primary-btn svg {
@@ -1039,5 +1053,30 @@
   .tc-delete-btn {
     padding: 6px 8px;
     font-size: 11px;
+  }
+}
+
+@media (max-width: 760px) {
+  .tc-list-heading {
+    display: block;
+  }
+
+  .tc-list-heading .tc-count-badge {
+    /* Keep complaint count in its original position */
+    display: inline-flex;
+  }
+
+  .tc-list-heading .tc-primary-btn {
+    /* Move only the button to the right */
+    float: right;
+    width: fit-content !important;
+    min-width: 0 !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 0 10px !important;
+    margin-left: 8px !important;
+    font-size: 10px !important;
+    border-radius: 8px !important;
+    white-space: nowrap;
   }
 }

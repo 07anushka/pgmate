@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   getMyNotices,
+  getTenantNotices,
   getNoticeSummary,
   createNotice,
   updateNotice,
@@ -35,6 +36,12 @@ router.get(
   getNoticeSummary
 );
 
+router.get(
+  "/tenant/my",
+  protect,
+  authorizeRoles("tenant"),
+  getTenantNotices
+);
 
 // Create notice
 router.post(

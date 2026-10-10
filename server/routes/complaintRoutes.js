@@ -2,6 +2,7 @@ import express from "express";
 
 import {
   getMyComplaints,
+  getOwnerComplaints,
   getComplaintSummary,
   getComplaintTenants,
   createComplaint,
@@ -46,6 +47,12 @@ router.get(
   getComplaintTenants
 );
 
+router.get(
+  "/owner",
+  protect,
+  authorizeRoles("owner"),
+  getOwnerComplaints
+);
 
 // Create complaint
 router.post(

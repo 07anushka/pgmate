@@ -1335,14 +1335,7 @@ function RoomsBeds() {
             PROPERTY MANAGEMENT
           </span>
 
-          <h1>
-            Rooms & Beds
-          </h1>
-
-          <p>
-            Manage rooms, beds and
-            availability.
-          </p>
+         
         </div>
 
         <button

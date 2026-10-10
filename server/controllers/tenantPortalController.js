@@ -3,7 +3,7 @@ import Payment from "../models/Payment.js";
 import FoodMenu from "../models/FoodMenu.js";
 import Notice from "../models/Notice.js";
 import Complaint from "../models/Complaint.js";
-
+import NoticeDismissal from "../models/NoticeDismissal.js";
 
 /* =========================================================
    HELPER
@@ -177,64 +177,74 @@ export const getMyTenantFoodMenu =
    NOTICES
 ========================================================= */
 
-export const getMyTenantNotices =
-    async (req, res) => {
-        try {
-            const tenant =
-                await Tenant.findOne({
-                    userId: req.user.userId,
-                    status: "active",
-                });
 
-            if (!tenant) {
-                return res.status(404).json({
-                    success: false,
-                    message:
-                        "Active tenant profile not found",
-                });
-            }
-
-            const today = new Date();
-
-            const notices =
-                await Notice.find({
-                    ownerId: tenant.ownerId,
-                    pgId: tenant.pgId,
-                    isPublished: true,
-                    publishDate: {
-                        $lte: today,
-                    },
-                    $or: [
-                        {
-                            expiryDate: null,
-                        },
-                        {
-                            expiryDate: {
-                                $gte: today,
-                            },
-                        },
-                    ],
-                }).sort({
-                    publishDate: -1,
-                });
-
-            return res.status(200).json({
-                success: true,
-                notices,
-            });
-        } catch (error) {
-            console.error(
-                "Get tenant notices error:",
-                error
-            );
-
-            return res.status(500).json({
-                success: false,
-                message:
-                    "Failed to fetch notices",
-            });
-        }
-    };
+export const getMyTenantNotices = async (req, res) => {
+    try {
+      const userId = req.user.userId;
+  
+      const tenant = await Tenant.findOne({
+        userId,
+        status: "active",
+      });
+  
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          message: "Active tenant profile not found",
+        });
+      }
+  
+      // Find notices this tenant has dismissed.
+      const dismissed = await NoticeDismissal.find({
+        userId,
+      }).select("noticeId");
+  
+      const dismissedIds = dismissed.map(
+        (item) => item.noticeId
+      );
+  
+      const today = new Date();
+  
+      // Return only active notices not dismissed by this tenant.
+      const notices = await Notice.find({
+        ownerId: tenant.ownerId,
+        pgId: tenant.pgId,
+        isPublished: true,
+        publishDate: { $lte: today },
+        _id: { $nin: dismissedIds },
+        $and: [
+          {
+            $or: [
+              { expiryDate: null },
+              { expiryDate: { $gte: today } },
+            ],
+          },
+          {
+            $or: [
+              { audience: "all" },
+              { audience: "tenants" },
+            ],
+          },
+        ],
+      }).sort({
+        publishDate: -1,
+        createdAt: -1,
+      });
+  
+      return res.status(200).json({
+        success: true,
+        notices,
+      });
+    } catch (error) {
+      console.error("Get tenant notices error:", error);
+  
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch notices",
+      });
+    }
+  };
+  
 
 
 /* =========================================================

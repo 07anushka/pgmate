@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import {
-  getMyComplaintsApi,
+  getOwnerComplaintsApi,
   getComplaintSummaryApi,
   getComplaintTenantsApi,
   createComplaintApi,
@@ -193,7 +193,7 @@ function Complaints() {
         complaintsResponse,
         summaryResponse,
       ] = await Promise.all([
-        getMyComplaintsApi(
+        getOwnerComplaintsApi(
           "",
           statusFilter,
           categoryFilter,
@@ -600,10 +600,6 @@ function Complaints() {
           <span className="complaints-eyebrow">
             SUPPORT
           </span>
-
-          <h1>
-            Complaints
-          </h1>
 
           <p>
             Track and resolve tenant

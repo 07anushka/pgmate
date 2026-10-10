@@ -43,7 +43,7 @@ import {
   getPaymentSummaryApi,
   getMyExpensesApi,
   getExpenseSummaryApi,
-  getMyComplaintsApi,
+  getOwnerComplaintsApi,
 } from "../../services/api";
 
 import "./OwnerDashboard.css";
@@ -501,7 +501,7 @@ function OwnerDashboard() {
               getPaymentSummaryApi(pg._id, month, year),
               getMyExpensesApi(pg._id),
               getExpenseSummaryApi(pg._id),
-              getMyComplaintsApi(pg._id),
+              getOwnerComplaintsApi(pg._id),
             ]);
 
             const resultAt = (index) =>
@@ -678,10 +678,10 @@ function OwnerDashboard() {
 
   const greeting =
     now.getHours() < 12
-      ? "Good morning"
+      ? "Good Morning"
       : now.getHours() < 17
-        ? "Good afternoon"
-        : "Good evening";
+        ? "Good Afternoon"
+        : "Good Evening";
 
   const ownerName = user?.name || user?.fullName || "Owner";
 
@@ -903,7 +903,7 @@ function OwnerDashboard() {
           <div>
             <h1>
               {activeSection === "overview"
-                ? `${greeting}, ${ownerName} 👋`
+                ? `${greeting}, ${ownerName}`
                 : navigationItems.find(
                     (item) => item.key === activeSection
                   )?.label || "Dashboard"}

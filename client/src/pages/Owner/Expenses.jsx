@@ -605,7 +605,7 @@ function Expenses() {
       <header className="expenses-header">
         <div>
           <span className="expenses-eyebrow">FINANCE</span>
-          <h1>Expenses</h1>
+          
           <p>Track your PG operating expenses and spending.</p>
         </div>
 

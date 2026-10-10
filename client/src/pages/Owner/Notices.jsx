@@ -640,10 +640,6 @@ function Notices() {
             ANNOUNCEMENTS
           </span>
 
-          <h1>
-            Notices
-          </h1>
-
           <p>
             Share important updates and
             announcements with tenants.

@@ -31,6 +31,32 @@ const formatDate = (value) => {
     });
 };
 
+
+const getPaymentDescription = (payment) => {
+    const method = payment.paymentMethod || payment.method || "payment";
+
+    switch (String(payment.status || "pending").toLowerCase()) {
+        case "paid":
+            return `Rent payment completed successfully via ${method}.`;
+
+        case "pending":
+            return `${method.charAt(0).toUpperCase() + method.slice(1)} payment pending confirmation.`;
+
+        case "overdue":
+            return "Rent payment is overdue.";
+
+        case "failed":
+            return "Payment failed.";
+
+        case "refunded":
+            return `Rent payment refunded via ${method}.`;
+
+        default:
+            return payment.description || payment.notes || "Rent payment";
+    }
+};
+
+
 export default function TenantPayments({
     payments = [],
     tenant = {},
@@ -103,10 +129,7 @@ export default function TenantPayments({
                 const matchesStatus =
                     statusFilter === "all" || status === statusFilter;
 
-                const description =
-                    payment.description ||
-                    payment.notes ||
-                    `${payment.month || ""} ${payment.year || ""} rent`;
+                    const description = getPaymentDescription(payment);
 
                 const matchesSearch = [
                     description,
@@ -266,13 +289,7 @@ export default function TenantPayments({
                                             payment.status || "pending"
                                         ).toLowerCase();
 
-                                        const description =
-                                            payment.description ||
-                                            payment.notes ||
-                                            (payment.month
-                                                ? `${payment.month} ${payment.year || ""
-                                                } rent`
-                                                : "Rent payment");
+                                        const description = getPaymentDescription(payment);
 
                                         return (
                                             <tr key={payment._id || payment.id || index}>

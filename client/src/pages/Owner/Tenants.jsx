@@ -643,6 +643,7 @@ function Tenants() {
       const data =
         await response.json();
 
+        console.log("Rent payment update response:", data);
       if (!response.ok) {
         throw new Error(
           data.message ||
@@ -2211,15 +2212,7 @@ function Tenants() {
             RESIDENT MANAGEMENT
           </span>
 
-          <h1>
-            Tenants
-          </h1>
-
-          <p>
-            Manage residents,
-            rent status and
-            room assignments.
-          </p>
+        
 
         </div>
 

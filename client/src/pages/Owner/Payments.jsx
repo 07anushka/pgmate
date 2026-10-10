@@ -627,11 +627,7 @@ function Payments() {
       <div className="payments-page-header">
 
         <div>
-          <h1>
-            Payments
-          </h1>
-
-          <p>
+                   <p>
             Track and manage your
             tenants' monthly rent.
           </p>

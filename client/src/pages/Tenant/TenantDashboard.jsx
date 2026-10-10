@@ -196,30 +196,30 @@ function TenantDashboard() {
       setProfileLoading(false);
     }
   };
-  
-const fetchRoommates = async () => {
-  try {
-    const response = await fetch(
-      `${API_URL}/tenants/my-roommates`,
-      {
-        headers: getHeaders(),
-      }
-    );
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Failed to load roommates."
+  const fetchRoommates = async () => {
+    try {
+      const response = await fetch(
+        `${API_URL}/tenants/my-roommates`,
+        {
+          headers: getHeaders(),
+        }
       );
-    }
 
-    setRoommates(data.roommates || []);
-  } catch (err) {
-    console.error("Roommates error:", err);
-    setRoommates([]);
-  }
-};
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to load roommates."
+        );
+      }
+
+      setRoommates(data.roommates || []);
+    } catch (err) {
+      console.error("Roommates error:", err);
+      setRoommates([]);
+    }
+  };
 
 
 
@@ -1590,518 +1590,446 @@ const fetchRoommates = async () => {
           ================================= */}
 
 
-{activeSection === "room" && (
-  <TenantMyRoom
-    room={room}
-    tenant={tenant}
-    pg={pg}
-    roommates={roommates}
-  />
-)}
+          {activeSection === "room" && (
+            <TenantMyRoom
+              room={room}
+              tenant={tenant}
+              pg={pg}
+              roommates={roommates}
+            />
+          )}
 
           {/* =================================
               PAYMENTS
           ================================= */}
 
-{activeSection === "payments" && (
-  <TenantPayments
-    payments={payments}
-    tenant={tenant}
-    loading={paymentsLoading}
-  />
-)}
+          {activeSection === "payments" && (
+            <TenantPayments
+              payments={payments}
+              tenant={tenant}
+              loading={paymentsLoading}
+            />
+          )}
 
 
           {/* =================================
               FOOD MENU
           ================================= */}
 
-{activeSection === "food" && (
-  <TenantFoodMenu
-    foodMenu={foodMenu}
-    tenant={tenant}
-    pg={pg}
-    loading={foodLoading}
-  />
-)}
+          {activeSection === "food" && (
+            <TenantFoodMenu
+              foodMenu={foodMenu}
+              tenant={tenant}
+              pg={pg}
+              loading={foodLoading}
+            />
+          )}
 
           {/* =================================
               NOTICES
           ================================= */}
 
-{activeSection === "notices" && (
-  <TenantNotices
-    notices={notices}
-    loading={noticesLoading}
-  />
-)}
+          {activeSection === "notices" && (
+            <TenantNotices
+              notices={notices}
+              loading={noticesLoading}
+            />
+          )}
 
 
           {/* =================================
               COMPLAINTS
           ================================= */}
 
-{activeSection === "complaints" && <TenantComplaints />}
+          {activeSection === "complaints" && <TenantComplaints />}
 
           {/* =================================
               PROFILE
           ================================= */}
 
-          {activeSection ===
-            "profile" && (
+          {/* PROFILE PAGE */}
+          {activeSection === "profile" && (
+            <div className="tenant-profile-page">
 
-              <div className="tenant-page">
-
-                <div className="tenant-page-heading">
-
-                  <span>
-                    ACCOUNT
-                  </span>
-
-                  <h1>
-                    Profile
-                  </h1>
-
-                  <p>
-                    Your PGmate account and
-                    stay information.
-                  </p>
-
+              {/* PROFILE BANNER */}
+              <section className="tenant-profile-banner">
+                <div className="tenant-profile-avatar">
+                  {userData?.name?.charAt(0)?.toUpperCase() || "T"}
                 </div>
 
+                <div className="tenant-profile-banner-info">
+                  <h2>{userData?.name || "Tenant"}</h2>
+                  <p>PG Tenant</p>
+                </div>
+              </section>
+
+              {/* PERSONAL INFORMATION + STAY DETAILS */}
+              <div className="tenant-profile-columns">
+                <section className="tenant-profile-card">
+                  <div className="tenant-profile-card-heading">
+                    <div className="tenant-profile-card-icon">
+                      <UserCircle size={25} />
+                    </div>
+                    <div>
+                      <h2>Personal Information</h2>
+                      <p>Your registered account details.</p>
+                    </div>
+                  </div>
+
+                  <div className="tenant-profile-detail">
+                    <UserCircle size={21} />
+                    <div>
+                      <span>Full Name</span>
+                      <strong>{userData?.name || "-"}</strong>
+                    </div>
+                  </div>
+
+                  <div className="tenant-profile-detail">
+                    <Phone size={21} />
+                    <div>
+                      <span>Mobile Number</span>
+                      <strong>{userData?.mobile || "-"}</strong>
+                    </div>
+                  </div>
+                </section>
 
                 <section className="tenant-profile-card">
-
-                  <div className="tenant-profile-avatar">
-
-                    {userData?.name
-                      ?.charAt(0)
-                      ?.toUpperCase() ||
-                      "T"}
-
+                  <div className="tenant-profile-card-heading">
+                    <div className="tenant-profile-card-icon">
+                      <Building2 size={25} />
+                    </div>
+                    <div>
+                      <h2>Stay Details</h2>
+                      <p>Information about your current stay.</p>
+                    </div>
                   </div>
 
-
-                  <div>
-
-                    <h2>
-                      {userData?.name ||
-                        "Tenant"}
-                    </h2>
-
-                    <span>
-                      PG Tenant
-                    </span>
-
+                  <div className="tenant-profile-detail">
+                    <Building2 size={21} />
+                    <div>
+                      <span>PG</span>
+                      <strong>{pg?.name || "-"}</strong>
+                    </div>
                   </div>
 
+                  <div className="tenant-profile-detail">
+                    <BedDouble size={21} />
+                    <div>
+                      <span>Room</span>
+                      <strong>
+                        {room?.roomNumber ? `Room ${room.roomNumber}` : "-"}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div className="tenant-profile-detail">
+                    <MapPin size={21} />
+                    <div>
+                      <span>Location</span>
+                      <strong>
+                        {[pg?.city, pg?.state].filter(Boolean).join(", ") || "-"}
+                      </strong>
+                    </div>
+                  </div>
                 </section>
-
-
-                <section className="tenant-section">
-
-                  <div className="tenant-section-header">
-
-                    <div>
-
-                      <h2>
-                        Account Information
-                      </h2>
-
-                      <p>
-                        Your registered details
-                      </p>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="tenant-profile-info-grid">
-
-                    <div>
-
-                      <span>
-                        Full Name
-                      </span>
-
-                      <strong>
-                        {userData?.name ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Mobile Number
-                      </span>
-
-                      <strong>
-                        {userData?.mobile ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        PG
-                      </span>
-
-                      <strong>
-                        {pg?.name ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Room
-                      </span>
-
-                      <strong>
-                        {room?.roomNumber
-                          ? `Room ${room.roomNumber}`
-                          : "-"}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-                </section>
-
-
-                <section className="tenant-section">
-
-                  <div className="tenant-section-header">
-
-                    <div>
-
-                      <h2>
-                        Emergency Contact
-                      </h2>
-
-                      <p>
-                        Contact information
-                        provided to your PG
-                      </p>
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="tenant-profile-info-grid">
-
-                    <div>
-
-                      <span>
-                        Name
-                      </span>
-
-                      <strong>
-                        {tenant?.emergencyContactName ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-
-                    <div>
-
-                      <span>
-                        Mobile
-                      </span>
-
-                      <strong>
-                        {tenant?.emergencyContactNumber ||
-                          "-"}
-                      </strong>
-
-                    </div>
-
-                  </div>
-
-                </section>
-
               </div>
+
+              {/* EMERGENCY CONTACT */}
+              <section className="tenant-profile-card tenant-profile-emergency">
+                <div className="tenant-profile-card-heading">
+                  <div className="tenant-profile-card-icon">
+                    <Phone size={25} />
+                  </div>
+                  <div>
+                    <h2>Emergency Contact</h2>
+                    <p>Contact information provided to your PG.</p>
+                  </div>
+                </div>
+
+                <div className="tenant-profile-emergency-grid">
+                  <div className="tenant-profile-detail">
+                    <UserCircle size={21} />
+                    <div>
+                      <span>Name</span>
+                      <strong>{tenant?.emergencyContactName || "-"}</strong>
+                    </div>
+                  </div>
+
+                  <div className="tenant-profile-detail">
+                    <Phone size={21} />
+                    <div>
+                      <span>Mobile Number</span>
+                      <strong>{tenant?.emergencyContactNumber || "-"}</strong>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
             )}
 
-        </section>
-
-      </main>
 
 
       {/* =========================================
           COMPLAINT MODAL
       ========================================= */}
 
-      {showComplaintModal && (
+          {showComplaintModal && (
 
-        <div
-          className="tenant-modal-overlay"
-          onMouseDown={(event) => {
+            <div
+              className="tenant-modal-overlay"
+              onMouseDown={(event) => {
 
-            if (
-              event.target ===
-              event.currentTarget
-            ) {
-              closeComplaintModal();
-            }
+                if (
+                  event.target ===
+                  event.currentTarget
+                ) {
+                  closeComplaintModal();
+                }
 
-          }}
-        >
+              }}
+            >
 
-          <div className="tenant-modal">
+              <div className="tenant-modal">
 
-            <div className="tenant-modal-header">
+                <div className="tenant-modal-header">
 
-              <div>
+                  <div>
 
-                <span>
-                  SUPPORT REQUEST
-                </span>
+                    <span>
+                      SUPPORT REQUEST
+                    </span>
 
-                <h2>
-                  New Complaint
-                </h2>
+                    <h2>
+                      New Complaint
+                    </h2>
+
+                  </div>
+
+
+                  <button
+                    onClick={
+                      closeComplaintModal
+                    }
+                    disabled={
+                      submittingComplaint
+                    }
+                  >
+                    <X size={18} />
+                  </button>
+
+                </div>
+
+
+                <form
+                  className="tenant-complaint-form"
+                  onSubmit={
+                    handleComplaintSubmit
+                  }
+                >
+
+                  <div className="tenant-form-group">
+
+                    <label>
+                      Title
+                    </label>
+
+                    <input
+                      type="text"
+                      name="title"
+                      value={
+                        complaintForm.title
+                      }
+                      onChange={
+                        handleComplaintChange
+                      }
+                      placeholder="Example: WiFi not working"
+                      required
+                    />
+
+                  </div>
+
+
+                  <div className="tenant-form-row">
+
+                    <div className="tenant-form-group">
+
+                      <label>
+                        Category
+                      </label>
+
+                      <select
+                        name="category"
+                        value={
+                          complaintForm.category
+                        }
+                        onChange={
+                          handleComplaintChange
+                        }
+                      >
+
+                        <option value="other">
+                          Other
+                        </option>
+
+                        <option value="maintenance">
+                          Maintenance
+                        </option>
+
+                        <option value="internet">
+                          Internet
+                        </option>
+
+                        <option value="electricity">
+                          Electricity
+                        </option>
+
+                        <option value="water">
+                          Water
+                        </option>
+
+                        <option value="food">
+                          Food
+                        </option>
+
+                        <option value="room">
+                          Room
+                        </option>
+
+                      </select>
+
+                    </div>
+
+
+                    <div className="tenant-form-group">
+
+                      <label>
+                        Priority
+                      </label>
+
+                      <select
+                        name="priority"
+                        value={
+                          complaintForm.priority
+                        }
+                        onChange={
+                          handleComplaintChange
+                        }
+                      >
+
+                        <option value="low">
+                          Low
+                        </option>
+
+                        <option value="medium">
+                          Medium
+                        </option>
+
+                        <option value="high">
+                          High
+                        </option>
+
+                        <option value="urgent">
+                          Urgent
+                        </option>
+
+                      </select>
+
+                    </div>
+
+                  </div>
+
+
+                  <div className="tenant-form-group">
+
+                    <label>
+                      Description
+                    </label>
+
+                    <textarea
+                      name="description"
+                      value={
+                        complaintForm.description
+                      }
+                      onChange={
+                        handleComplaintChange
+                      }
+                      placeholder="Describe the issue..."
+                      rows="5"
+                      required
+                    />
+
+                  </div>
+
+
+                  {complaintError && (
+
+                    <div className="tenant-form-error">
+
+                      <AlertCircle
+                        size={15}
+                      />
+
+                      {complaintError}
+
+                    </div>
+
+                  )}
+
+
+                  <div className="tenant-modal-actions">
+
+                    <button
+                      type="button"
+                      className="tenant-modal-cancel"
+                      onClick={
+                        closeComplaintModal
+                      }
+                      disabled={
+                        submittingComplaint
+                      }
+                    >
+                      Cancel
+                    </button>
+
+
+                    <button
+                      type="submit"
+                      className="tenant-modal-submit"
+                      disabled={
+                        submittingComplaint
+                      }
+                    >
+
+                      {submittingComplaint ? (
+                        <>
+                          <LoaderCircle
+                            size={16}
+                            className="tenant-spin"
+                          />
+
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          Submit Complaint
+                        </>
+                      )}
+
+                    </button>
+
+                  </div>
+
+                </form>
 
               </div>
-
-
-              <button
-                onClick={
-                  closeComplaintModal
-                }
-                disabled={
-                  submittingComplaint
-                }
-              >
-                <X size={18} />
-              </button>
 
             </div>
 
-
-            <form
-              className="tenant-complaint-form"
-              onSubmit={
-                handleComplaintSubmit
-              }
-            >
-
-              <div className="tenant-form-group">
-
-                <label>
-                  Title
-                </label>
-
-                <input
-                  type="text"
-                  name="title"
-                  value={
-                    complaintForm.title
-                  }
-                  onChange={
-                    handleComplaintChange
-                  }
-                  placeholder="Example: WiFi not working"
-                  required
-                />
-
-              </div>
-
-
-              <div className="tenant-form-row">
-
-                <div className="tenant-form-group">
-
-                  <label>
-                    Category
-                  </label>
-
-                  <select
-                    name="category"
-                    value={
-                      complaintForm.category
-                    }
-                    onChange={
-                      handleComplaintChange
-                    }
-                  >
-
-                    <option value="other">
-                      Other
-                    </option>
-
-                    <option value="maintenance">
-                      Maintenance
-                    </option>
-
-                    <option value="internet">
-                      Internet
-                    </option>
-
-                    <option value="electricity">
-                      Electricity
-                    </option>
-
-                    <option value="water">
-                      Water
-                    </option>
-
-                    <option value="food">
-                      Food
-                    </option>
-
-                    <option value="room">
-                      Room
-                    </option>
-
-                  </select>
-
-                </div>
-
-
-                <div className="tenant-form-group">
-
-                  <label>
-                    Priority
-                  </label>
-
-                  <select
-                    name="priority"
-                    value={
-                      complaintForm.priority
-                    }
-                    onChange={
-                      handleComplaintChange
-                    }
-                  >
-
-                    <option value="low">
-                      Low
-                    </option>
-
-                    <option value="medium">
-                      Medium
-                    </option>
-
-                    <option value="high">
-                      High
-                    </option>
-
-                    <option value="urgent">
-                      Urgent
-                    </option>
-
-                  </select>
-
-                </div>
-
-              </div>
-
-
-              <div className="tenant-form-group">
-
-                <label>
-                  Description
-                </label>
-
-                <textarea
-                  name="description"
-                  value={
-                    complaintForm.description
-                  }
-                  onChange={
-                    handleComplaintChange
-                  }
-                  placeholder="Describe the issue..."
-                  rows="5"
-                  required
-                />
-
-              </div>
-
-
-              {complaintError && (
-
-                <div className="tenant-form-error">
-
-                  <AlertCircle
-                    size={15}
-                  />
-
-                  {complaintError}
-
-                </div>
-
-              )}
-
-
-              <div className="tenant-modal-actions">
-
-                <button
-                  type="button"
-                  className="tenant-modal-cancel"
-                  onClick={
-                    closeComplaintModal
-                  }
-                  disabled={
-                    submittingComplaint
-                  }
-                >
-                  Cancel
-                </button>
-
-
-                <button
-                  type="submit"
-                  className="tenant-modal-submit"
-                  disabled={
-                    submittingComplaint
-                  }
-                >
-
-                  {submittingComplaint ? (
-                    <>
-                      <LoaderCircle
-                        size={16}
-                        className="tenant-spin"
-                      />
-
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      Submit Complaint
-                    </>
-                  )}
-
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
-        </div>
-
-      )}
-
-    </div>
-  );
+)}
+</section>
+</main>
+</div>
+);
 }
-
 
 export default TenantDashboard;

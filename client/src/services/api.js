@@ -488,6 +488,36 @@ export const getMyComplaintsApi = async (
   return handleResponse(response);
 };
 
+
+// GET OWNER COMPLAINTS
+
+export const getOwnerComplaintsApi = async (
+  pgId = "",
+  status = "",
+  category = "",
+  priority = ""
+) => {
+  const params = new URLSearchParams();
+
+  if (pgId) params.append("pgId", pgId);
+  if (status && status !== "all") params.append("status", status);
+  if (category && category !== "all") params.append("category", category);
+  if (priority && priority !== "all") params.append("priority", priority);
+
+  const query = params.toString();
+
+  const response = await fetch(
+    `${API_URL}/complaints/owner${query ? `?${query}` : ""}`,
+    {
+      method: "GET",
+      headers: getAuthHeaders(),
+    }
+  );
+
+  return handleResponse(response);
+};
+
+
 // GET COMPLAINT SUMMARY
 
 export const getComplaintSummaryApi = async (

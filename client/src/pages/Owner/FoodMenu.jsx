@@ -941,10 +941,7 @@ function FoodMenu() {
             MEALS
           </span>
 
-          <h1>
-            Food Menu
-          </h1>
-
+       
           <p>
             Manage your PG's
             weekly mess menu.

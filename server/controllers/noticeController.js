@@ -713,6 +713,7 @@ export const dismissMyNotice = async (req, res) => {
   }
 };
 
+
 // GET NOTICES FOR THE LOGGED-IN TENANT,
 // EXCLUDING NOTICES THEY HAVE DISMISSED
 export const getTenantNotices = async (req, res) => {
@@ -746,6 +747,7 @@ export const getTenantNotices = async (req, res) => {
       pgId: tenant.pgId,
       isPublished: true,
       publishDate: { $lte: now },
+      _id: { $nin: dismissedIds },
       $and: [
         {
           $or: [
@@ -754,12 +756,9 @@ export const getTenantNotices = async (req, res) => {
           ],
         },
         {
-          _id: { $nin: dismissedIds },
-        },
-        {
           $or: [
             { audience: "all" },
-            { audience: "tenant" },
+            { audience: "tenants" },
           ],
         },
       ],

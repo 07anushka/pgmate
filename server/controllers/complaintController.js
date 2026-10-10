@@ -48,6 +48,79 @@ export const getMyComplaints = async (req, res) => {
   }
 };
 
+// --------------------------------------------------
+// GET OWNER'S COMPLAINTS
+// --------------------------------------------------
+
+export const getOwnerComplaints = async (req, res) => {
+  try {
+    const ownerId = req.user.userId;
+    const { pgId, status, category, priority } = req.query;
+
+    const filter = { ownerId };
+
+    // Only allow filtering by a PG belonging to this owner
+    if (pgId) {
+      if (!mongoose.Types.ObjectId.isValid(pgId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid PG ID",
+        });
+      }
+
+      const pg = await PG.findOne({
+        _id: pgId,
+        ownerId,
+      });
+
+      if (!pg) {
+        return res.status(403).json({
+          success: false,
+          message: "You do not have access to this PG",
+        });
+      }
+
+      filter.pgId = pgId;
+    }
+
+    if (status && status !== "all") {
+      filter.status = status;
+    }
+
+    if (category && category !== "all") {
+      filter.category = category;
+    }
+
+    if (priority && priority !== "all") {
+      filter.priority = priority;
+    }
+
+    const complaints = await Complaint.find(filter)
+      .populate({
+        path: "tenantId",
+        populate: {
+          path: "userId",
+          select: "name mobile",
+        },
+      })
+      .populate("userId", "name mobile")
+      .populate("pgId", "name city")
+      .sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      success: true,
+      count: complaints.length,
+      complaints,
+    });
+  } catch (error) {
+    console.error("Get owner complaints error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch owner complaints",
+    });
+  }
+};
 
 // --------------------------------------------------
 // GET COMPLAINT SUMMARY

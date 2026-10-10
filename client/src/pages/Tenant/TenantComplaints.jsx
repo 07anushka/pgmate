@@ -411,7 +411,7 @@ const handleDelete = async (complaintId) => {
             <div className="tc-list-heading">
               <div>
                 <h2>Your Complaints</h2>
-                <p>Track updates from your PG management.</p>
+                
               </div>
 
               <div className="tc-heading-actions">
