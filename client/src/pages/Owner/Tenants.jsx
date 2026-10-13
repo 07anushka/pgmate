@@ -2,6 +2,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useRef,
 } from "react";
 
 import {
@@ -32,12 +33,20 @@ import {
   CircleDollarSign,
   Banknote,
   Globe2,
+  ScanLine,
+  PencilLine,
+  FileImage,
+  Upload,
+  Camera,
+  UserRound,
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import MessageCard from "../../components/MessageCard";
 
 import "./Tenants.css";
+
+import Tesseract from "tesseract.js";
 
 const API_URL = "http://localhost:5000/api";
 
@@ -49,6 +58,13 @@ const getInitialForm = () => ({
   name: "",
   mobile: "",
   password: "",
+  dateOfBirth: "",
+  gender: "",
+  documentType: "",
+  aadhaarNumber: "",
+  panNumber: "",
+  address: "",
+  tenantPhoto: "",
 
   pgId: "",
   roomId: "",
@@ -556,6 +572,16 @@ function Tenants() {
       getInitialForm()
     );
 
+  const [entryMode, setEntryMode] = useState("manual");
+  const [documentType, setDocumentType] = useState("aadhaar");
+  const [documentPreview, setDocumentPreview] = useState("");
+  const [scanningDocument, setScanningDocument] = useState(false);
+  const [scanMessage, setScanMessage] = useState("");
+  const [showQrScanner, setShowQrScanner] = useState(false);
+  const cameraStreamRef = useRef(null);
+  const cameraVideoRef = useRef(null);
+  const captureCanvasRef = useRef(null);
+
   /* ===================================================
      AVAILABLE BEDS
   =================================================== */
@@ -1008,6 +1034,15 @@ function Tenants() {
       );
 
       setTenantError("");
+      setEntryMode("manual");
+      setDocumentType("aadhaar");
+      setDocumentPreview("");
+      setFrontDocumentImage("");
+      setBackDocumentImage("");
+      setScanStep("front");
+      setDocumentVerified(false);
+      setScanMessage("");
+      setShowQrScanner(false);
       setShowTenantModal(
         true
       );
@@ -1044,6 +1079,18 @@ function Tenants() {
             ?.mobile || "",
 
         password: "",
+        dateOfBirth: tenant.dateOfBirth
+  ? new Date(tenant.dateOfBirth)
+      .toISOString()
+      .split("T")[0]
+  : "",
+
+gender: tenant.gender || "",
+documentType: tenant.documentType || "",
+        aadhaarNumber: tenant.aadhaarNumber || "",
+        panNumber: tenant.panNumber || "",
+        address: tenant.address || "",
+        tenantPhoto: tenant.tenantPhoto || "",
 
         pgId:
           tenantPGId,
@@ -1059,6 +1106,7 @@ function Tenants() {
             ?._id ||
           tenant.bedId ||
           "",
+
 
         joiningDate:
           tenant.joiningDate
@@ -1101,6 +1149,15 @@ function Tenants() {
       setAvailableBeds(
         []
       );
+      setEntryMode("manual");
+      setDocumentType(tenant.documentType || "aadhaar");
+      setDocumentPreview("");
+      setFrontDocumentImage("");
+      setBackDocumentImage("");
+      setScanStep("front");
+      setDocumentVerified(false);
+      setScanMessage("");
+      setShowQrScanner(false);
       setShowTenantModal(
         true
       );
@@ -1137,6 +1194,15 @@ function Tenants() {
       setAvailableBeds(
         []
       );
+      stopQrScanner();
+      setEntryMode("manual");
+      setDocumentType("aadhaar");
+      setDocumentPreview("");
+      setFrontDocumentImage("");
+      setBackDocumentImage("");
+      setScanStep("front");
+      setDocumentVerified(false);
+      setScanMessage("");
 
       setForm(
         getInitialForm()
@@ -1265,12 +1331,400 @@ function Tenants() {
   /* ===================================================
      CREATE / UPDATE TENANT
   =================================================== */
+  /* ===================================================
+     TWO-SIDED DOCUMENT CAMERA + OCR
+  =================================================== */
+
+  const [scanStep, setScanStep] = useState("front");
+  const [frontDocumentImage, setFrontDocumentImage] = useState("");
+  const [backDocumentImage, setBackDocumentImage] = useState("");
+  const [documentVerified, setDocumentVerified] = useState(false);
+
+  const stopQrScanner = async () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+      cameraStreamRef.current = null;
+    }
+    if (cameraVideoRef.current) cameraVideoRef.current.srcObject = null;
+    setShowQrScanner(false);
+  };
+
+  const startQrScanner = async () => {
+    setScanMessage("");
+    setDocumentPreview("");
+    setShowQrScanner(true);
+    setScanningDocument(true);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera access is unavailable. Use localhost or HTTPS and a supported browser.");
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+      });
+      cameraStreamRef.current = stream;
+      const attachVideo = () => {
+        if (!cameraVideoRef.current || !cameraStreamRef.current) return;
+        cameraVideoRef.current.srcObject = cameraStreamRef.current;
+        cameraVideoRef.current.play().catch((error) => console.warn("Camera playback:", error));
+      };
+      window.setTimeout(attachVideo, 100);
+      setScanMessage(`Position the ${scanStep} side inside the frame. Hold the card flat and steady, then capture when the printed text is sharp.`);
+    } catch (cameraError) {
+      console.error("Could not start document camera:", cameraError);
+      setShowQrScanner(false);
+      setScanMessage(
+        cameraError?.name === "NotAllowedError"
+          ? "Camera permission was denied. Allow camera access in your browser settings and try again."
+          : cameraError.message || "Could not open the camera. Check camera access and try again."
+      );
+    } finally {
+      setScanningDocument(false);
+    }
+  };
+
+  const captureAndReadDocument = async () => {
+    const video = cameraVideoRef.current;
+    const canvas = captureCanvasRef.current;
+
+    if (!video || !canvas || !video.videoWidth || !video.videoHeight) {
+      setScanMessage("Camera is not ready yet. Wait for the live preview and try again.");
+      return;
+    }
+
+    setScanningDocument(true);
+
+    try {
+      const maxWidth = 2400;
+      const scale = Math.min(1, maxWidth / video.videoWidth);
+      canvas.width = Math.round(video.videoWidth * scale);
+      canvas.height = Math.round(video.videoHeight * scale);
+
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL("image/jpeg", 0.98);
+
+      // Aadhaar may need both sides; PAN details are normally on the front.
+      if (documentType === "aadhaar" && scanStep === "front") {
+        setFrontDocumentImage(imageData);
+        setDocumentPreview(imageData);
+        setScanStep("back");
+        setScanMessage("Front captured. Turn the Aadhaar card over and capture the address side. Keep the card flat and text sharp.");
+        return;
+      }
+
+      if (documentType === "pan") {
+        setFrontDocumentImage(imageData);
+        setBackDocumentImage("");
+        setDocumentPreview(imageData);
+      } else {
+        setBackDocumentImage(imageData);
+        setDocumentPreview(imageData);
+      }
+
+      setScanMessage("Enhancing the captured image and reading printed text. Please wait...");
+
+      const prepareImage = async (src) => {
+        const image = new Image();
+        image.src = src;
+        await new Promise((resolve, reject) => {
+          image.onload = resolve;
+          image.onerror = reject;
+        });
+
+        // Upscale small images and increase contrast; never alter recognized characters.
+        const workCanvas = document.createElement("canvas");
+        const factor = Math.min(2, Math.max(1, 1800 / image.naturalWidth));
+        workCanvas.width = Math.round(image.naturalWidth * factor);
+        workCanvas.height = Math.round(image.naturalHeight * factor);
+
+        const ctx = workCanvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(image, 0, 0, workCanvas.width, workCanvas.height);
+
+        const pixels = ctx.getImageData(0, 0, workCanvas.width, workCanvas.height);
+        const data = pixels.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const gray = Math.round(
+            0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+          );
+          // Gentle contrast enhancement; retain colour-independent text visibility.
+          const enhanced = Math.max(0, Math.min(255, (gray - 128) * 1.18 + 128));
+          data[i] = enhanced;
+          data[i + 1] = enhanced;
+          data[i + 2] = enhanced;
+        }
+        ctx.putImageData(pixels, 0, 0);
+        return workCanvas;
+      };
+
+      const recognizeImage = async (src) => {
+        const workCanvas = await prepareImage(src);
+        const result = await Tesseract.recognize(workCanvas, "eng", {
+          logger: (info) => {
+            if (info.status === "recognizing text") {
+              setScanMessage(`Reading document text... ${Math.round((info.progress || 0) * 100)}%`);
+            }
+          },
+          tessedit_pageseg_mode: "6",
+          preserve_interword_spaces: "1",
+        });
+
+        return {
+          text: String(result?.data?.text || ""),
+          confidence: Number(result?.data?.confidence || 0),
+        };
+      };
+
+      const currentText = await recognizeImage(imageData);
+      let combinedText = currentText.text;
+      let averageConfidence = currentText.confidence;
+
+      if (documentType === "aadhaar") {
+        if (!frontDocumentImage) {
+          throw new Error("Capture the front side of Aadhaar first.");
+        }
+        const frontText = await recognizeImage(frontDocumentImage);
+        combinedText = `${frontText.text}\n${currentText.text}`;
+        averageConfidence = (frontText.confidence + currentText.confidence) / 2;
+      }
+
+      const text = combinedText.replace(/\r/g, "");
+      const lines = text
+        .split("\n")
+        .map((line) => line.replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+      const normalized = text.toUpperCase();
+
+      const cleanLine = (value) =>
+        String(value || "")
+          .replace(/^[\s:;|,.-]+|[\s:;|,.-]+$/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+
+      const ignoredLine =
+        /AADHAAR|AADHAR|GOVERNMENT OF INDIA|UNIQUE IDENTIFICATION|AUTHORITY|ENROLMENT|ENROLLMENT|DATE OF BIRTH|YEAR OF BIRTH|MALE|FEMALE|TRANSGENDER|ADDRESS|PERMANENT|PRESENT|INCOME TAX|DEPARTMENT|भारत सरकार|ಭಾರತ ಸರ್ಕಾರ|UIDAI|WWW\.|HELP LINE/i;
+
+      const isPlausibleName = (candidate) => {
+        const value = cleanLine(candidate);
+        const words = value.split(/\s+/).filter(Boolean);
+        return (
+          value.length >= 3 &&
+          value.length <= 60 &&
+          words.length >= 2 &&
+          /^[A-Za-z][A-Za-z .'-]+$/.test(value) &&
+          !ignoredLine.test(value) &&
+          !/\d/.test(value)
+        );
+      };
+
+      const validDateToInput = (candidate) => {
+        if (!candidate) return "";
+        let day, month, year;
+        let match = candidate.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+        if (match) [, day, month, year] = match;
+        else {
+          match = candidate.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})$/);
+          if (!match) return "";
+          [, year, month, day] = match;
+        }
+        const d = Number(day), m = Number(month), y = Number(year);
+        const date = new Date(y, m - 1, d);
+        if (
+          y < 1900 || y > new Date().getFullYear() ||
+          m < 1 || m > 12 || d < 1 || d > 31 ||
+          date.getFullYear() !== y || date.getMonth() !== m - 1 ||
+          date.getDate() !== d
+        ) return "";
+        return `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      };
+
+      // Aadhaar Verhoeff checksum: rejects many OCR digit substitutions.
+      const verhoeffValid = (number) => {
+        const d = [
+          [0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],
+          [2,3,4,0,1,7,8,9,5,6],[3,4,0,1,2,8,9,5,6,7],
+          [4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],
+          [6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],
+          [8,7,6,5,9,3,2,1,0,4],[9,8,7,6,5,4,3,2,1,0],
+        ];
+        const p = [
+          [0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],
+          [5,8,0,3,7,9,6,1,4,2],[8,9,1,6,0,4,3,5,2,7],
+          [9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],
+          [2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8],
+        ];
+        let checksum = 0;
+        const digits = String(number).split("").map(Number);
+        for (let i = 0; i < digits.length; i++) {
+          checksum = d[checksum][p[i % 8][digits[digits.length - 1 - i]]];
+        }
+        return checksum === 0;
+      };
+
+      let extractedAadhaar = "";
+      let extractedPan = "";
+      let extractedDob = "";
+      let extractedGender = "";
+      let extractedName = "";
+      let extractedAddress = "";
+
+      if (documentType === "aadhaar") {
+        const candidates = [...text.matchAll(/(?:^|\D)(\d{4}[\s-]?\d{4}[\s-]?\d{4})(?!\d)/g)]
+          .map((match) => match[1].replace(/\D/g, ""))
+          .filter((value) => value.length === 12 && verhoeffValid(value));
+        const uniqueCandidates = [...new Set(candidates)];
+        if (uniqueCandidates.length === 1) extractedAadhaar = uniqueCandidates[0];
+      } else {
+        const panCandidates = [...normalized.matchAll(/\b([A-Z]{5}[\s-]*[0-9]{4}[\s-]*[A-Z])\b/g)]
+          .map((match) => match[1].replace(/[\s-]/g, ""))
+          .filter((value) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value));
+        const uniquePanCandidates = [...new Set(panCandidates)];
+        if (uniquePanCandidates.length === 1) extractedPan = uniquePanCandidates[0];
+      }
+
+      const labelledDate = text.match(
+        /(?:DOB|D\.?\s*O\.?\s*B\.?|DATE\s+OF\s+BIRTH|BIRTH\s+DATE|जन्म\s*तिथि)\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})/i
+      );
+      if (labelledDate) extractedDob = validDateToInput(labelledDate[1]);
+
+      if (!extractedDob && documentType === "aadhaar") {
+        const yearOfBirth = text.match(/(?:YEAR OF BIRTH|YOB|जन्म वर्ष)\s*[:\-]?\s*(19\d{2}|20\d{2})/i);
+        if (yearOfBirth && Number(yearOfBirth[1]) <= new Date().getFullYear()) {
+          extractedDob = "";
+        }
+      }
+
+      if (/\b(transgender|trans gender)\b/i.test(text)) extractedGender = "Other";
+      else if (/\b(female|woman)\b/i.test(text) || /महिला|ಸ್ತ್ರೀ/i.test(text)) extractedGender = "Female";
+      else if (/\bmale\b/i.test(text) || /पुरुष|ಪುರುಷ/i.test(text)) extractedGender = "Male";
+
+      // Do not globally replace OCR lookalikes (e.g. | -> I): that corrupts names/numbers.
+      const panIndex = extractedPan ? normalized.indexOf(extractedPan) : -1;
+      const dobIndex = text.search(/DOB|D\.?\s*O\.?\s*B\.?|DATE\s+OF\s+BIRTH/i);
+      const nameCandidates = lines
+        .map((line, index) => ({ line: cleanLine(line), index }))
+        .filter(({ line }) => isPlausibleName(line) && !ignoredLine.test(line));
+
+      if (documentType === "pan") {
+        const beforePan = nameCandidates.filter(({ index }) => {
+          const before = lines.slice(0, index).join(" ").toUpperCase();
+          return panIndex >= 0 && before.length < panIndex;
+        });
+        extractedName = beforePan[0]?.line || "";
+      } else {
+        const beforeDob = nameCandidates.filter(({ index }) => dobIndex < 0 || index < lines.findIndex((line) => /DOB|D\.?\s*O\.?\s*B\.?|DATE OF BIRTH/i.test(line)));
+        extractedName = beforeDob[0]?.line || nameCandidates[0]?.line || "";
+      }
+
+      if (documentType === "aadhaar") {
+        const addressMatch = text.match(/(?:ADDRESS|PERMANENT\s+ADDRESS|पता|ವಿಳಾಸ)\s*[:\-]?\s*([\s\S]{10,500})/i);
+        if (addressMatch) {
+          extractedAddress = addressMatch[1]
+            .split(/\n\s*(?:DOB|D\.?\s*O\.?\s*B\.?|DATE OF BIRTH|NAME|GENDER|MALE|FEMALE)\b/i)[0]
+            .split(/\n/)
+            .map(cleanLine)
+            .filter((line) => line && !ignoredLine.test(line))
+            .join(", ")
+            .replace(/\s+/g, " ")
+            .slice(0, 300);
+        }
+      }
+
+      if (!text.trim()) throw new Error("No readable text was detected.");
+
+      // Only auto-fill a name when OCR has reasonable overall confidence.
+      // Every extracted field remains editable and must be visually reviewed.
+      const confidenceAllowsName = averageConfidence >= 65;
+      if (!confidenceAllowsName) extractedName = "";
+
+      const detectedFields = [];
+      if (extractedName) detectedFields.push("name");
+      if (extractedDob) detectedFields.push("date of birth");
+      if (extractedGender) detectedFields.push("gender");
+      if (extractedAddress) detectedFields.push("address");
+      if (extractedAadhaar) detectedFields.push("Aadhaar number");
+      if (extractedPan) detectedFields.push("PAN number");
+
+      setForm((previous) => ({
+        ...previous,
+        ...(extractedName ? { name: extractedName } : {}),
+        ...(extractedDob ? { dateOfBirth: extractedDob } : {}),
+        ...(extractedGender ? { gender: extractedGender } : {}),
+        ...(extractedAddress ? { address: extractedAddress } : {}),
+        ...(extractedAadhaar ? { aadhaarNumber: extractedAadhaar } : {}),
+        ...(extractedPan ? { panNumber: extractedPan } : {}),
+        documentType: documentType || "aadhaar",
+      }));
+
+      // This flag means OCR finished, not that the document was officially verified.
+      setDocumentVerified(true);
+      setEntryMode("scan");
+      await stopQrScanner();
+
+      const warnings = [];
+      if (averageConfidence < 65) warnings.push("OCR confidence is low, so the name was not auto-filled");
+      if (documentType === "aadhaar" && !extractedAadhaar) warnings.push("Aadhaar number was not confidently read or did not pass its checksum");
+      if (documentType === "pan" && !extractedPan) warnings.push("PAN number was not confidently read");
+      if (!extractedName) warnings.push("name needs manual entry");
+      setScanMessage(
+        `${detectedFields.length ? `Extracted: ${detectedFields.join(", ")}.` : "The document was captured, but no fields were confidently extracted."} ${warnings.join("; ")}. Check every field against the physical card before saving. OCR is not identity verification.`
+      );
+    } catch (ocrError) {
+      console.error("Document OCR error:", ocrError);
+      setScanMessage(ocrError?.message || "Could not read the document. Retake it in bright, even lighting with the whole card in focus.");
+    } finally {
+      setScanningDocument(false);
+    }
+  };
+
+  const resetDocumentScan = () => {
+    setFrontDocumentImage("");
+    setBackDocumentImage("");
+    setDocumentPreview("");
+    setScanStep("front");
+    setDocumentVerified(false);
+    setScanMessage("");
+  };
+
+  const handleDocumentScan = async (event) => {
+    event?.preventDefault?.();
+    if (!showQrScanner) await startQrScanner();
+  };
+
+  useEffect(() => {
+    return () => {
+      if (cameraStreamRef.current) {
+        cameraStreamRef.current.getTracks().forEach((track) => track.stop());
+        cameraStreamRef.current = null;
+      }
+    };
+  }, []);
 
   const handleSubmitTenant =
     async (event) => {
       event.preventDefault();
 
       setTenantError("");
+
+      if (
+        form.aadhaarNumber &&
+        !/^\d{12}$/.test(form.aadhaarNumber.replace(/\s/g, ""))
+      ) {
+        setTenantError("Aadhaar number must contain exactly 12 digits.");
+        return;
+      }
+
+      if (
+        form.panNumber &&
+        !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(form.panNumber.replace(/\s/g, "").toUpperCase())
+      ) {
+        setTenantError("PAN number must be in the format ABCDE1234F.");
+        return;
+      }
 
       if (
         !form.name.trim() ||
@@ -1311,6 +1765,13 @@ function Tenants() {
 
           mobile:
             form.mobile.trim(),
+            dateOfBirth: form.dateOfBirth || null,
+            gender: form.gender || "",
+            documentType: form.documentType || "",
+            aadhaarNumber: (form.aadhaarNumber || "").replace(/\s/g, ""),
+            panNumber: (form.panNumber || "").replace(/\s/g, "").toUpperCase(),
+            address: form.address || "",
+            tenantPhoto: form.tenantPhoto || "",
 
           pgId:
             form.pgId,
@@ -3371,6 +3832,107 @@ function Tenants() {
               }
             >
 
+<div className="tenant-entry-options">
+  <button
+    type="button"
+    className={`tenant-entry-option ${
+      entryMode === "scan" ? "active" : ""
+    }`}
+    onClick={() => { setEntryMode("scan"); if (!showQrScanner && !documentVerified) startQrScanner(); }}
+  >
+    <ScanLine size={22} />
+    <span>
+      <strong>Scan Document</strong>
+      <small>Auto-fill from Aadhaar or PAN Card</small>
+    </span>
+  </button>
+
+  <button
+    type="button"
+    className={`tenant-entry-option ${
+      entryMode === "manual" ? "active" : ""
+    }`}
+    onClick={() => setEntryMode("manual")}
+  >
+    <PencilLine size={22} />
+    <span>
+      <strong>Enter Details Manually</strong>
+      <small>Fill in the information yourself</small>
+    </span>
+  </button>
+</div>
+
+{entryMode === "scan" && (
+  <div className="tenant-document-panel">
+    <h3>{documentType === "pan" ? "Scan PAN Card" : "Scan Aadhaar Card"}</h3>
+    <p>For Aadhaar, capture the front and back separately. For PAN, capture the front side. Keep the entire card inside the guide and ensure the printed text is sharp. The camera cannot guarantee perfect OCR, so verify the extracted values below.</p>
+
+    <div className="tenant-document-types">
+      <button type="button" className={documentType === "aadhaar" ? "selected" : ""} onClick={() => { setDocumentType("aadhaar"); resetDocumentScan(); }}>Aadhaar Card</button>
+      <button type="button" className={documentType === "pan" ? "selected" : ""} onClick={() => { setDocumentType("pan"); resetDocumentScan(); }}>PAN Card</button>
+    </div>
+
+    <div className="tenant-scan-steps" aria-label="Document capture steps">
+      <div className={frontDocumentImage ? "complete" : scanStep === "front" ? "current" : ""}><span>{frontDocumentImage ? "✓" : "1"}</span><strong>Front side</strong></div>
+      {documentType === "aadhaar" ? (
+        <div className={backDocumentImage ? "complete" : scanStep === "back" ? "current" : ""}><span>{backDocumentImage ? "✓" : "2"}</span><strong>Back side</strong></div>
+      ) : (
+        <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "2"}</span><strong>Extract text</strong></div>
+      )}
+      <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "3"}</span><strong>Review details</strong></div>
+    </div>
+
+    {!showQrScanner && !documentVerified && (
+      <button type="button" className="tenant-document-upload tenant-camera-start" onClick={startQrScanner} disabled={scanningDocument}>
+        <Camera size={24} />
+        <strong>{frontDocumentImage && documentType === "aadhaar" ? "Continue to Back Side" : "Start Document Camera"}</strong>
+        <small>The live camera opens directly. No QR scan is required.</small>
+      </button>
+    )}
+
+    {showQrScanner && (
+      <div className="tenant-qr-camera-panel">
+        <div className="tenant-camera-step-label">{scanStep === "front" ? "STEP 1 · FRONT SIDE" : "STEP 2 · BACK SIDE"}</div>
+        <div className="tenant-camera-guide">
+          <video ref={cameraVideoRef} className="tenant-document-camera-video" autoPlay muted playsInline aria-label="Live identity document camera preview" />
+          <div className="tenant-card-alignment-frame" aria-hidden="true"><span>Align card inside this frame</span></div>
+        </div>
+        <canvas ref={captureCanvasRef} style={{ display: "none" }} />
+        <p>Move closer until the printed text is clear, avoid glare, and hold still. Green alignment guides are visual guidance only; this browser implementation does not reliably detect every card edge or guarantee autofocus.</p>
+        <div className="tenant-camera-actions">
+          <button type="button" className="tenant-camera-capture" onClick={captureAndReadDocument} disabled={scanningDocument}>
+            {scanningDocument ? <LoaderCircle size={15} /> : <Camera size={15} />}
+            {scanningDocument ? "Processing..." : scanStep === "front" ? "Capture Front Side" : "Capture Back Side"}
+          </button>
+          <button type="button" className="tenant-camera-cancel" onClick={stopQrScanner}><X size={15} /> Stop Camera</button>
+        </div>
+      </div>
+    )}
+
+    {(frontDocumentImage || backDocumentImage) && (
+      <div className="tenant-captured-sides">
+        {frontDocumentImage && <div><strong>Front captured</strong><img src={frontDocumentImage} alt="Captured document front side" /></div>}
+        {backDocumentImage && <div><strong>Back captured</strong><img src={backDocumentImage} alt="Captured document back side" /></div>}
+      </div>
+    )}
+
+    {documentVerified && (
+      <div className="tenant-document-verification">
+        <CheckCircle2 size={18} />
+        <div><strong>Document text extracted</strong><span>Review the values in Tenant Information below. OCR completion is not official identity verification.</span></div>
+      </div>
+    )}
+
+    {scanMessage && <p className="tenant-scan-message" role="status">{scanMessage}</p>}
+    <div className="tenant-scan-actions">
+      {documentVerified && <button type="button" onClick={resetDocumentScan}>Scan Again</button>}
+      {frontDocumentImage && !documentVerified && !showQrScanner && <button type="button" onClick={() => { setScanStep("back"); startQrScanner(); }}>Capture Back Side</button>}
+      {documentVerified && <button type="button" onClick={() => { setEntryMode("manual"); stopQrScanner(); }}>Continue to Tenant Form</button>}
+    </div>
+    <p className="tenant-scan-disclaimer">OCR can misread characters, especially in glare, low light, small text, or regional-language text. Do not save until the name, number, date of birth, gender, and address have been checked against the original document.</p>
+  </div>
+)}
+
               {/* BASIC */}
 
               <div className="tenant-form-section">
@@ -3457,6 +4019,78 @@ function Tenants() {
                     />
 
                   </div>
+
+                  <div className="tenant-form-group">
+  <label>Date of Birth</label>
+  <input
+    type="date"
+    name="dateOfBirth"
+    value={form.dateOfBirth || ""}
+    onChange={handleChange}
+  />
+</div>
+
+<div className="tenant-form-group">
+  <label>Gender</label>
+  <select
+    name="gender"
+    value={form.gender || ""}
+    onChange={handleChange}
+  >
+    <option value="">Select gender</option>
+    <option value="Male">Male</option>
+    <option value="Female">Female</option>
+    <option value="Other">Other</option>
+    <option value="Prefer not to say">Prefer not to say</option>
+  </select>
+</div>
+
+<div className="tenant-form-group">
+  <label>Aadhaar Number</label>
+  <input
+    type="text"
+    name="aadhaarNumber"
+    inputMode="numeric"
+    autoComplete="off"
+    maxLength={14}
+    value={form.aadhaarNumber || ""}
+    onChange={(event) => {
+      const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
+      setForm((previous) => ({ ...previous, aadhaarNumber: digits }));
+      setTenantError("");
+    }}
+    placeholder="12-digit Aadhaar number"
+  />
+</div>
+
+<div className="tenant-form-group">
+  <label>PAN Number</label>
+  <input
+    type="text"
+    name="panNumber"
+    autoComplete="off"
+    maxLength={10}
+    value={form.panNumber || ""}
+    onChange={(event) => {
+      const value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+      setForm((previous) => ({ ...previous, panNumber: value }));
+      setTenantError("");
+    }}
+    placeholder="ABCDE1234F"
+  />
+</div>
+
+<div className="tenant-form-group tenant-address-field">
+  <label>Address</label>
+  <textarea
+    name="address"
+    value={form.address || ""}
+    onChange={handleChange}
+    rows={2}
+    maxLength={300}
+    placeholder="Address as printed on the document"
+  />
+</div>
 
                   <div className="tenant-form-group">
 

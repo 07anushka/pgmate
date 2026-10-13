@@ -1,3 +1,4 @@
+
 import bcrypt from "bcryptjs";
 
 import User from "../models/User.js";
@@ -11,17 +12,6 @@ import RentRecord from "../models/RentRecord.js";
    RENT HELPERS
 ===================================================== */
 
-/*
-  Creates a rent record for one tenant/month/year.
-
-  Example:
-
-  tenant: Anushka
-  month: 10
-  year: 2026
-
-  → October 2026 rent record
-*/
 const createRentRecordForMonth = async ({
   tenant,
   month,
@@ -29,10 +19,7 @@ const createRentRecordForMonth = async ({
 }) => {
   const rentDueDay = Math.min(
     28,
-    Math.max(
-      1,
-      Number(tenant.rentDueDay || 5)
-    )
+    Math.max(1, Number(tenant.rentDueDay || 5))
   );
 
   const dueDate = new Date(
@@ -47,19 +34,11 @@ const createRentRecordForMonth = async ({
 
   const today = new Date();
 
-  const existingRecord =
-    await RentRecord.findOne({
-      tenantId: tenant._id,
-      month,
-      year,
-    });
-
-  /*
-    If the record already exists, update
-    pending → overdue when the deadline passes.
-
-    Never change a paid record back to overdue.
-  */
+  const existingRecord = await RentRecord.findOne({
+    tenantId: tenant._id,
+    month,
+    year,
+  });
 
   if (existingRecord) {
     if (
@@ -88,12 +67,9 @@ const createRentRecordForMonth = async ({
     month,
     year,
 
-    amount: Number(
-      tenant.monthlyRent || 0
-    ),
+    amount: Number(tenant.monthlyRent || 0),
 
     dueDate,
-
     status,
 
     paidDate: null,
@@ -104,264 +80,137 @@ const createRentRecordForMonth = async ({
   });
 };
 
-/*
-  Makes sure the current month's rent record
-  exists for every active tenant.
+const ensureCurrentRentRecords = async (tenants) => {
+  const now = new Date();
 
-  This is called when the owner loads tenants.
-*/
-const ensureCurrentRentRecords =
-  async (tenants) => {
-    const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentYear = now.getFullYear();
 
-    const currentMonth =
-      now.getMonth() + 1;
-
-    const currentYear =
-      now.getFullYear();
-
-    for (const tenant of tenants) {
-      if (
-        tenant.status !== "active"
-      ) {
-        continue;
-      }
-
-      const joiningDate =
-        new Date(
-          tenant.joiningDate
-        );
-
-      const joiningMonth =
-        joiningDate.getMonth() + 1;
-
-      const joiningYear =
-        joiningDate.getFullYear();
-
-      /*
-        Do not create rent records before
-        the tenant actually joined.
-      */
-
-      if (
-        currentYear < joiningYear ||
-        (
-          currentYear === joiningYear &&
-          currentMonth < joiningMonth
-        )
-      ) {
-        continue;
-      }
-
-      await createRentRecordForMonth({
-        tenant,
-        month: currentMonth,
-        year: currentYear,
-      });
-    }
-  };
-
-/*
-  Update the current month's rent record
-  after tenant details change.
-
-  Important:
-  - If the current month's record is unpaid,
-    amount and due date can be updated.
-  - If it is already paid, we preserve the
-    historical payment information.
-*/
-const syncCurrentRentRecord =
-  async (tenant) => {
-    if (
-      tenant.status !== "active"
-    ) {
-      return null;
+  for (const tenant of tenants) {
+    if (tenant.status !== "active") {
+      continue;
     }
 
-    const now = new Date();
+    const joiningDate = new Date(tenant.joiningDate);
 
-    const month =
-      now.getMonth() + 1;
-
-    const year =
-      now.getFullYear();
-
-    const joiningDate =
-      new Date(
-        tenant.joiningDate
-      );
-
-    const joiningMonth =
-      joiningDate.getMonth() + 1;
-
-    const joiningYear =
-      joiningDate.getFullYear();
-
-    /*
-      Don't create a record before
-      tenant's joining month.
-    */
+    const joiningMonth = joiningDate.getMonth() + 1;
+    const joiningYear = joiningDate.getFullYear();
 
     if (
-      year < joiningYear ||
-      (
-        year === joiningYear &&
-        month < joiningMonth
-      )
+      currentYear < joiningYear ||
+      (currentYear === joiningYear &&
+        currentMonth < joiningMonth)
     ) {
-      return null;
+      continue;
     }
 
-    const rentDueDay = Math.min(
-      28,
-      Math.max(
-        1,
-        Number(tenant.rentDueDay || 5)
-      )
-    );
+    await createRentRecordForMonth({
+      tenant,
+      month: currentMonth,
+      year: currentYear,
+    });
+  }
+};
 
-    const dueDate = new Date(
+const syncCurrentRentRecord = async (tenant) => {
+  if (tenant.status !== "active") {
+    return null;
+  }
+
+  const now = new Date();
+
+  const month = now.getMonth() + 1;
+  const year = now.getFullYear();
+
+  const joiningDate = new Date(tenant.joiningDate);
+
+  const joiningMonth = joiningDate.getMonth() + 1;
+  const joiningYear = joiningDate.getFullYear();
+
+  if (
+    year < joiningYear ||
+    (year === joiningYear && month < joiningMonth)
+  ) {
+    return null;
+  }
+
+  const rentDueDay = Math.min(
+    28,
+    Math.max(1, Number(tenant.rentDueDay || 5))
+  );
+
+  const dueDate = new Date(
+    year,
+    month - 1,
+    rentDueDay,
+    23,
+    59,
+    59,
+    999
+  );
+
+  let record = await RentRecord.findOne({
+    tenantId: tenant._id,
+    month,
+    year,
+  });
+
+  if (!record) {
+    return await createRentRecordForMonth({
+      tenant,
+      month,
       year,
-      month - 1,
-      rentDueDay,
-      23,
-      59,
-      59,
-      999
-    );
+    });
+  }
 
-    let record =
-      await RentRecord.findOne({
-        tenantId: tenant._id,
-        month,
-        year,
-      });
-
-    if (!record) {
-      return await createRentRecordForMonth({
-        tenant,
-        month,
-        year,
-      });
-    }
-
-    /*
-      Do not overwrite a paid historical
-      payment record.
-    */
-
-    if (
-      record.status === "paid"
-    ) {
-      return record;
-    }
-
-    record.amount = Number(
-      tenant.monthlyRent || 0
-    );
-
-    record.dueDate = dueDate;
-
-    if (
-      new Date() > dueDate
-    ) {
-      record.status = "overdue";
-    } else {
-      record.status = "pending";
-    }
-
-    await record.save();
-
+  if (record.status === "paid") {
     return record;
-  };
+  }
+
+  record.amount = Number(tenant.monthlyRent || 0);
+  record.dueDate = dueDate;
+
+  if (new Date() > dueDate) {
+    record.status = "overdue";
+  } else {
+    record.status = "pending";
+  }
+
+  await record.save();
+
+  return record;
+};
+
+/* =====================================================
+   DOCUMENT FIELD HELPERS
+===================================================== */
+
+const normalizeAadhaarNumber = (value) =>
+  String(value || "").replace(/\s/g, "");
+
+const normalizePanNumber = (value) =>
+  String(value || "").replace(/\s/g, "").toUpperCase();
+
+const normalizeAddress = (value) =>
+  String(value || "").trim().slice(0, 300);
 
 /* =====================================================
    GET MY TENANTS
    OWNER ONLY
 ===================================================== */
 
-export const getMyTenants = async (
-  req,
-  res
-) => {
+export const getMyTenants = async (req, res) => {
   try {
-    const ownerId =
-      req.user.userId;
+    const ownerId = req.user.userId;
 
-    const {
-      pgId,
-      status,
-    } = req.query;
+    const tenants = await Tenant.find({ ownerId })
+      .populate("userId", "name mobile role")
+      .populate("pgId", "name address city state contactNumber")
+      .populate("roomId", "roomNumber roomType monthlyRent floor")
+      .populate("bedId", "bedNumber status")
+      .sort({ createdAt: -1 });
 
-    const filter = {
-      ownerId,
-    };
-
-    if (pgId) {
-      filter.pgId = pgId;
-    }
-
-    if (
-      status &&
-      ["active", "vacated"].includes(
-        status
-      )
-    ) {
-      filter.status = status;
-    }
-
-    const tenants =
-      await Tenant.find(filter)
-        .populate(
-          "userId",
-          "name mobile role"
-        )
-        .populate(
-          "pgId",
-          "name address city state contactNumber"
-        )
-        .populate(
-          "roomId",
-          "roomNumber roomType monthlyRent floor"
-        )
-        .populate(
-          "bedId",
-          "bedNumber status"
-        )
-        .sort({
-          createdAt: -1,
-        });
-
-    /*
-      Create/update current month's rent
-      records for active tenants.
-
-      We use the populated tenant objects
-      only for display. The helper needs the
-      actual tenant IDs and fields, so fetch
-      the owner-scoped tenant documents too.
-    */
-
-    const tenantIds =
-      tenants.map(
-        (tenant) => tenant._id
-      );
-
-    if (tenantIds.length > 0) {
-      const rawTenants =
-        await Tenant.find({
-          _id: {
-            $in: tenantIds,
-          },
-          ownerId,
-          status: "active",
-        });
-
-      await ensureCurrentRentRecords(
-        rawTenants
-      );
-    }
+    await ensureCurrentRentRecords(tenants);
 
     return res.status(200).json({
       success: true,
@@ -369,15 +218,11 @@ export const getMyTenants = async (
       tenants,
     });
   } catch (error) {
-    console.error(
-      "Get owner tenants error:",
-      error
-    );
+    console.error("Get tenants error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch tenants.",
+      message: "Failed to fetch tenants.",
     });
   }
 };
@@ -387,56 +232,40 @@ export const getMyTenants = async (
    OWNER ONLY
 ===================================================== */
 
-export const getAvailableBeds = async (
-  req,
-  res
-) => {
+export const getAvailableBeds = async (req, res) => {
   try {
-    const ownerId =
-      req.user.userId;
+    const { pgId, roomId } = req.query;
 
-    const { pgId } = req.query;
-
-    if (!pgId) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "PG ID is required.",
-      });
-    }
-
-    /*
-      Verify that this PG belongs
-      to the logged-in owner.
-    */
-
-    const pg =
-      await PG.findOne({
-        _id: pgId,
-        ownerId,
-      });
+    const pg = await PG.findOne({
+      _id: pgId,
+      ownerId: req.user.userId,
+    });
 
     if (!pg) {
       return res.status(404).json({
         success: false,
-        message:
-          "PG not found or you do not have access to it.",
+        message: "PG not found or access denied.",
       });
     }
 
-    const beds =
-      await Bed.find({
-        pgId,
-        status: "available",
-      })
-        .populate(
-          "roomId",
-          "roomNumber roomType monthlyRent floor"
-        )
-        .sort({
-          roomId: 1,
-          bedNumber: 1,
-        });
+    const room = await Room.findOne({
+      _id: roomId,
+      pgId,
+      isActive: true,
+    });
+
+    if (!room) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found.",
+      });
+    }
+
+    const beds = await Bed.find({
+      pgId,
+      roomId,
+      status: "available",
+    }).sort({ bedNumber: 1 });
 
     return res.status(200).json({
       success: true,
@@ -444,15 +273,11 @@ export const getAvailableBeds = async (
       beds,
     });
   } catch (error) {
-    console.error(
-      "Get available beds error:",
-      error
-    );
+    console.error("Get available beds error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch available beds.",
+      message: "Failed to fetch available beds.",
     });
   }
 };
@@ -462,17 +287,13 @@ export const getAvailableBeds = async (
    OWNER ONLY
 ===================================================== */
 
-export const createTenant = async (
-  req,
-  res
-) => {
+export const createTenant = async (req, res) => {
   let createdUser = null;
   let createdTenant = null;
   let createdRentRecord = null;
 
   try {
-    const ownerId =
-      req.user.userId;
+    const ownerId = req.user.userId;
 
     const {
       name,
@@ -488,11 +309,16 @@ export const createTenant = async (
       emergencyContactName,
       emergencyContactNumber,
       notes,
-    } = req.body;
 
-    /* -----------------------------------------
-       VALIDATION
-    ----------------------------------------- */
+      // Document-scanning fields
+      dateOfBirth,
+      gender,
+      documentType,
+      tenantPhoto,
+      aadhaarNumber,
+      panNumber,
+      address,
+    } = req.body;
 
     if (
       !name ||
@@ -511,243 +337,168 @@ export const createTenant = async (
       });
     }
 
-    const dueDay = Number(
-      rentDueDay || 5
-    );
+    const dueDay = Number(rentDueDay || 5);
 
-    if (
-      dueDay < 1 ||
-      dueDay > 28
-    ) {
+    if (dueDay < 1 || dueDay > 28) {
       return res.status(400).json({
         success: false,
-        message:
-          "Rent due day must be between 1 and 28.",
+        message: "Rent due day must be between 1 and 28.",
       });
     }
 
     if (
+      !Number.isFinite(Number(monthlyRent)) ||
       Number(monthlyRent) < 0
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Monthly rent cannot be negative.",
+        message: "Monthly rent must be a valid non-negative amount.",
       });
     }
 
     if (
-      Number(securityDeposit || 0) <
-      0
+      !Number.isFinite(Number(securityDeposit || 0)) ||
+      Number(securityDeposit || 0) < 0
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Security deposit cannot be negative.",
+        message: "Security deposit cannot be negative.",
       });
     }
 
-    /* -----------------------------------------
-       NORMALIZE MOBILE
-    ----------------------------------------- */
+    const normalizedMobile = String(mobile).trim();
 
-    const normalizedMobile =
-      String(mobile).trim();
-
-    /* -----------------------------------------
-       CHECK MOBILE
-    ----------------------------------------- */
-
-    const existingUser =
-      await User.findOne({
-        mobile: normalizedMobile,
-      });
+    const existingUser = await User.findOne({
+      mobile: normalizedMobile,
+    });
 
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message:
-          "A user with this mobile number already exists.",
+        message: "A user with this mobile number already exists.",
       });
     }
 
-    /* -----------------------------------------
-       VERIFY PG OWNERSHIP
-    ----------------------------------------- */
-
-    const pg =
-      await PG.findOne({
-        _id: pgId,
-        ownerId,
-      });
+    const pg = await PG.findOne({
+      _id: pgId,
+      ownerId,
+    });
 
     if (!pg) {
       return res.status(404).json({
         success: false,
-        message:
-          "PG not found or you do not have access to it.",
+        message: "PG not found or you do not have access to it.",
       });
     }
 
-    /* -----------------------------------------
-       VERIFY ROOM
-    ----------------------------------------- */
-
-    const room =
-      await Room.findOne({
-        _id: roomId,
-        pgId,
-        isActive: true,
-      });
+    const room = await Room.findOne({
+      _id: roomId,
+      pgId,
+      isActive: true,
+    });
 
     if (!room) {
       return res.status(404).json({
         success: false,
-        message:
-          "Room not found or does not belong to this PG.",
+        message: "Room not found or does not belong to this PG.",
       });
     }
 
-    /* -----------------------------------------
-       VERIFY BED
-    ----------------------------------------- */
-
-    const bed =
-      await Bed.findOne({
-        _id: bedId,
-        pgId,
-        roomId,
-        status: "available",
-      });
+    const bed = await Bed.findOne({
+      _id: bedId,
+      pgId,
+      roomId,
+      status: "available",
+    });
 
     if (!bed) {
       return res.status(409).json({
         success: false,
-        message:
-          "Selected bed is not available.",
+        message: "Selected bed is not available.",
       });
     }
 
-    /* -----------------------------------------
-       HASH PASSWORD
-    ----------------------------------------- */
+    const hashedPassword = await bcrypt.hash(
+      String(password),
+      12
+    );
 
-    const hashedPassword =
-      await bcrypt.hash(
-        String(password),
-        12
-      );
+    createdUser = await User.create({
+      name: name.trim(),
+      mobile: normalizedMobile,
+      password: hashedPassword,
+      role: "tenant",
+      createdBy: ownerId,
+    });
 
-    /* -----------------------------------------
-       CREATE USER
-    ----------------------------------------- */
+    createdTenant = await Tenant.create({
+      userId: createdUser._id,
+      ownerId,
+      pgId,
+      roomId,
+      bedId,
 
-    createdUser =
-      await User.create({
-        name: name.trim(),
-        mobile: normalizedMobile,
-        password: hashedPassword,
-        role: "tenant",
-        createdBy: ownerId,
-      });
+      joiningDate: new Date(joiningDate),
+      rentDueDay: dueDay,
+      monthlyRent: Number(monthlyRent),
+      securityDeposit: Number(securityDeposit || 0),
 
-    /* -----------------------------------------
-       CREATE TENANT PROFILE
-    ----------------------------------------- */
+      emergencyContactName:
+        emergencyContactName?.trim() || "",
 
-    createdTenant =
-      await Tenant.create({
-        userId: createdUser._id,
-        ownerId,
+      emergencyContactNumber:
+        emergencyContactNumber?.trim() || "",
+
+      notes: notes?.trim() || "",
+
+      // Extracted identity details
+      dateOfBirth: dateOfBirth || null,
+      gender: gender || "",
+      documentType: documentType || "",
+      tenantPhoto: tenantPhoto || "",
+
+      aadhaarNumber: normalizeAadhaarNumber(aadhaarNumber),
+      panNumber: normalizePanNumber(panNumber),
+      address: normalizeAddress(address),
+
+      status: "active",
+    });
+
+    const tenantJoiningDate = new Date(
+      createdTenant.joiningDate
+    );
+
+    const joiningMonth = tenantJoiningDate.getMonth() + 1;
+    const joiningYear = tenantJoiningDate.getFullYear();
+
+    createdRentRecord = await createRentRecordForMonth({
+      tenant: createdTenant,
+      month: joiningMonth,
+      year: joiningYear,
+    });
+
+    const claimedBed = await Bed.findOneAndUpdate(
+      {
+        _id: bedId,
         pgId,
         roomId,
-        bedId,
-
-        joiningDate:
-          new Date(joiningDate),
-
-        rentDueDay: dueDay,
-
-        monthlyRent:
-          Number(monthlyRent),
-
-        securityDeposit:
-          Number(
-            securityDeposit || 0
-          ),
-
-        emergencyContactName:
-          emergencyContactName?.trim() ||
-          "",
-
-        emergencyContactNumber:
-          emergencyContactNumber?.trim() ||
-          "",
-
-        notes:
-          notes?.trim() || "",
-
-        status: "active",
-      });
-
-    /* -----------------------------------------
-       CREATE FIRST RENT RECORD
-    ----------------------------------------- */
-
-    const tenantJoiningDate =
-      new Date(
-        createdTenant.joiningDate
-      );
-
-    const joiningMonth =
-      tenantJoiningDate.getMonth() +
-      1;
-
-    const joiningYear =
-      tenantJoiningDate.getFullYear();
-
-    createdRentRecord =
-      await createRentRecordForMonth({
-        tenant: createdTenant,
-        month: joiningMonth,
-        year: joiningYear,
-      });
-
-    /* -----------------------------------------
-       CLAIM BED
-    ----------------------------------------- */
-
-    const claimedBed =
-      await Bed.findOneAndUpdate(
-        {
-          _id: bedId,
-          pgId,
-          roomId,
-          status: "available",
+        status: "available",
+      },
+      {
+        $set: {
+          status: "occupied",
+          tenantId: createdUser._id,
         },
-        {
-          $set: {
-            status: "occupied",
-            tenantId:
-              createdUser._id,
-          },
-        },
-        {
-          new: true,
-        }
-      );
-
-    /*
-      Another request may have claimed
-      the bed between our availability
-      check and update.
-    */
+      },
+      {
+        new: true,
+      }
+    );
 
     if (!claimedBed) {
       if (createdRentRecord) {
         await RentRecord.deleteOne({
-          _id:
-            createdRentRecord._id,
+          _id: createdRentRecord._id,
         });
       }
 
@@ -766,52 +517,24 @@ export const createTenant = async (
       });
     }
 
-    /* -----------------------------------------
-       RESPONSE
-    ----------------------------------------- */
-
-    const tenant =
-      await Tenant.findById(
-        createdTenant._id
-      )
-        .populate(
-          "userId",
-          "name mobile role"
-        )
-        .populate(
-          "pgId",
-          "name address city state contactNumber"
-        )
-        .populate(
-          "roomId",
-          "roomNumber roomType monthlyRent floor"
-        )
-        .populate(
-          "bedId",
-          "bedNumber status"
-        );
+    const tenant = await Tenant.findById(createdTenant._id)
+      .populate("userId", "name mobile role")
+      .populate("pgId", "name address city state contactNumber")
+      .populate("roomId", "roomNumber roomType monthlyRent floor")
+      .populate("bedId", "bedNumber status");
 
     return res.status(201).json({
       success: true,
-      message:
-        "Tenant created and bed assigned successfully.",
+      message: "Tenant created and bed assigned successfully.",
       tenant,
     });
   } catch (error) {
-    console.error(
-      "Create tenant error:",
-      error
-    );
-
-    /* -----------------------------------------
-       ROLLBACK
-    ----------------------------------------- */
+    console.error("Create tenant error:", error);
 
     try {
       if (createdRentRecord) {
         await RentRecord.deleteOne({
-          _id:
-            createdRentRecord._id,
+          _id: createdRentRecord._id,
         });
       }
 
@@ -827,26 +550,19 @@ export const createTenant = async (
         });
       }
     } catch (rollbackError) {
-      console.error(
-        "Tenant creation rollback error:",
-        rollbackError
-      );
+      console.error("Tenant creation rollback error:", rollbackError);
     }
 
-    if (
-      error?.code === 11000
-    ) {
+    if (error?.code === 11000) {
       return res.status(409).json({
         success: false,
-        message:
-          "A tenant or user with the provided details already exists.",
+        message: "A tenant or user with the provided details already exists.",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to create tenant.",
+      message: "Failed to create tenant.",
     });
   }
 };
@@ -856,28 +572,16 @@ export const createTenant = async (
    OWNER ONLY
 ===================================================== */
 
-export const vacateTenant = async (
-  req,
-  res
-) => {
+export const vacateTenant = async (req, res) => {
   try {
-    const ownerId =
-      req.user.userId;
+    const ownerId = req.user.userId;
+    const { tenantId } = req.params;
 
-    const {
-      tenantId,
-    } = req.params;
-
-    /* -----------------------------------------
-       FIND TENANT
-    ----------------------------------------- */
-
-    const tenant =
-      await Tenant.findOne({
-        _id: tenantId,
-        ownerId,
-        status: "active",
-      });
+    const tenant = await Tenant.findOne({
+      _id: tenantId,
+      ownerId,
+      status: "active",
+    });
 
     if (!tenant) {
       return res.status(404).json({
@@ -887,21 +591,10 @@ export const vacateTenant = async (
       });
     }
 
-    /* -----------------------------------------
-       UPDATE TENANT
-    ----------------------------------------- */
-
-    tenant.status =
-      "vacated";
-
-    tenant.vacatedAt =
-      new Date();
+    tenant.status = "vacated";
+    tenant.vacatedAt = new Date();
 
     await tenant.save();
-
-    /* -----------------------------------------
-       RELEASE BED
-    ----------------------------------------- */
 
     await Bed.findOneAndUpdate(
       {
@@ -916,31 +609,17 @@ export const vacateTenant = async (
       }
     );
 
-    /*
-      IMPORTANT:
-
-      We DO NOT delete rent records when a
-      tenant is vacated.
-
-      Old rent history must remain available
-      for month/year reports.
-    */
-
     return res.status(200).json({
       success: true,
-      message:
-        "Tenant vacated and bed released successfully.",
+      message: "Tenant vacated successfully.",
+      tenant,
     });
   } catch (error) {
-    console.error(
-      "Vacate tenant error:",
-      error
-    );
+    console.error("Vacate tenant error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to vacate tenant.",
+      message: "Failed to vacate tenant.",
     });
   }
 };
@@ -950,13 +629,9 @@ export const vacateTenant = async (
    OWNER ONLY
 ===================================================== */
 
-export const updateTenant = async (
-  req,
-  res
-) => {
+export const updateTenant = async (req, res) => {
   try {
-    const { tenantId } =
-      req.params;
+    const { tenantId } = req.params;
 
     const {
       name,
@@ -972,263 +647,210 @@ export const updateTenant = async (
       emergencyContactName,
       emergencyContactNumber,
       notes,
+
+      // Document-scanning fields
+      dateOfBirth,
+      gender,
+      documentType,
+      tenantPhoto,
+      aadhaarNumber,
+      panNumber,
+      address,
     } = req.body;
 
-    const tenant =
-      await Tenant.findOne({
-        _id: tenantId,
-        ownerId: req.user.userId,
-      });
+    const tenant = await Tenant.findOne({
+      _id: tenantId,
+      ownerId: req.user.userId,
+    });
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message:
-          "Tenant not found",
+        message: "Tenant not found",
+      });
+    }
+
+    if (!pgId || !roomId || !bedId) {
+      return res.status(400).json({
+        success: false,
+        message: "PG, room and bed are required",
+      });
+    }
+
+    const dueDay = Number(rentDueDay || 5);
+
+    if (dueDay < 1 || dueDay > 28) {
+      return res.status(400).json({
+        success: false,
+        message: "Rent due day must be between 1 and 28",
       });
     }
 
     if (
-      !pgId ||
-      !roomId ||
-      !bedId
+      !Number.isFinite(Number(monthlyRent || 0)) ||
+      Number(monthlyRent || 0) < 0
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "PG, room and bed are required",
-      });
-    }
-
-    const dueDay = Number(
-      rentDueDay || 5
-    );
-
-    if (
-      dueDay < 1 ||
-      dueDay > 28
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Rent due day must be between 1 and 28",
+        message: "Monthly rent cannot be negative",
       });
     }
 
     if (
-      Number(monthlyRent || 0) <
-      0
+      !Number.isFinite(Number(securityDeposit || 0)) ||
+      Number(securityDeposit || 0) < 0
     ) {
       return res.status(400).json({
         success: false,
-        message:
-          "Monthly rent cannot be negative",
+        message: "Security deposit cannot be negative",
       });
     }
 
-    if (
-      Number(securityDeposit || 0) <
-      0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Security deposit cannot be negative",
-      });
-    }
-
-    /* -----------------------------------------
-       VERIFY PG
-    ----------------------------------------- */
-
-    const pg =
-      await PG.findOne({
-        _id: pgId,
-        ownerId: req.user.userId,
-      });
+    const pg = await PG.findOne({
+      _id: pgId,
+      ownerId: req.user.userId,
+    });
 
     if (!pg) {
       return res.status(403).json({
         success: false,
-        message:
-          "You do not have access to this PG",
+        message: "You do not have access to this PG",
       });
     }
 
-    /* -----------------------------------------
-       VERIFY ROOM
-    ----------------------------------------- */
-
-    const room =
-      await Room.findOne({
-        _id: roomId,
-        pgId,
-        isActive: true,
-      });
+    const room = await Room.findOne({
+      _id: roomId,
+      pgId,
+      isActive: true,
+    });
 
     if (!room) {
       return res.status(400).json({
         success: false,
-        message:
-          "Selected room does not belong to the selected PG",
+        message: "Selected room does not belong to the selected PG",
       });
     }
 
-    /* -----------------------------------------
-       VERIFY BED
-    ----------------------------------------- */
-
-    const bed =
-      await Bed.findOne({
-        _id: bedId,
-        roomId,
-        pgId,
-      });
+    const bed = await Bed.findOne({
+      _id: bedId,
+      roomId,
+      pgId,
+    });
 
     if (!bed) {
       return res.status(400).json({
         success: false,
-        message:
-          "Selected bed does not belong to the selected room",
+        message: "Selected bed does not belong to the selected room",
       });
     }
 
-    /* -----------------------------------------
-       PREVENT BED DOUBLE ASSIGNMENT
-    ----------------------------------------- */
-
-    const existingTenant =
-      await Tenant.findOne({
-        _id: {
-          $ne: tenant._id,
-        },
-
-        bedId,
-
-        status: "active",
-      });
+    const existingTenant = await Tenant.findOne({
+      _id: { $ne: tenant._id },
+      bedId,
+      status: "active",
+    });
 
     if (existingTenant) {
       return res.status(400).json({
         success: false,
-        message:
-          "This bed is already occupied",
+        message: "This bed is already occupied",
       });
     }
 
-    /* -----------------------------------------
-       UPDATE USER
-    ----------------------------------------- */
-
-    const user =
-      await User.findById(
-        tenant.userId
-      );
+    const user = await User.findById(tenant.userId);
 
     if (!user) {
       return res.status(404).json({
         success: false,
-        message:
-          "Tenant user account not found",
+        message: "Tenant user account not found",
       });
     }
 
     if (name?.trim()) {
-      user.name =
-        name.trim();
+      user.name = name.trim();
     }
 
     if (mobile?.trim()) {
-      /*
-        Don't allow another account
-        to use the same mobile.
-      */
-
-      const mobileOwner =
-        await User.findOne({
-          mobile:
-            mobile.trim(),
-          _id: {
-            $ne: user._id,
-          },
-        });
+      const mobileOwner = await User.findOne({
+        mobile: mobile.trim(),
+        _id: { $ne: user._id },
+      });
 
       if (mobileOwner) {
         return res.status(409).json({
           success: false,
-          message:
-            "Another user already uses this mobile number.",
+          message: "Another user already uses this mobile number.",
         });
       }
 
-      user.mobile =
-        mobile.trim();
+      user.mobile = mobile.trim();
     }
 
     if (password?.trim()) {
-      user.password =
-        await bcrypt.hash(
-          password.trim(),
-          12
-        );
+      user.password = await bcrypt.hash(
+        password.trim(),
+        12
+      );
     }
 
     await user.save();
 
-    /* -----------------------------------------
-       REMEMBER OLD BED
-    ----------------------------------------- */
-
-    const oldBedId =
-      tenant.bedId;
-
-    /* -----------------------------------------
-       UPDATE TENANT
-    ----------------------------------------- */
+    const oldBedId = tenant.bedId;
 
     tenant.pgId = pgId;
     tenant.roomId = roomId;
     tenant.bedId = bedId;
 
     if (joiningDate) {
-      tenant.joiningDate =
-        new Date(joiningDate);
+      tenant.joiningDate = new Date(joiningDate);
     }
 
-    tenant.rentDueDay =
-      dueDay;
-
-    tenant.monthlyRent =
-      Number(
-        monthlyRent || 0
-      );
-
-    tenant.securityDeposit =
-      Number(
-        securityDeposit || 0
-      );
+    tenant.rentDueDay = dueDay;
+    tenant.monthlyRent = Number(monthlyRent || 0);
+    tenant.securityDeposit = Number(securityDeposit || 0);
 
     tenant.emergencyContactName =
-      emergencyContactName?.trim() ||
-      "";
+      emergencyContactName?.trim() || "";
 
     tenant.emergencyContactNumber =
-      emergencyContactNumber?.trim() ||
-      "";
+      emergencyContactNumber?.trim() || "";
 
-    tenant.notes =
-      notes?.trim() || "";
+    tenant.notes = notes?.trim() || "";
+
+    // Update document fields only when supplied.
+    if (dateOfBirth !== undefined) {
+      tenant.dateOfBirth = dateOfBirth || null;
+    }
+
+    if (gender !== undefined) {
+      tenant.gender = gender;
+    }
+
+    if (documentType !== undefined) {
+      tenant.documentType = documentType;
+    }
+
+    if (tenantPhoto !== undefined) {
+      tenant.tenantPhoto = tenantPhoto;
+    }
+
+    if (aadhaarNumber !== undefined) {
+      tenant.aadhaarNumber =
+        normalizeAadhaarNumber(aadhaarNumber);
+    }
+
+    if (panNumber !== undefined) {
+      tenant.panNumber =
+        normalizePanNumber(panNumber);
+    }
+
+    if (address !== undefined) {
+      tenant.address = normalizeAddress(address);
+    }
 
     await tenant.save();
 
-    /* -----------------------------------------
-       RELEASE OLD BED
-    ----------------------------------------- */
-
-    if (
-      String(oldBedId) !==
-      String(bed._id)
-    ) {
+    if (String(oldBedId) !== String(bed._id)) {
       await Bed.findOneAndUpdate(
         {
           _id: oldBedId,
@@ -1243,10 +865,6 @@ export const updateTenant = async (
       );
     }
 
-    /* -----------------------------------------
-       OCCUPY NEW BED
-    ----------------------------------------- */
-
     await Bed.findByIdAndUpdate(
       bed._id,
       {
@@ -1257,67 +875,33 @@ export const updateTenant = async (
       }
     );
 
-    /*
-      IMPORTANT:
+    await syncCurrentRentRecord(tenant);
 
-      Sync current month's rent record.
-
-      Old paid months are NOT changed.
-      Current unpaid month can reflect the
-      new rent amount / due date.
-    */
-
-    await syncCurrentRentRecord(
-      tenant
-    );
-
-    /* -----------------------------------------
-       RESPONSE
-    ----------------------------------------- */
-
-    const populatedTenant =
-      await Tenant.findById(
-        tenant._id
-      )
-        .populate(
-          "userId",
-          "name mobile"
-        )
-        .populate(
-          "ownerId",
-          "name mobile"
-        )
-        .populate("pgId")
-        .populate("roomId")
-        .populate("bedId");
+    const populatedTenant = await Tenant.findById(tenant._id)
+      .populate("userId", "name mobile")
+      .populate("ownerId", "name mobile")
+      .populate("pgId")
+      .populate("roomId")
+      .populate("bedId");
 
     return res.status(200).json({
       success: true,
-      message:
-        "Tenant updated successfully",
-      tenant:
-        populatedTenant,
+      message: "Tenant updated successfully",
+      tenant: populatedTenant,
     });
   } catch (error) {
-    console.error(
-      "Update tenant error:",
-      error
-    );
+    console.error("Update tenant error:", error);
 
-    if (
-      error?.code === 11000
-    ) {
+    if (error?.code === 11000) {
       return res.status(409).json({
         success: false,
-        message:
-          "A user or tenant with these details already exists.",
+        message: "A user or tenant with these details already exists.",
       });
     }
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to update tenant",
+      message: "Failed to update tenant",
     });
   }
 };
@@ -1327,31 +911,21 @@ export const updateTenant = async (
    OWNER ONLY
 ===================================================== */
 
-export const deleteTenant = async (
-  req,
-  res
-) => {
+export const deleteTenant = async (req, res) => {
   try {
-    const { tenantId } =
-      req.params;
+    const { tenantId } = req.params;
 
-    const tenant =
-      await Tenant.findOne({
-        _id: tenantId,
-        ownerId: req.user.userId,
-      });
+    const tenant = await Tenant.findOne({
+      _id: tenantId,
+      ownerId: req.user.userId,
+    });
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message:
-          "Tenant not found",
+        message: "Tenant not found",
       });
     }
-
-    /* -----------------------------------------
-       RELEASE CURRENT BED
-    ----------------------------------------- */
 
     await Bed.findOneAndUpdate(
       {
@@ -1366,32 +940,10 @@ export const deleteTenant = async (
       }
     );
 
-    /*
-      IMPORTANT:
-
-      Rent records are NOT deleted.
-
-      This preserves:
-
-      January 2026
-      February 2026
-      March 2026
-      etc.
-
-      even if the tenant account is deleted.
-    */
-
-    /* -----------------------------------------
-       DELETE TENANT PROFILE
-    ----------------------------------------- */
-
+    // Preserve rent records as financial history.
     await Tenant.deleteOne({
       _id: tenant._id,
     });
-
-    /* -----------------------------------------
-       DELETE LOGIN ACCOUNT
-    ----------------------------------------- */
 
     await User.deleteOne({
       _id: tenant.userId,
@@ -1399,68 +951,55 @@ export const deleteTenant = async (
 
     return res.status(200).json({
       success: true,
-      message:
-        "Tenant deleted successfully",
+      message: "Tenant deleted successfully.",
     });
   } catch (error) {
-    console.error(
-      "Delete tenant error:",
-      error
-    );
+    console.error("Delete tenant error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to delete tenant",
+      message: "Failed to delete tenant.",
     });
   }
 };
 
-
-/* =========================================
+/* =====================================================
    GET MY ROOMMATES
    TENANT ONLY
-========================================= */
+===================================================== */
 
 export const getMyRoommates = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    // Find the logged-in tenant's active assignment
-    const currentTenant = await Tenant.findOne({
+    const tenant = await Tenant.findOne({
       userId,
       status: "active",
     });
 
-    if (!currentTenant) {
+    if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: "Active tenant assignment not found.",
+        message: "Active tenant profile not found.",
       });
     }
 
-    // Find other active tenants in the same room
     const roommates = await Tenant.find({
-      _id: { $ne: currentTenant._id },
-      roomId: currentTenant.roomId,
-      pgId: currentTenant.pgId,
+      roomId: tenant.roomId,
       status: "active",
+      _id: { $ne: tenant._id },
     })
       .populate("userId", "name")
-      .populate("bedId", "bedNumber")
-      .select("userId bedId roomId pgId status")
-      .sort({ createdAt: 1 });
+      .populate("roomId", "roomNumber roomType floor")
+      .select("userId roomId tenantPhoto");
 
     return res.status(200).json({
       success: true,
-      roommates: roommates.map((item) => ({
-        _id: item._id,
-        name: item.userId?.name || "Tenant",
-        bedNumber: item.bedId?.bedNumber || "—",
-      })),
+      count: roommates.length,
+      roommates,
     });
   } catch (error) {
-    console.error("Get my roommates error:", error);
+    console.error("Get roommates error:", error);
 
     return res.status(500).json({
       success: false,

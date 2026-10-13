@@ -1,3 +1,4 @@
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -15,21 +16,19 @@ import complaintRoutes from "./routes/complaintRoutes.js";
 import foodMenuRoutes from "./routes/foodMenuRoutes.js";
 import noticeRoutes from "./routes/noticeRoutes.js";
 import tenantPortalRoutes from "./routes/tenantPortalRoutes.js";
+import aadhaarVerificationRoutes from "./routes/aadhaarVerificationRoutes.js";
 
 dotenv.config();
 
 const app = express();
 
-const PORT =
-  process.env.PORT || 5000;
-
+const PORT = process.env.PORT || 5000;
 
 /* =========================================
    DATABASE
 ========================================= */
 
 connectDB();
-
 
 /* =========================================
    MIDDLEWARE
@@ -41,69 +40,33 @@ app.use(
   })
 );
 
-app.use(
-  express.json()
-);
-
+app.use(express.json());
 
 /* =========================================
-   ROUTES
+   EXISTING ROUTES
+========================================= */
+
+app.use("/api/auth", authRoutes);
+app.use("/api/owners", ownerRoutes);
+app.use("/api/pg", pgRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api/tenants", tenantRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/expenses", expenseRoutes);
+app.use("/api/complaints", complaintRoutes);
+app.use("/api/food-menu", foodMenuRoutes);
+app.use("/api/notices", noticeRoutes);
+app.use("/api/tenant-portal", tenantPortalRoutes);
+
+/* =========================================
+   AADHAAR VERIFICATION ROUTE
 ========================================= */
 
 app.use(
-  "/api/auth",
-  authRoutes
+  "/api/aadhaar-verification",
+  aadhaarVerificationRoutes
 );
 
-app.use(
-  "/api/owners",
-  ownerRoutes
-);
-
-app.use(
-  "/api/pg",
-  pgRoutes
-);
-
-app.use(
-  "/api/rooms",
-  roomRoutes
-);
-
-app.use(
-  "/api/tenants",
-  tenantRoutes
-);
-
-app.use(
-  "/api/payments",
-  paymentRoutes
-);
-
-app.use(
-  "/api/expenses",
-  expenseRoutes
-);
-
-app.use(
-  "/api/complaints",
-  complaintRoutes
-);
-
-app.use(
-  "/api/food-menu",
-  foodMenuRoutes
-);
-
-app.use(
-  "/api/notices",
-  noticeRoutes
-);
-
-app.use(
-  "/api/tenant-portal",
-  tenantPortalRoutes
-);
 /* =========================================
    TEST ROUTE
 ========================================= */
@@ -111,21 +74,16 @@ app.use(
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message:
-      "PGmate server is running",
+    message: "PGmate server is running",
   });
 });
-
 
 /* =========================================
    START SERVER
 ========================================= */
 
-app.listen(
-  PORT,
-  () => {
-    console.log(
-      `PGmate server running on http://localhost:${PORT}`
-    );
-  }
-);
+app.listen(PORT, () => {
+  console.log(
+    `PGmate server running on http://localhost:${PORT}`
+  );
+});

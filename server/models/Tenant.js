@@ -1,3 +1,4 @@
+
 import mongoose from "mongoose";
 
 const tenantSchema = new mongoose.Schema(
@@ -38,14 +39,50 @@ const tenantSchema = new mongoose.Schema(
       required: true,
     },
 
-    /*
-      Rent is due on this day every month.
+    // Identity and document details
+    dateOfBirth: {
+      type: Date,
+      default: null,
+    },
 
-      Example:
-      5 = 5th of every month
-      10 = 10th of every month
-      28 = 28th of every month
-    */
+    gender: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    aadhaarNumber: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    panNumber: {
+      type: String,
+      default: "",
+      trim: true,
+      uppercase: true,
+    },
+
+    address: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 300,
+    },
+
+    documentType: {
+      type: String,
+      enum: ["", "aadhaar", "pan", "drivingLicence"],
+      default: "",
+    },
+
+    tenantPhoto: {
+      type: String,
+      default: "",
+    },
+
+    // Rent configuration
     rentDueDay: {
       type: Number,
       required: true,
@@ -66,6 +103,7 @@ const tenantSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // Emergency contact
     emergencyContactName: {
       type: String,
       default: "",
@@ -100,18 +138,15 @@ const tenantSchema = new mongoose.Schema(
   }
 );
 
+// Efficient owner and PG tenant queries
 tenantSchema.index({
   ownerId: 1,
   pgId: 1,
   status: 1,
 });
 
-/*
-  Only one ACTIVE tenant can occupy a bed.
-
-  Vacated tenants can keep the same bedId
-  in their historical record.
-*/
+// Only one active tenant per bed.
+// Vacated tenant history is preserved.
 tenantSchema.index(
   { bedId: 1 },
   {
@@ -122,9 +157,6 @@ tenantSchema.index(
   }
 );
 
-const Tenant = mongoose.model(
-  "Tenant",
-  tenantSchema
-);
+const Tenant = mongoose.model("Tenant", tenantSchema);
 
 export default Tenant;
