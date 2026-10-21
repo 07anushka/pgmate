@@ -1,3 +1,4 @@
+
 import express from "express";
 
 import {
@@ -10,7 +11,11 @@ import {
   getMyRoommates,
 } from "../controllers/tenantController.js";
 
-import { protect } from "../middleware/authMiddleware.js";
+import {
+  protect,
+  checkSubscription,
+} from "../middleware/authMiddleware.js";
+
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
@@ -19,11 +24,13 @@ const router = express.Router();
    TENANT ROUTES
 ========================================= */
 
-// Get roommates in the logged-in tenant's room
+// Get roommates in the logged-in tenant's room.
+// Block tenants if their PG owner's subscription has ended.
 router.get(
   "/my-roommates",
   protect,
   authorizeRoles("tenant"),
+  checkSubscription,
   getMyRoommates
 );
 
@@ -36,6 +43,7 @@ router.get(
   "/my",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   getMyTenants
 );
 
@@ -44,6 +52,7 @@ router.get(
   "/available-beds",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   getAvailableBeds
 );
 
@@ -52,6 +61,7 @@ router.post(
   "/",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   createTenant
 );
 
@@ -60,6 +70,7 @@ router.patch(
   "/:tenantId",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   updateTenant
 );
 
@@ -68,6 +79,7 @@ router.patch(
   "/:tenantId/vacate",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   vacateTenant
 );
 
@@ -76,6 +88,7 @@ router.delete(
   "/:tenantId",
   protect,
   authorizeRoles("owner"),
+  checkSubscription,
   deleteTenant
 );
 

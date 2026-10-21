@@ -1,55 +1,39 @@
+
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, isAuthenticated } = useAuth();
 
-  // User is not logged in
-  if (!isAuthenticated) {
+  // Not logged in
+  if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
 
-  // User does not have permission for this route
-  if (
-    allowedRoles &&
-    !allowedRoles.includes(user?.role)
-  ) {
-    // Super Admin
-    if (user?.role === "super_admin") {
-      return (
-        <Navigate
-          to="/super-admin"
-          replace
-        />
-      );
-    }
-
-    // Owner
-    if (user?.role === "owner") {
-      return (
-        <Navigate
-          to="/owner"
-          replace
-        />
-      );
-    }
-
-    // Tenant
-    if (user?.role === "tenant") {
-      return (
-        <Navigate
-          to="/tenant"
-          replace
-        />
-      );
-    }
-
-    // Unknown role
-    return <Navigate to="/login" replace />;
+  // Allow authenticated users when no roles are specified
+  if (!allowedRoles || allowedRoles.length === 0) {
+    return children;
   }
 
-  // User is authenticated and has permission
-  return children;
+  // User has the required role
+  if (allowedRoles.includes(user.role)) {
+    return children;
+  }
+
+  // Redirect to the correct dashboard for this user's role
+  switch (user.role) {
+    case "super_admin":
+      return <Navigate to="/super-admin" replace />;
+
+    case "owner":
+      return <Navigate to="/owner" replace />;
+
+    case "tenant":
+      return <Navigate to="/tenant" replace />;
+
+    default:
+      return <Navigate to="/login" replace />;
+  }
 }
 
 export default ProtectedRoute;

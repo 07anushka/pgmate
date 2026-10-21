@@ -3,24 +3,15 @@ import express from "express";
 import {
   createOwner,
   getOwners,
+  reactivateOwnerSubscription,
+  updateOwner,
+  deleteOwner,
 } from "../controllers/ownerController.js";
 
-import {
-  protect,
-} from "../middleware/authMiddleware.js";
-
-import {
-  authorizeRoles,
-} from "../middleware/roleMiddleware.js";
-
+import { protect } from "../middleware/authMiddleware.js";
+import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
-
-
-// =====================================================
-// CREATE OWNER
-// Only Super Admin can create owners
-// =====================================================
 
 router.post(
   "/",
@@ -29,12 +20,6 @@ router.post(
   createOwner
 );
 
-
-// =====================================================
-// GET ALL OWNERS
-// Only Super Admin can view owners
-// =====================================================
-
 router.get(
   "/",
   protect,
@@ -42,5 +27,25 @@ router.get(
   getOwners
 );
 
+router.patch(
+  "/:ownerId/reactivate",
+  protect,
+  authorizeRoles("super_admin"),
+  reactivateOwnerSubscription
+);
+
+router.patch(
+  "/:ownerId",
+  protect,
+  authorizeRoles("super_admin"),
+  updateOwner
+);
+
+router.delete(
+  "/:ownerId",
+  protect,
+  authorizeRoles("super_admin"),
+  deleteOwner
+);
 
 export default router;

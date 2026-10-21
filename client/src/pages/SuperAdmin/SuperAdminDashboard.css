@@ -621,3 +621,572 @@
   }
 
 }
+
+
+/* =========================================
+   SUBSCRIPTION DASHBOARD ADDITIONS
+   Append to the end of the existing CSS
+========================================= */
+
+/* Four subscription summary cards */
+.super-admin-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.warning-stat-icon {
+  background: #fff4d9;
+  color: #956400;
+}
+
+.expired-stat-icon {
+  background: #ffeded;
+  color: #b42318;
+}
+
+/* Header action buttons */
+.owner-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.refresh-owners-button {
+  width: 38px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #dce9e4;
+  border-radius: 10px;
+  color: #185441;
+  background: white;
+  cursor: pointer;
+}
+
+.refresh-owners-button:hover {
+  background: #edf8f3;
+}
+
+.refresh-owners-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Subscription table */
+.subscription-owner-table {
+  min-width: 1050px;
+}
+
+.subscription-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  padding: 6px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.status-active {
+  background: #e4f8ed;
+  color: #187044;
+}
+
+.status-expiring-soon {
+  background: #fff3d6;
+  color: #936000;
+}
+
+.status-expired {
+  background: #ffebeb;
+  color: #b42318;
+}
+
+.status-pending {
+  background: #eaf0ff;
+  color: #3158a5;
+}
+
+/* Reactivate subscription */
+.reactivate-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: #185441;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.reactivate-button:hover {
+  background: #123f33;
+}
+
+.reactivate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.no-action-label {
+  color: #91a19c;
+}
+
+/* Expiry warning */
+.subscription-alert {
+  margin-bottom: 24px;
+  padding: 18px 20px;
+  border: 1px solid #f0d89b;
+  border-radius: 14px;
+  background: #fffaf0;
+  color: #77520b;
+}
+
+.subscription-alert-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.subscription-alert-heading > svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.subscription-alert-heading strong {
+  font-size: 14px;
+}
+
+.subscription-alert-heading p {
+  margin: 5px 0 0;
+  color: #896d30;
+  font-size: 12px;
+}
+
+.subscription-alert ul {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+
+.subscription-alert li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid #f3e6c5;
+  font-size: 12px;
+}
+
+.subscription-alert li span:last-child {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Success and error messages */
+.dashboard-message {
+  margin-bottom: 16px;
+}
+
+.dashboard-success {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid #c7ead5;
+  border-radius: 9px;
+  background: #edfff3;
+  color: #17653b;
+  font-size: 13px;
+}
+
+.dashboard-success button {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* Subscription plan dropdown */
+.owner-form-group select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 13px;
+  border: 1px solid #d9e7e2;
+  border-radius: 10px;
+  outline: none;
+  background: white;
+  color: #183c32;
+  font-size: 13px;
+}
+
+.owner-form-group select:focus {
+  border-color: #6dc8b1;
+  box-shadow: 0 0 0 3px rgba(109, 200, 177, 0.14);
+}
+
+/* Responsive layout */
+@media (max-width: 1200px) {
+  .super-admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .super-admin-content {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (max-width: 650px) {
+  .super-admin-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-header-actions {
+    flex-wrap: wrap;
+  }
+
+  .subscription-alert li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+
+/* Super Admin: fit the dashboard within the visible screen */
+.super-admin-layout {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.super-admin-sidebar {
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.super-admin-main {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.super-admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Keep the owner table usable without stretching the whole page */
+.subscription-owner-table {
+  width: 100%;
+  min-width: 1050px;
+}
+
+.owners-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* Compact spacing on shorter screens */
+@media (max-height: 800px) {
+  .super-admin-content {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+
+  .super-admin-stats {
+    margin-bottom: 20px;
+  }
+
+  .subscription-alert {
+    margin-bottom: 20px;
+    padding: 14px 18px;
+  }
+}
+
+@media (max-width: 900px) {
+  .super-admin-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
+
+
+/* =========================================
+   SUPER ADMIN: FIT SCREEN
+========================================= */
+
+.super-admin-page {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.super-admin-sidebar {
+  height: 100vh;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.super-admin-main {
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.super-admin-topbar {
+  flex: 0 0 76px;
+}
+
+.super-admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* Keep the owner table inside its own scroll area */
+.owner-table-wrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.subscription-owner-table {
+  width: 100%;
+  min-width: 1050px;
+}
+
+/* =========================================
+   EDIT AND DELETE ACTIONS
+========================================= */
+
+.owner-row-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 190px;
+}
+
+.edit-owner-button,
+.delete-owner-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.edit-owner-button {
+  border: 1px solid #cfe5dc;
+  background: #edf8f3;
+  color: #185441;
+}
+
+.edit-owner-button:hover {
+  background: #dff2e9;
+  border-color: #a8d5c3;
+}
+
+.delete-owner-button {
+  border: 1px solid #f0cccc;
+  background: #fff1f1;
+  color: #b42318;
+}
+
+.delete-owner-button:hover {
+  background: #ffe1e1;
+  border-color: #e7aaaa;
+}
+
+.edit-owner-button:disabled,
+.delete-owner-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Make the edit form fit smaller screens */
+.subscription-owner-modal {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+/* Compact layout on shorter screens */
+@media (max-height: 800px) {
+  .super-admin-content {
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .super-admin-stat-card {
+    padding: 16px;
+  }
+
+  .super-admin-stats {
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .subscription-alert {
+    margin-bottom: 18px;
+    padding: 13px 17px;
+  }
+
+  .super-admin-section-header {
+    padding: 16px 20px;
+  }
+
+  .owner-table td {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+@media (max-width: 650px) {
+  .super-admin-page {
+    height: 100dvh;
+  }
+
+  .super-admin-sidebar {
+    height: 100dvh;
+  }
+
+  .super-admin-main {
+    height: 100dvh;
+  }
+
+  .super-admin-topbar {
+    flex-basis: 68px;
+  }
+
+  .super-admin-section-header {
+    flex-wrap: wrap;
+  }
+
+  .owner-header-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .owner-row-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+
+/* =========================================
+   EXPIRED OWNER ROW HIGHLIGHT
+========================================= */
+
+.owner-table tbody tr.owner-row-expired td {
+  background: #fff0f0;
+  color: #a61b1b;
+  border-top-color: #f3cccc;
+  border-bottom: 1px solid #f3cccc;
+}
+
+.owner-table tbody tr.owner-row-expired .owner-name,
+.owner-table tbody tr.owner-row-expired .owner-mobile {
+  color: #a61b1b;
+}
+
+.owner-table tbody tr.owner-row-expired:hover td {
+  background: #ffe5e5;
+}
+
+.owner-table .status-expired {
+  background: #c62828;
+  color: #ffffff;
+  border: 1px solid #b71c1c;
+}
+
+/* =========================================
+   COMPACT EDIT / DELETE ICONS
+========================================= */
+
+.owner-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: nowrap;
+  min-width: max-content;
+}
+
+.edit-owner-icon,
+.delete-owner-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.edit-owner-icon {
+  color: #185441;
+  background: #edf8f3;
+  border: 1px solid #cfe5dc;
+}
+
+.edit-owner-icon:hover {
+  background: #d9f0e5;
+}
+
+.delete-owner-icon {
+  color: #b42318;
+  background: #fff1f1;
+  border: 1px solid #f0cccc;
+}
+
+.delete-owner-icon:hover {
+  background: #ffe0e0;
+}
+
+.edit-owner-icon:disabled,
+.delete-owner-icon:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Keep Reactivate separate and visible */
+.owner-row-actions .reactivate-button {
+  flex-shrink: 0;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 8px;
+}
+
+/* Keep all action buttons on one line in the table */
+.subscription-owner-table th:last-child,
+.subscription-owner-table td:last-child {
+  white-space: nowrap;
+}
