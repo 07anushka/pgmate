@@ -77,7 +77,20 @@ const tenantSchema = new mongoose.Schema(
       default: "",
     },
 
+    // Legacy document image field.
+    // Retained for compatibility with existing tenant records.
     tenantPhoto: {
+      type: String,
+      default: "",
+    },
+
+    // Aadhaar front and back images
+    aadhaarFrontImage: {
+      type: String,
+      default: "",
+    },
+
+    aadhaarBackImage: {
       type: String,
       default: "",
     },
@@ -128,7 +141,7 @@ const tenantSchema = new mongoose.Schema(
       default: "active",
     },
 
-        vacatedAt: {
+    vacatedAt: {
       type: Date,
       default: null,
     },

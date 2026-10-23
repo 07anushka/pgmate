@@ -867,7 +867,6 @@ function OwnerDashboard() {
               }
               aria-label="Select property"
             >
-              <option value="all">All Properties (Combined)</option>
 
               {pgs.map((pg) => (
                 <option key={pg._id} value={pg._id}>

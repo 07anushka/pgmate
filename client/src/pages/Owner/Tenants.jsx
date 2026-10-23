@@ -733,7 +733,25 @@ function Tenants() {
         }
       );
 
-      const data = await response.json();
+      const responseText = await response.text();
+
+      let data;
+
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          response.status === 413
+            ? "The Aadhaar image is too large. Please scan again."
+            : `Server returned an invalid response (HTTP ${response.status}).`
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || data.error || `Request failed (${response.status}).`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch tenants.");
@@ -1029,13 +1047,12 @@ function Tenants() {
       setDocumentPreview("");
       setFrontDocumentImage("");
       setBackDocumentImage("");
+      setUploadedDocuments([]); // ADD THIS LINE
       setScanStep("front");
       setDocumentVerified(false);
       setScanMessage("");
       setShowQrScanner(false);
-      setShowTenantModal(
-        true
-      );
+      setShowTenantModal(true);
 
       if (validPGId) {
         await fetchAvailableBeds(
@@ -1144,13 +1161,12 @@ function Tenants() {
       setDocumentPreview("");
       setFrontDocumentImage("");
       setBackDocumentImage("");
+      setUploadedDocuments([]); // ADD THIS LINE
       setScanStep("front");
       setDocumentVerified(false);
       setScanMessage("");
       setShowQrScanner(false);
-      setShowTenantModal(
-        true
-      );
+      setShowTenantModal(true);
 
       if (tenantPGId) {
         await fetchAvailableBeds(
@@ -1190,10 +1206,10 @@ function Tenants() {
       setDocumentPreview("");
       setFrontDocumentImage("");
       setBackDocumentImage("");
+      setUploadedDocuments([]); // ADD THIS LINE
       setScanStep("front");
       setDocumentVerified(false);
       setScanMessage("");
-
       setForm(
         getInitialForm()
       );
@@ -1390,14 +1406,35 @@ function Tenants() {
     setScanningDocument(true);
 
     try {
-      const maxWidth = 2400;
-      const scale = Math.min(1, maxWidth / video.videoWidth);
+      const MAX_WIDTH = 1400;
+      const MAX_HEIGHT = 1400;
+
+      // Resize the captured camera frame before saving it.
+      const scale = Math.min(
+        1,
+        MAX_WIDTH / video.videoWidth,
+        MAX_HEIGHT / video.videoHeight
+      );
+
       canvas.width = Math.round(video.videoWidth * scale);
       canvas.height = Math.round(video.videoHeight * scale);
 
-      const context = canvas.getContext("2d", { willReadFrequently: true });
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL("image/jpeg", 0.98);
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        throw new Error("Could not process the Aadhaar image.");
+      }
+
+      context.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+
+      // Compress the image to reduce the request size.
+      const imageData = canvas.toDataURL("image/jpeg", 0.7);
 
       // Aadhaar may need both sides; PAN details are normally on the front.
       if (documentType === "aadhaar" && scanStep === "front") {
@@ -1474,14 +1511,18 @@ function Tenants() {
 
       const currentText = await recognizeImage(imageData);
       let combinedText = currentText.text;
+      let frontOcrText = "";
       let averageConfidence = currentText.confidence;
 
       if (documentType === "aadhaar") {
         if (!frontDocumentImage) {
           throw new Error("Capture the front side of Aadhaar first.");
         }
+
+        // Read the front side separately because DOB and gender are normally printed there.
         const frontText = await recognizeImage(frontDocumentImage);
-        combinedText = `${frontText.text}\n${currentText.text}`;
+        frontOcrText = frontText.text || "";
+        combinedText = `${frontOcrText}\n${currentText.text}`;
         averageConfidence = (frontText.confidence + currentText.confidence) / 2;
       }
 
@@ -1566,21 +1607,54 @@ function Tenants() {
       const uniqueCandidates = [...new Set(candidates)];
       if (uniqueCandidates.length === 1) extractedAadhaar = uniqueCandidates[0];
 
-      const labelledDate = text.match(
-        /(?:DOB|D\.?\s*O\.?\s*B\.?|DATE\s+OF\s+BIRTH|BIRTH\s+DATE|जन्म\s*तिथि)\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})/i
-      );
-      if (labelledDate) extractedDob = validDateToInput(labelledDate[1]);
+      // DOB and gender should be extracted from the Aadhaar front side, not the address side.
+      const identityText = (documentType === "aadhaar" ? frontOcrText : currentText.text)
+        .replace(/\r/g, "")
+        .replace(/[|]/g, "I");
 
-      if (!extractedDob && documentType === "aadhaar") {
-        const yearOfBirth = text.match(/(?:YEAR OF BIRTH|YOB|जन्म वर्ष)\s*[:\-]?\s*(19\d{2}|20\d{2})/i);
-        if (yearOfBirth && Number(yearOfBirth[1]) <= new Date().getFullYear()) {
-          extractedDob = "";
+      // First try a DOB-labelled date. Allow OCR spacing and punctuation variations.
+      const labelledDate = identityText.match(
+        /(?:D\s*O\s*B|DATE\s*OF\s*BIRTH|BIRTH\s*DATE|जन्म\s*तिथि)\s*[:;.,\-]?\s*(\d{1,2}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{4}|\d{4}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{1,2})/i
+      );
+
+      if (labelledDate) {
+        extractedDob = validDateToInput(labelledDate[1].replace(/\s/g, ""));
+      }
+
+      // Fallback: only use a full date printed on the front side; never use issue dates from the back.
+      if (!extractedDob) {
+        const allDates = [
+          ...identityText.matchAll(/\b(\d{1,2}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{4}|\d{4}\s*[\/.-]\s*\d{1,2}\s*[\/.-]\s*\d{1,2})\b/g),
+        ]
+          .map((match) => validDateToInput(match[1].replace(/\s/g, "")))
+          .filter(Boolean);
+
+        const uniqueDates = [...new Set(allDates)];
+        if (uniqueDates.length === 1) {
+          extractedDob = uniqueDates[0];
         }
       }
 
-      if (/\b(transgender|trans gender)\b/i.test(text)) extractedGender = "Other";
-      else if (/\b(female|woman)\b/i.test(text) || /महिला|ಸ್ತ್ರೀ/i.test(text)) extractedGender = "Female";
-      else if (/\bmale\b/i.test(text) || /पुरुष|ಪುರುಷ/i.test(text)) extractedGender = "Male";
+      const normalizedGenderText = identityText
+        .replace(/\bma1e\b/gi, "male")
+        .replace(/\bfema1e\b/gi, "female")
+        .replace(/\bfem[a4]le\b/gi, "female")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (/\b(transgender|trans\s+gender)\b/i.test(normalizedGenderText)) {
+        extractedGender = "Other";
+      } else if (
+        /\b(female|woman)\b/i.test(normalizedGenderText) ||
+        /महिला|ಸ್ತ್ರೀ/i.test(normalizedGenderText)
+      ) {
+        extractedGender = "Female";
+      } else if (
+        /\bmale\b/i.test(normalizedGenderText) ||
+        /पुरुष|ಪುರುಷ/i.test(normalizedGenderText)
+      ) {
+        extractedGender = "Male";
+      }
 
       // Only scan the fields requested: Aadhaar number, full DOB and gender.
       // Never infer or auto-fill tenant name, address, PAN, or other details.
@@ -1629,42 +1703,101 @@ function Tenants() {
     setScanMessage("");
   };
 
+
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
+
   const handleManualDocumentUpload = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setTenantError("Please upload an image document.");
-      event.target.value = "";
-      return;
-    }
+    const selectedFiles = Array.from(event.target.files || []);
+
+    // Allow selecting the same file again.
+    event.target.value = "";
+
+    if (selectedFiles.length === 0) return;
+
     try {
-      const image = new Image();
-      const source = URL.createObjectURL(file);
-      image.src = source;
-      await new Promise((resolve, reject) => {
-        image.onload = resolve;
-        image.onerror = reject;
-      });
-      const canvas = document.createElement("canvas");
-      const maxDimension = 2000;
-      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
-      canvas.width = Math.round(image.naturalWidth * scale);
-      canvas.height = Math.round(image.naturalHeight * scale);
-      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
-      const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.92);
-      URL.revokeObjectURL(source);
-      setDocumentPreview(jpegDataUrl);
+      const processedImages = [];
+
+      for (const file of selectedFiles) {
+        if (!file.type.startsWith("image/")) {
+          throw new Error("Please upload image files only.");
+        }
+
+        const image = new Image();
+        const source = URL.createObjectURL(file);
+
+        try {
+          image.src = source;
+
+          await new Promise((resolve, reject) => {
+            image.onload = resolve;
+            image.onerror = () =>
+              reject(new Error(`Could not read ${file.name}.`));
+          });
+
+          const canvas = document.createElement("canvas");
+          const maxDimension = 1400;
+
+          const scale = Math.min(
+            1,
+            maxDimension /
+            Math.max(image.naturalWidth, image.naturalHeight)
+          );
+
+          canvas.width = Math.round(image.naturalWidth * scale);
+          canvas.height = Math.round(image.naturalHeight * scale);
+
+          const context = canvas.getContext("2d");
+
+          if (!context) {
+            throw new Error("Could not process the image.");
+          }
+
+          context.drawImage(
+            image,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+          );
+
+          processedImages.push({
+            id: `${file.name}-${file.lastModified}-${file.size}-${Date.now()}-${processedImages.length}`,
+            name: file.name,
+            dataUrl: canvas.toDataURL("image/jpeg", 0.75),
+          });
+        } finally {
+          URL.revokeObjectURL(source);
+        }
+      }
+
+      setUploadedDocuments((previous) => [
+        ...previous,
+        ...processedImages,
+      ]);
+
+      // Keep the first uploaded image in the existing field
+      // for compatibility with the current tenant form.
       setForm((previous) => ({
         ...previous,
-        tenantPhoto: jpegDataUrl,
+        tenantPhoto:
+          previous.tenantPhoto || processedImages[0]?.dataUrl || "",
         documentType: "aadhaar",
       }));
+
+      setDocumentPreview(
+        processedImages[0]?.dataUrl || ""
+      );
+
       setTenantError("");
-      setScanMessage("Document image converted to JPEG and attached to this tenant. Review it before saving.");
+      setScanMessage(
+        `${processedImages.length} image(s) added successfully.`
+      );
     } catch (uploadError) {
-      setTenantError("Could not process that image. Please choose a JPG, PNG or other supported image.");
+      setTenantError(
+        uploadError.message ||
+        "Could not process the selected images."
+      );
     }
-    event.target.value = "";
   };
 
   const handleDocumentScan = async (event) => {
@@ -1748,7 +1881,10 @@ function Tenants() {
           aadhaarNumber: (form.aadhaarNumber || "").replace(/\s/g, ""),
           panNumber: (form.panNumber || "").replace(/\s/g, "").toUpperCase(),
           address: form.address || "",
-          tenantPhoto: form.tenantPhoto || "",
+          // Keep tenantPhoto for compatibility with existing screens.
+          tenantPhoto: form.tenantPhoto || frontDocumentImage || "",
+          aadhaarFrontImage: frontDocumentImage || "",
+          aadhaarBackImage: backDocumentImage || "",
 
           pgId:
             form.pgId,
@@ -1823,12 +1959,24 @@ function Tenants() {
             }
           );
 
-        const data =
-          await response.json();
+        const responseText = await response.text();
+
+        let data;
+
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          throw new Error(
+            response.status === 413
+              ? "Aadhaar image is too large. Please scan again."
+              : `Server returned an invalid response (HTTP ${response.status}).`
+          );
+        }
 
         if (!response.ok) {
           throw new Error(
             data.message ||
+            data.error ||
             "Failed to save tenant."
           );
         }
@@ -3780,12 +3928,37 @@ function Tenants() {
               </div>
 
               <div className="aadhaar-modal-body">
-                {aadhaarModalTenant.tenantPhoto ? (
-                  <img
-                    src={aadhaarModalTenant.tenantPhoto}
-                    alt={`Document uploaded for ${aadhaarModalTenant.name}`}
-                    className="aadhaar-modal-image"
-                  />
+                {(
+                  aadhaarModalTenant.aadhaarFrontImage ||
+                  aadhaarModalTenant.tenantPhoto ||
+                  aadhaarModalTenant.aadhaarBackImage
+                ) ? (
+                  <div className="aadhaar-modal-images">
+                    {(aadhaarModalTenant.aadhaarFrontImage || aadhaarModalTenant.tenantPhoto) && (
+                      <section className="aadhaar-modal-side">
+                        <h3>Front Side</h3>
+                        <img
+                          src={
+                            aadhaarModalTenant.aadhaarFrontImage ||
+                            aadhaarModalTenant.tenantPhoto
+                          }
+                          alt={`Aadhaar front side for ${aadhaarModalTenant.name}`}
+                          className="aadhaar-modal-image"
+                        />
+                      </section>
+                    )}
+
+                    {aadhaarModalTenant.aadhaarBackImage && (
+                      <section className="aadhaar-modal-side">
+                        <h3>Back Side</h3>
+                        <img
+                          src={aadhaarModalTenant.aadhaarBackImage}
+                          alt={`Aadhaar back side for ${aadhaarModalTenant.name}`}
+                          className="aadhaar-modal-image"
+                        />
+                      </section>
+                    )}
+                  </div>
                 ) : (
                   <div className="aadhaar-no-image">
                     <Eye size={28} />
@@ -3806,7 +3979,12 @@ function Tenants() {
                   type="button"
                   className="aadhaar-delete-button"
                   disabled={
-                    deletingAadhaar || !aadhaarModalTenant.tenantPhoto
+                    deletingAadhaar ||
+                    !(
+                      aadhaarModalTenant.tenantPhoto ||
+                      aadhaarModalTenant.aadhaarFrontImage ||
+                      aadhaarModalTenant.aadhaarBackImage
+                    )
                   }
                   onClick={async () => {
                     const confirmed = window.confirm(
@@ -3839,7 +4017,12 @@ function Tenants() {
 
                       setAadhaarModalTenant((previous) =>
                         previous
-                          ? { ...previous, tenantPhoto: "" }
+                          ? {
+                            ...previous,
+                            tenantPhoto: "",
+                            aadhaarFrontImage: "",
+                            aadhaarBackImage: "",
+                          }
                           : null
                       );
                     } catch (error) {
@@ -4031,22 +4214,59 @@ function Tenants() {
                 </div>
               )}
 
+
               {entryMode === "manual" && (
                 <div className="tenant-document-panel">
                   <h3>Add Document / Tenant Photo</h3>
-                  <p>Upload a document image manually. It will be converted to JPEG and attached to this tenant record.</p>
+
+                  <p>
+                    Upload one or more document images. You can add more images
+                    in later selections without replacing the previous ones.
+                  </p>
+
                   <label className="tenant-document-upload">
                     <Upload size={22} />
                     <strong>Add Document</strong>
-                    <small>Choose an image from your device</small>
+                    <small>Choose one or more images from your device</small>
+
                     <input
                       type="file"
                       accept="image/*"
+                      multiple
                       onChange={handleManualDocumentUpload}
                     />
                   </label>
-                  {documentPreview && (
-                    <img className="tenant-document-preview" src={documentPreview} alt="Tenant document preview" />
+
+                  {uploadedDocuments.length > 0 && (
+                    <div className="tenant-captured-sides">
+                      {uploadedDocuments.map((document, index) => (
+                        <div
+                          key={document.id}
+                          className="tenant-uploaded-image"
+                        >
+                          <strong>{document.name}</strong>
+
+                          <img
+                            src={document.dataUrl}
+                            alt={`Uploaded document ${index + 1}`}
+                            className="tenant-document-preview"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadedDocuments((previous) =>
+                                previous.filter(
+                                  (item) => item.id !== document.id
+                                )
+                              );
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}

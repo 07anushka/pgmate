@@ -12,11 +12,7 @@ import RentRecord from "../models/RentRecord.js";
    RENT HELPERS
 ===================================================== */
 
-const createRentRecordForMonth = async ({
-  tenant,
-  month,
-  year,
-}) => {
+const createRentRecordForMonth = async ({ tenant, month, year }) => {
   const rentDueDay = Math.min(
     28,
     Math.max(1, Number(tenant.rentDueDay || 5))
@@ -41,10 +37,7 @@ const createRentRecordForMonth = async ({
   });
 
   if (existingRecord) {
-    if (
-      existingRecord.status !== "paid" &&
-      today > existingRecord.dueDate
-    ) {
+    if (existingRecord.status !== "paid" && today > existingRecord.dueDate) {
       existingRecord.status = "overdue";
       await existingRecord.save();
     }
@@ -52,26 +45,16 @@ const createRentRecordForMonth = async ({
     return existingRecord;
   }
 
-  let status = "pending";
-
-  if (today > dueDate) {
-    status = "overdue";
-  }
-
   return await RentRecord.create({
     ownerId: tenant.ownerId,
     pgId: tenant.pgId,
     tenantId: tenant._id,
     userId: tenant.userId,
-
     month,
     year,
-
     amount: Number(tenant.monthlyRent || 0),
-
     dueDate,
-    status,
-
+    status: today > dueDate ? "overdue" : "pending",
     paidDate: null,
     paymentMethod: null,
     daysLate: 0,
@@ -82,24 +65,19 @@ const createRentRecordForMonth = async ({
 
 const ensureCurrentRentRecords = async (tenants) => {
   const now = new Date();
-
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
   for (const tenant of tenants) {
-    if (tenant.status !== "active") {
-      continue;
-    }
+    if (tenant.status !== "active") continue;
 
     const joiningDate = new Date(tenant.joiningDate);
-
     const joiningMonth = joiningDate.getMonth() + 1;
     const joiningYear = joiningDate.getFullYear();
 
     if (
       currentYear < joiningYear ||
-      (currentYear === joiningYear &&
-        currentMonth < joiningMonth)
+      (currentYear === joiningYear && currentMonth < joiningMonth)
     ) {
       continue;
     }
@@ -113,17 +91,13 @@ const ensureCurrentRentRecords = async (tenants) => {
 };
 
 const syncCurrentRentRecord = async (tenant) => {
-  if (tenant.status !== "active") {
-    return null;
-  }
+  if (tenant.status !== "active") return null;
 
   const now = new Date();
-
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
   const joiningDate = new Date(tenant.joiningDate);
-
   const joiningMonth = joiningDate.getMonth() + 1;
   const joiningYear = joiningDate.getFullYear();
 
@@ -163,18 +137,11 @@ const syncCurrentRentRecord = async (tenant) => {
     });
   }
 
-  if (record.status === "paid") {
-    return record;
-  }
+  if (record.status === "paid") return record;
 
   record.amount = Number(tenant.monthlyRent || 0);
   record.dueDate = dueDate;
-
-  if (new Date() > dueDate) {
-    record.status = "overdue";
-  } else {
-    record.status = "pending";
-  }
+  record.status = new Date() > dueDate ? "overdue" : "pending";
 
   await record.save();
 
@@ -194,7 +161,6 @@ const normalizePanNumber = (value) =>
 const normalizeAddress = (value) =>
   String(value || "").trim().slice(0, 300);
 
-
 /* =====================================================
    GET MY TENANTS
    OWNER ONLY — FILTER BY SELECTED PG
@@ -212,7 +178,6 @@ export const getMyTenants = async (req, res) => {
       });
     }
 
-    // Confirm that this PG belongs to the logged-in owner.
     const pg = await PG.findOne({
       _id: pgId,
       ownerId,
@@ -225,7 +190,6 @@ export const getMyTenants = async (req, res) => {
       });
     }
 
-    // Fetch tenants from this PG only.
     const tenants = await Tenant.find({
       ownerId,
       pgId,
@@ -253,13 +217,9 @@ export const getMyTenants = async (req, res) => {
   }
 };
 
-
-
 /* =====================================================
    GET AVAILABLE BEDS
    OWNER ONLY
-   - pgId only: return available beds with room details
-   - pgId + roomId: return beds for the selected room
 ===================================================== */
 
 export const getAvailableBeds = async (req, res) => {
@@ -274,7 +234,6 @@ export const getAvailableBeds = async (req, res) => {
       });
     }
 
-    // Confirm the PG belongs to the logged-in owner.
     const pg = await PG.findOne({
       _id: pgId,
       ownerId,
@@ -287,7 +246,6 @@ export const getAvailableBeds = async (req, res) => {
       });
     }
 
-    // Only validate a room when the caller selected one.
     if (roomId) {
       const room = await Room.findOne({
         _id: roomId,
@@ -303,16 +261,12 @@ export const getAvailableBeds = async (req, res) => {
       }
     }
 
-    // Initially fetch all available beds in this PG.
-    // After a room is selected, limit the results to that room.
     const bedQuery = {
       pgId,
       status: "available",
     };
 
-    if (roomId) {
-      bedQuery.roomId = roomId;
-    }
+    if (roomId) bedQuery.roomId = roomId;
 
     const beds = await Bed.find(bedQuery)
       .populate(
@@ -335,7 +289,6 @@ export const getAvailableBeds = async (req, res) => {
     });
   }
 };
-
 
 /* =====================================================
    CREATE TENANT
@@ -365,11 +318,12 @@ export const createTenant = async (req, res) => {
       emergencyContactNumber,
       notes,
 
-      // Document-scanning fields
       dateOfBirth,
       gender,
       documentType,
       tenantPhoto,
+      aadhaarFrontImage,
+      aadhaarBackImage,
       aadhaarNumber,
       panNumber,
       address,
@@ -473,10 +427,7 @@ export const createTenant = async (req, res) => {
       });
     }
 
-    const hashedPassword = await bcrypt.hash(
-      String(password),
-      12
-    );
+    const hashedPassword = await bcrypt.hash(String(password), 12);
 
     createdUser = await User.create({
       name: name.trim(),
@@ -498,19 +449,24 @@ export const createTenant = async (req, res) => {
       monthlyRent: Number(monthlyRent),
       securityDeposit: Number(securityDeposit || 0),
 
-      emergencyContactName:
-        emergencyContactName?.trim() || "",
-
-      emergencyContactNumber:
-        emergencyContactNumber?.trim() || "",
-
+      emergencyContactName: emergencyContactName?.trim() || "",
+      emergencyContactNumber: emergencyContactNumber?.trim() || "",
       notes: notes?.trim() || "",
 
-      // Extracted identity details
       dateOfBirth: dateOfBirth || null,
       gender: gender || "",
       documentType: documentType || "",
-      tenantPhoto: tenantPhoto || "",
+
+      // Preserve compatibility with existing screens.
+      tenantPhoto:
+        tenantPhoto || aadhaarFrontImage || "",
+
+      // Save both Aadhaar sides independently.
+      aadhaarFrontImage:
+        aadhaarFrontImage || tenantPhoto || "",
+
+      aadhaarBackImage:
+        aadhaarBackImage || "",
 
       aadhaarNumber: normalizeAadhaarNumber(aadhaarNumber),
       panNumber: normalizePanNumber(panNumber),
@@ -519,17 +475,12 @@ export const createTenant = async (req, res) => {
       status: "active",
     });
 
-    const tenantJoiningDate = new Date(
-      createdTenant.joiningDate
-    );
-
-    const joiningMonth = tenantJoiningDate.getMonth() + 1;
-    const joiningYear = tenantJoiningDate.getFullYear();
+    const tenantJoiningDate = new Date(createdTenant.joiningDate);
 
     createdRentRecord = await createRentRecordForMonth({
       tenant: createdTenant,
-      month: joiningMonth,
-      year: joiningYear,
+      month: tenantJoiningDate.getMonth() + 1,
+      year: tenantJoiningDate.getFullYear(),
     });
 
     const claimedBed = await Bed.findOneAndUpdate(
@@ -545,25 +496,16 @@ export const createTenant = async (req, res) => {
           tenantId: createdUser._id,
         },
       },
-      {
-        new: true,
-      }
+      { new: true }
     );
 
     if (!claimedBed) {
       if (createdRentRecord) {
-        await RentRecord.deleteOne({
-          _id: createdRentRecord._id,
-        });
+        await RentRecord.deleteOne({ _id: createdRentRecord._id });
       }
 
-      await Tenant.deleteOne({
-        _id: createdTenant._id,
-      });
-
-      await User.deleteOne({
-        _id: createdUser._id,
-      });
+      await Tenant.deleteOne({ _id: createdTenant._id });
+      await User.deleteOne({ _id: createdUser._id });
 
       return res.status(409).json({
         success: false,
@@ -588,39 +530,23 @@ export const createTenant = async (req, res) => {
 
     try {
       if (createdRentRecord) {
-        await RentRecord.deleteOne({
-          _id: createdRentRecord._id,
-        });
+        await RentRecord.deleteOne({ _id: createdRentRecord._id });
       }
 
       if (createdTenant) {
-        await Tenant.deleteOne({
-          _id: createdTenant._id,
-        });
+        await Tenant.deleteOne({ _id: createdTenant._id });
       }
 
       if (createdUser) {
-        await User.deleteOne({
-          _id: createdUser._id,
-        });
+        await User.deleteOne({ _id: createdUser._id });
       }
     } catch (rollbackError) {
       console.error("Tenant creation rollback error:", rollbackError);
     }
 
-
     if (error?.code === 11000) {
-      console.error("Duplicate key error:", {
-        collection: error?.message,
-        keyPattern: error?.keyPattern,
-        keyValue: error?.keyValue,
-        indexName: error?.message?.match(/index:\s+([^\s]+)/)?.[1],
-      });
-
       const field = Object.keys(error?.keyPattern || {})[0];
-      const value = field
-        ? error?.keyValue?.[field]
-        : undefined;
+      const value = field ? error?.keyValue?.[field] : undefined;
 
       return res.status(409).json({
         success: false,
@@ -630,7 +556,6 @@ export const createTenant = async (req, res) => {
       });
     }
 
-
     return res.status(500).json({
       success: false,
       message: "Failed to create tenant.",
@@ -638,9 +563,8 @@ export const createTenant = async (req, res) => {
   }
 };
 
-
 /* =====================================================
-   DELETE TENANT DOCUMENT IMAGE
+   DELETE TENANT DOCUMENT IMAGES
    OWNER ONLY
 ===================================================== */
 
@@ -658,7 +582,11 @@ export const deleteTenantAadhaarImage = async (req, res) => {
       });
     }
 
-    if (!tenant.tenantPhoto) {
+    if (
+      !tenant.tenantPhoto &&
+      !tenant.aadhaarFrontImage &&
+      !tenant.aadhaarBackImage
+    ) {
       return res.status(404).json({
         success: false,
         message: "No saved document image exists.",
@@ -666,22 +594,24 @@ export const deleteTenantAadhaarImage = async (req, res) => {
     }
 
     tenant.tenantPhoto = "";
+    tenant.aadhaarFrontImage = "";
+    tenant.aadhaarBackImage = "";
+
     await tenant.save();
 
     return res.status(200).json({
       success: true,
-      message: "Tenant document image deleted successfully.",
+      message: "Tenant Aadhaar images deleted successfully.",
     });
   } catch (error) {
     console.error("Delete tenant image error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to delete tenant document image.",
+      message: "Failed to delete tenant document images.",
     });
   }
 };
-
 
 /* =====================================================
    VACATE TENANT
@@ -709,8 +639,6 @@ export const vacateTenant = async (req, res) => {
 
     const vacatedAt = new Date();
 
-    // Ensure the current month's rent record exists before
-    // calculating the tenant's outstanding rent.
     await syncCurrentRentRecord(tenant);
 
     const currentMonth = vacatedAt.getMonth() + 1;
@@ -731,14 +659,12 @@ export const vacateTenant = async (req, res) => {
     const outstandingBalance = Number(
       unpaidRecords
         .reduce(
-          (total, record) =>
-            total + Number(record.amount || 0),
+          (total, record) => total + Number(record.amount || 0),
           0
         )
         .toFixed(2)
     );
 
-    // Persist debt and vacating status together on the tenant.
     tenant.status = "vacated";
     tenant.vacatedAt = vacatedAt;
     tenant.outstandingBalance = outstandingBalance;
@@ -747,7 +673,6 @@ export const vacateTenant = async (req, res) => {
 
     await tenant.save();
 
-    // Release the bed without deleting tenant or rent history.
     await Bed.findOneAndUpdate(
       {
         _id: tenant.bedId,
@@ -777,7 +702,6 @@ export const vacateTenant = async (req, res) => {
   }
 };
 
-
 /* =====================================================
    UPDATE TENANT
    OWNER ONLY
@@ -802,11 +726,12 @@ export const updateTenant = async (req, res) => {
       emergencyContactNumber,
       notes,
 
-      // Document-scanning fields
       dateOfBirth,
       gender,
       documentType,
       tenantPhoto,
+      aadhaarFrontImage,
+      aadhaarBackImage,
       aadhaarNumber,
       panNumber,
       address,
@@ -941,10 +866,7 @@ export const updateTenant = async (req, res) => {
     }
 
     if (password?.trim()) {
-      user.password = await bcrypt.hash(
-        password.trim(),
-        12
-      );
+      user.password = await bcrypt.hash(password.trim(), 12);
     }
 
     await user.save();
@@ -963,15 +885,10 @@ export const updateTenant = async (req, res) => {
     tenant.monthlyRent = Number(monthlyRent || 0);
     tenant.securityDeposit = Number(securityDeposit || 0);
 
-    tenant.emergencyContactName =
-      emergencyContactName?.trim() || "";
-
-    tenant.emergencyContactNumber =
-      emergencyContactNumber?.trim() || "";
-
+    tenant.emergencyContactName = emergencyContactName?.trim() || "";
+    tenant.emergencyContactNumber = emergencyContactNumber?.trim() || "";
     tenant.notes = notes?.trim() || "";
 
-    // Update document fields only when supplied.
     if (dateOfBirth !== undefined) {
       tenant.dateOfBirth = dateOfBirth || null;
     }
@@ -984,18 +901,31 @@ export const updateTenant = async (req, res) => {
       tenant.documentType = documentType;
     }
 
+    // Keep the old image field compatible with existing screens.
     if (tenantPhoto !== undefined) {
       tenant.tenantPhoto = tenantPhoto;
     }
 
+    // Update front and back independently.
+    if (aadhaarFrontImage !== undefined) {
+      tenant.aadhaarFrontImage = aadhaarFrontImage;
+
+      // Keep legacy image in sync with the front side.
+      if (aadhaarFrontImage) {
+        tenant.tenantPhoto = aadhaarFrontImage;
+      }
+    }
+
+    if (aadhaarBackImage !== undefined) {
+      tenant.aadhaarBackImage = aadhaarBackImage;
+    }
+
     if (aadhaarNumber !== undefined) {
-      tenant.aadhaarNumber =
-        normalizeAadhaarNumber(aadhaarNumber);
+      tenant.aadhaarNumber = normalizeAadhaarNumber(aadhaarNumber);
     }
 
     if (panNumber !== undefined) {
-      tenant.panNumber =
-        normalizePanNumber(panNumber);
+      tenant.panNumber = normalizePanNumber(panNumber);
     }
 
     if (address !== undefined) {
@@ -1095,13 +1025,8 @@ export const deleteTenant = async (req, res) => {
     );
 
     // Preserve rent records as financial history.
-    await Tenant.deleteOne({
-      _id: tenant._id,
-    });
-
-    await User.deleteOne({
-      _id: tenant.userId,
-    });
+    await Tenant.deleteOne({ _id: tenant._id });
+    await User.deleteOne({ _id: tenant.userId });
 
     return res.status(200).json({
       success: true,

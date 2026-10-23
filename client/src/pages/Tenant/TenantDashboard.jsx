@@ -2060,6 +2060,7 @@ function TenantDashboard() {
                 )}
               </section>
 
+
               {/* AADHAAR DOCUMENT */}
               <section className="tenant-profile-card">
                 <div className="tenant-profile-card-heading">
@@ -2069,147 +2070,71 @@ function TenantDashboard() {
 
                   <div>
                     <h2>Aadhaar Document</h2>
-                    <p>Document image currently stored in your tenant record.</p>
+                    <p>View both sides of your uploaded Aadhaar document.</p>
                   </div>
                 </div>
 
-                {tenant?.aadhaarCardImage || tenant?.tenantPhoto ? (
-                  <img
-                    className="tenant-aadhaar-image"
-                    src={tenant.aadhaarCardImage || tenant.tenantPhoto}
-                    alt="Uploaded tenant document"
-                    loading="lazy"
-                  />
-                ) : (
-                  <p className="tenant-profile-muted">
-                    No Aadhaar card uploaded.
-                  </p>
-                )}
+                {/*
+    Support the new front/back fields and older records
+    that saved only tenantPhoto.
+  */}
+
+                {(() => {
+                  const frontImage =
+                    tenant?.aadhaarFrontImage ||
+                    tenant?.aadhaarCardImage ||
+                    tenant?.tenantPhoto ||
+                    "";
+
+                  const backImage =
+                    tenant?.aadhaarBackImage || "";
+
+                  return (
+                    <div className="tenant-aadhaar-images">
+                      <div className="tenant-aadhaar-side">
+                        <h3>Front Side</h3>
+
+                        {frontImage ? (
+                          <img
+                            className="tenant-aadhaar-image"
+                            src={frontImage}
+                            alt="Front side of Aadhaar document"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <p className="tenant-profile-muted">
+                            Front side has not been uploaded.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="tenant-aadhaar-side">
+                        <h3>Back Side</h3>
+
+                        {backImage ? (
+                          <img
+                            className="tenant-aadhaar-image"
+                            src={backImage}
+                            alt="Back side of Aadhaar document"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <p className="tenant-profile-muted">
+                            Back side has not been uploaded yet.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <p className="tenant-profile-muted">
-                  This image is displayed from the existing tenant record. It does not
-                  indicate that Aadhaar has been officially verified.
+                  These images are displayed from your tenant record.
+                  Displaying them does not mean Aadhaar has been
+                  officially verified.
                 </p>
               </section>
 
-              {/* CHANGE PASSWORD */}
-              <section className="tenant-profile-card">
-                <div className="tenant-profile-card-heading">
-                  <div className="tenant-profile-card-icon">
-                    <LockKeyhole size={25} />
-                  </div>
-
-                  <div>
-                    <h2>Account Security</h2>
-                    <p>Change your login password securely.</p>
-                  </div>
-                </div>
-
-                {passwordMessage && (
-                  <div className="tenant-profile-success">
-                    {passwordMessage}
-                  </div>
-                )}
-
-                {passwordError && (
-                  <div className="tenant-form-error">
-                    <AlertCircle size={16} />
-                    {passwordError}
-                  </div>
-                )}
-
-                {!showPasswordForm ? (
-                  <button
-                    type="button"
-                    className="tenant-profile-action"
-                    onClick={() => {
-                      setPasswordError("");
-                      setPasswordMessage("");
-                      setShowPasswordForm(true);
-                    }}
-                  >
-                    <LockKeyhole size={16} />
-                    Change Password
-                  </button>
-                ) : (
-                  <form
-                    className="tenant-password-form"
-                    onSubmit={handlePasswordSave}
-                  >
-                    <div className="tenant-profile-edit-field">
-                      <label htmlFor="current-password">Current Password</label>
-                      <input
-                        id="current-password"
-                        name="currentPassword"
-                        type="password"
-                        autoComplete="current-password"
-                        value={passwordForm.currentPassword}
-                        onChange={handlePasswordInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="tenant-profile-edit-field">
-                      <label htmlFor="new-password">New Password</label>
-                      <input
-                        id="new-password"
-                        name="newPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={128}
-                        value={passwordForm.newPassword}
-                        onChange={handlePasswordInputChange}
-                        required
-                      />
-                      <small>Use at least 8 characters.</small>
-                    </div>
-
-                    <div className="tenant-profile-edit-field">
-                      <label htmlFor="confirm-password">Confirm New Password</label>
-                      <input
-                        id="confirm-password"
-                        name="confirmPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        minLength={8}
-                        maxLength={128}
-                        value={passwordForm.confirmPassword}
-                        onChange={handlePasswordInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="tenant-profile-edit-actions">
-                      <button
-                        type="button"
-                        className="tenant-profile-cancel"
-                        disabled={savingPassword}
-                        onClick={() => {
-                          setShowPasswordForm(false);
-                          setPasswordError("");
-                          setPasswordForm({
-                            currentPassword: "",
-                            newPassword: "",
-                            confirmPassword: "",
-                          });
-                        }}
-                      >
-                        Cancel
-                      </button>
-
-                      <button
-                        type="submit"
-                        className="tenant-profile-action"
-                        disabled={savingPassword}
-                      >
-                        <Save size={16} />
-                        {savingPassword ? "Updating..." : "Update Password"}
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </section>
 
             </div>
           )}
