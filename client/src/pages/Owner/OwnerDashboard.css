@@ -3785,3 +3785,69 @@
   .ov-attention-grid { grid-template-columns: 1fr; }
   .ov-payments-table { min-width: 590px; }
 }
+
+
+
+
+.owner-first-property {
+  min-height: 314px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-bottom: 1px solid #e1ece8;
+}
+
+.owner-first-property-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.owner-first-property-content > svg {
+  color: #63c6ad;
+  margin-bottom: 10px;
+}
+
+.owner-first-property-content h2 {
+  margin: 0;
+  color: #365b51;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.owner-first-property-content p {
+  margin: 10px 0 20px;
+  color: #899d96;
+  font-size: 14px;
+}
+
+.owner-first-property-content button {
+  min-height: 49px;
+  padding: 0 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: none;
+  border-radius: 13px;
+  background: #185441;
+  color: #ffffff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.owner-first-property-content button:hover {
+  background: #123f33;
+}
+
+.owner-first-property-content button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}

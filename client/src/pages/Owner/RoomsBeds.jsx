@@ -20,6 +20,7 @@ import {
   Loader2,
   MapPin,
   SlidersHorizontal,
+  UserPlus,
 } from "lucide-react";
 
 import {
@@ -57,8 +58,28 @@ const roomTypes = [
     label: "Four Sharing",
   },
   {
-    value: "other",
-    label: "Other",
+    value: "five_sharing",
+    label: "Five Sharing",
+  },
+  {
+    value: "six_sharing",
+    label: "Six Sharing",
+  },
+  {
+    value: "seven_sharing",
+    label: "Seven Sharing",
+  },
+  {
+    value: "eight_sharing",
+    label: "Eight Sharing",
+  },
+  {
+    value: "nine_sharing",
+    label: "Nine Sharing",
+  },
+  {
+    value: "ten_sharing",
+    label: "Ten Sharing",
   },
 ];
 
@@ -91,6 +112,26 @@ const floorOptions = [
     value: "fifth floor",
     label: "Fifth Floor",
   },
+  {
+    value: "sixth floor",
+    label: "Sixth Floor",
+  },
+  {
+    value: "seventh floor",
+    label: "Seventh Floor",
+  },
+  {
+    value: "eighth floor",
+    label: "Eighth Floor",
+  },
+  {
+    value: "ninth floor",
+    label: "Ninth Floor",
+  },
+  {
+    value: "tenth floor",
+    label: "Tenth Floor",
+  },
 ];
 
 // ======================================================
@@ -105,6 +146,10 @@ const bedStatuses = [
   {
     value: "occupied",
     label: "Occupied",
+  },
+  {
+    value: "booked",
+    label: "Booked",
   },
   {
     value: "maintenance",
@@ -136,6 +181,11 @@ const floorOrder = {
   "third floor": 3,
   "fourth floor": 4,
   "fifth floor": 5,
+  "sixth floor": 6,
+  "seventh floor": 7,
+  "eighth floor": 8,
+  "ninth floor": 9,
+  "tenth floor": 10,
 };
 
 // ======================================================
@@ -147,9 +197,84 @@ const normalizeFloor = (floor) => {
     return "other floor";
   }
 
-  return String(floor)
+  const value = String(floor)
     .trim()
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\\s+/g, " ");
+
+  // Keep common spellings of the same floor under one canonical value.
+  if (["ground", "ground floor", "0", "0th floor"].includes(value)) {
+    return "ground floor";
+  }
+
+  const floorAliases = {
+    "1": "first floor", "1st": "first floor", "1st floor": "first floor",
+    "floor 1": "first floor", "first": "first floor", "first floor": "first floor",
+    "2": "second floor", "2nd": "second floor", "2nd floor": "second floor",
+    "floor 2": "second floor", "second": "second floor", "second floor": "second floor",
+    "3": "third floor", "3rd": "third floor", "3rd floor": "third floor",
+    "floor 3": "third floor", "third": "third floor", "third floor": "third floor",
+    "4": "fourth floor", "4th": "fourth floor", "4th floor": "fourth floor",
+    "floor 4": "fourth floor", "fourth": "fourth floor", "fourth floor": "fourth floor",
+    "5": "fifth floor", "5th": "fifth floor", "5th floor": "fifth floor",
+    "floor 5": "fifth floor", "fifth": "fifth floor", "fifth floor": "fifth floor",
+    "6": "sixth floor", "6th": "sixth floor", "6th floor": "sixth floor",
+    "floor 6": "sixth floor", "sixth": "sixth floor", "sixth floor": "sixth floor",
+    "7": "seventh floor", "7th": "seventh floor", "7th floor": "seventh floor",
+    "floor 7": "seventh floor", "seventh": "seventh floor", "seventh floor": "seventh floor",
+    "8": "eighth floor", "8th": "eighth floor", "8th floor": "eighth floor",
+    "floor 8": "eighth floor", "eighth": "eighth floor", "eighth floor": "eighth floor",
+    "9": "ninth floor", "9th": "ninth floor", "9th floor": "ninth floor",
+    "floor 9": "ninth floor", "ninth": "ninth floor", "ninth floor": "ninth floor",
+    "nineth floor": "ninth floor",
+    "10": "tenth floor", "10th": "tenth floor", "10th floor": "tenth floor",
+    "floor 10": "tenth floor", "tenth": "tenth floor", "tenth floor": "tenth floor",
+  };
+
+  return floorAliases[value] || value;
+};
+
+const normalizeRoomType = (type) => {
+  if (!type) return "other";
+
+  const value = String(type)
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\\s+/g, " ");
+
+  const aliases = {
+    single: "single",
+    "single sharing": "single",
+    double: "double",
+    "double sharing": "double",
+    triple: "triple",
+    "triple sharing": "triple",
+    "four sharing": "four_sharing",
+    "4 sharing": "four_sharing",
+    "four": "four_sharing",
+    "five sharing": "five_sharing",
+    "5 sharing": "five_sharing",
+    "five": "five_sharing",
+    "six sharing": "six_sharing",
+    "6 sharing": "six_sharing",
+    "six": "six_sharing",
+    "seven sharing": "seven_sharing",
+    "7 sharing": "seven_sharing",
+    "seven": "seven_sharing",
+    "eight sharing": "eight_sharing",
+    "8 sharing": "eight_sharing",
+    "eight": "eight_sharing",
+    "nine sharing": "nine_sharing",
+    "9 sharing": "nine_sharing",
+    "nine": "nine_sharing",
+    "ten sharing": "ten_sharing",
+    "10 sharing": "ten_sharing",
+    "ten": "ten_sharing",
+  };
+
+  return aliases[value] || value.replace(/ /g, "_");
 };
 
 const getFloorLabel = (floor) => {
@@ -177,10 +302,11 @@ const getFloorLabel = (floor) => {
 };
 
 const getRoomTypeLabel = (type) => {
+  const normalizedType = normalizeRoomType(type);
+
   return (
     roomTypes.find(
-      (item) =>
-        item.value === type
+      (item) => item.value === normalizedType
     )?.label || "Other"
   );
 };
@@ -535,8 +661,7 @@ function RoomsBeds() {
               );
 
             const roomType =
-              room.roomType ||
-              "other";
+              normalizeRoomType(room.roomType);
 
             const beds =
               room.beds || [];
@@ -740,8 +865,9 @@ function RoomsBeds() {
         "",
 
       roomType:
-        room.roomType ||
-        "double",
+        normalizeRoomType(room.roomType) === "other"
+          ? "double"
+          : normalizeRoomType(room.roomType),
 
       monthlyRent:
         room.monthlyRent ?? "",
@@ -1712,6 +1838,13 @@ function RoomsBeds() {
                             "occupied"
                         ).length;
 
+                      const bookedBeds =
+                        beds.filter(
+                          (bed) =>
+                            bed.status ===
+                            "booked"
+                        ).length;
+
                       const maintenanceBeds =
                         beds.filter(
                           (bed) =>
@@ -1814,6 +1947,31 @@ function RoomsBeds() {
                             </button>
                           </div>
 
+                          {/* COLLAPSED OVERVIEW: BED ICONS + RENT */}
+                          {beds.length > 0 && (
+                            <div
+                              className="room-bed-overview"
+                              aria-label={`Bed availability in room ${room.roomNumber}`}
+                            >
+                              <div className="room-bed-icons">
+                                {beds.map((bed, index) => (
+                                  <BedDouble
+                                    key={bed._id || bed.bedNumber || index}
+                                    className={`room-bed-overview-icon room-bed-icon-${bed.status || "available"}`}
+                                    aria-label={`${bed.bedNumber || `Bed ${index + 1}`}: ${bed.status || "available"}`}
+                                    title={`${bed.bedNumber || `Bed ${index + 1}`} — ${bed.status || "available"}`}
+                                  />
+                                ))}
+                              </div>
+
+                              <strong className="room-bed-rent">
+                                ₹{Number(
+                                  room.bedRent ?? room.monthlyRent ?? 0
+                                ).toLocaleString("en-IN")}/bed
+                              </strong>
+                            </div>
+                          )}
+
                           {/* ROOM SUMMARY */}
 
                           <div className="room-bed-summary">
@@ -1837,6 +1995,12 @@ function RoomsBeds() {
                                 occupiedBeds
                               }{" "}
                               Occupied
+                            </span>
+
+                            <span className="bed-summary-booked">
+                              <CheckCircle2 size={11} />
+                              {bookedBeds}{" "}
+                              Booked
                             </span>
 
                             <span className="bed-summary-maintenance">
@@ -1890,48 +2054,36 @@ function RoomsBeds() {
                                               : bed.status ===
                                                 "occupied"
                                               ? "Currently occupied"
+                                              : bed.status === "booked"
+                                              ? "Reserved for tenant"
                                               : "Under maintenance"}
                                           </span>
                                         </div>
 
-                                        <select
-                                          value={
-                                            bed.status
-                                          }
-                                          onChange={(
-                                            event
-                                          ) =>
-                                            handleBedStatus(
-                                              bed._id,
-                                              event
-                                                .target
-                                                .value
-                                            )
-                                          }
-                                          disabled={
-                                            updatingBedId ===
-                                            bed._id
-                                          }
-                                        >
-                                          {bedStatuses.map(
-                                            (
-                                              status
-                                            ) => (
+                                        <div className="bed-item-actions">
+                                          <select
+                                            value={bed.status || "available"}
+                                            onChange={(event) =>
+                                              handleBedStatus(
+                                                bed._id,
+                                                event.target.value
+                                              )
+                                            }
+                                            disabled={updatingBedId === bed._id}
+                                            aria-label={`Change status for ${bed.bedNumber}`}
+                                          >
+                                            {bedStatuses.map((status) => (
                                               <option
-                                                key={
-                                                  status.value
-                                                }
-                                                value={
-                                                  status.value
-                                                }
+                                                key={status.value}
+                                                value={status.value}
                                               >
-                                                {
-                                                  status.label
-                                                }
+                                                {status.label}
                                               </option>
-                                            )
-                                          )}
-                                        </select>
+                                            ))}
+                                          </select>
+
+                                          
+                                        </div>
                                       </div>
                                     )
                                   )}

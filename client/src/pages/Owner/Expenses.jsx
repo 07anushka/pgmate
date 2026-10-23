@@ -1,3 +1,4 @@
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Plus,
@@ -5,30 +6,22 @@ import {
   Receipt,
   Trash2,
   X,
-  Wallet,
   CalendarDays,
   TrendingDown,
-  TrendingUp,
   PieChart,
   Loader2,
-  Tag,
   CreditCard,
   Building2,
   Pencil,
   ChevronDown,
-  ChevronUp,
   RefreshCw,
-  ArrowDownRight,
-  ArrowUpRight,
   Droplet,
   Zap,
   Utensils,
   Wrench,
   Wifi,
   Users,
-  Package,
   Sparkles,
-  LayoutGrid,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -199,16 +192,12 @@ function Expenses() {
 
   const [collapsedMonths, setCollapsedMonths] = useState({});
 
-  /*
-   * IMPORTANT:
-   * Other owner pages use "pgmate_active_pg".
-   * Read the same key here so Expenses uses the PG
-   * that the owner has already selected.
-   */
+  // Read the PG selected by the owner.
   const selectedPgId = useCallback(() => {
     return localStorage.getItem("pgmate_active_pg") || "";
   }, []);
 
+  // Load expenses and summary.
   const loadExpenses = useCallback(async () => {
     try {
       setLoading(true);
@@ -244,6 +233,7 @@ function Expenses() {
     loadExpenses();
   }, [loadExpenses]);
 
+  // Available months for the filter.
   const availableMonths = useMemo(() => {
     const keys = new Set(
       expenses.map((item) => getMonthKey(item.expenseDate))
@@ -256,15 +246,26 @@ function Expenses() {
       .sort((a, b) => b.localeCompare(a));
   }, [expenses]);
 
+  /*
+   * DYNAMIC MONTHLY SPENDING TREND
+   *
+   * If a month is selected, show all 12 months
+   * from that selected year.
+   *
+   * If All Months is selected, show the current year.
+   */
   const monthlyTrend = useMemo(() => {
     const selectedYear =
-      Number(monthFilter.slice(0, 4)) || new Date().getFullYear();
+      monthFilter === "all"
+        ? new Date().getFullYear()
+        : Number(monthFilter.slice(0, 4));
 
     return Array.from({ length: 12 }, (_, monthIndex) => {
       const total = expenses.reduce((sum, expense) => {
         const date = new Date(expense.expenseDate);
 
         if (
+          !Number.isNaN(date.getTime()) &&
           date.getFullYear() === selectedYear &&
           date.getMonth() === monthIndex
         ) {
@@ -275,28 +276,51 @@ function Expenses() {
       }, 0);
 
       return {
-        month: new Date(selectedYear, monthIndex, 1).toLocaleDateString(
-          "en-IN",
-          { month: "short" }
-        ),
+        month: new Date(
+          selectedYear,
+          monthIndex,
+          1
+        ).toLocaleDateString("en-IN", { month: "short" }),
         total,
       };
     });
   }, [expenses, monthFilter]);
 
+  /*
+   * DYNAMIC CATEGORY BREAKDOWN
+   *
+   * IMPORTANT CHANGE:
+   * Calculate category totals using only the selected month.
+   * When monthFilter is "all", use all expenses.
+   */
   const categoryBreakdown = useMemo(() => {
-    const totals = categories.map((category) => ({
-      ...category,
-      total: expenses.reduce(
-        (sum, expense) =>
-          expense.category === category.value
-            ? sum + Number(expense.amount || 0)
-            : sum,
-        0
-      ),
-    }));
+    const monthExpenses = expenses.filter((expense) => {
+      if (monthFilter === "all") {
+        return true;
+      }
 
-    const grandTotal = totals.reduce((sum, item) => sum + item.total, 0);
+      return getMonthKey(expense.expenseDate) === monthFilter;
+    });
+
+    const totals = categories.map((category) => {
+      const total = monthExpenses.reduce((sum, expense) => {
+        if (expense.category !== category.value) {
+          return sum;
+        }
+
+        return sum + Number(expense.amount || 0);
+      }, 0);
+
+      return {
+        ...category,
+        total,
+      };
+    });
+
+    const grandTotal = totals.reduce(
+      (sum, item) => sum + item.total,
+      0
+    );
 
     return totals
       .map((item) => ({
@@ -307,28 +331,36 @@ function Expenses() {
       }))
       .filter((item) => item.total > 0)
       .sort((a, b) => b.total - a.total);
-  }, [expenses]);
+  }, [expenses, monthFilter]);
 
-  const categoryGradient = useMemo(() => {
-    const total = categoryBreakdown.reduce(
+  // Total represented by the selected month's pie chart.
+  const categoryChartTotal = useMemo(() => {
+    return categoryBreakdown.reduce(
       (sum, item) => sum + item.total,
       0
     );
+  }, [categoryBreakdown]);
 
-    if (!total) return "#e7f1ed";
+  // Dynamically generate pie chart colors and segment sizes.
+  const categoryGradient = useMemo(() => {
+    if (!categoryChartTotal) {
+      return "#e7f1ed";
+    }
 
     let current = 0;
 
     const segments = categoryBreakdown.map((item) => {
       const start = current;
-      current += (item.total / total) * 100;
+
+      current += (item.total / categoryChartTotal) * 100;
 
       return `${item.color} ${start}% ${current}%`;
     });
 
     return `conic-gradient(${segments.join(", ")})`;
-  }, [categoryBreakdown]);
+  }, [categoryBreakdown, categoryChartTotal]);
 
+  // Search and filter expense records.
   const filteredExpenses = useMemo(() => {
     const query = search.trim().toLowerCase();
 
@@ -480,10 +512,6 @@ function Expenses() {
       return;
     }
 
-    /*
-     * Get the currently selected PG ID from the same key
-     * used by the other owner pages.
-     */
     const pgId = selectedPgId();
 
     if (!editingExpense && !pgId) {
@@ -506,7 +534,11 @@ function Expenses() {
       };
 
       if (editingExpense) {
-        await updateExpenseApi(editingExpense._id, expenseData);
+        await updateExpenseApi(
+          editingExpense._id,
+          expenseData
+        );
+
         setNotice("Expense updated successfully.");
       } else {
         await createExpenseApi({
@@ -576,7 +608,7 @@ function Expenses() {
     }));
   };
 
-  const currentMonthTotal = summary.monthlyTotal || 0;
+  const currentMonthTotal = Number(summary.monthlyTotal || 0);
 
   const maxTrend = Math.max(
     ...monthlyTrend.map((item) => item.total),
@@ -605,11 +637,14 @@ function Expenses() {
       <header className="expenses-header">
         <div>
           <span className="expenses-eyebrow">FINANCE</span>
-          
           <p>Track your PG operating expenses and spending.</p>
         </div>
 
-        <button className="expenses-add-btn" onClick={openAddModal}>
+        <button
+          type="button"
+          className="expenses-add-btn"
+          onClick={openAddModal}
+        >
           <Plus size={19} />
           Add Expense
         </button>
@@ -620,6 +655,7 @@ function Expenses() {
           <span>{error}</span>
 
           <button
+            type="button"
             onClick={() => setError("")}
             aria-label="Dismiss error"
           >
@@ -633,6 +669,7 @@ function Expenses() {
           <span>{notice}</span>
 
           <button
+            type="button"
             onClick={() => setNotice("")}
             aria-label="Dismiss message"
           >
@@ -641,6 +678,7 @@ function Expenses() {
         </div>
       )}
 
+      {/* Summary cards */}
       <section className="expenses-stats">
         <article className="expense-stat-card">
           <div className="expense-stat-icon">
@@ -691,14 +729,31 @@ function Expenses() {
         </article>
       </section>
 
+      {/* Analytics */}
       <section className="expenses-analytics">
+        {/* DYNAMIC CATEGORY PIE CHART */}
         <article className="expense-analytics-card expense-category-chart">
-          <h2>Expenses by Category</h2>
+          <div className="expense-chart-heading">
+            <h2>Expenses by Category</h2>
+
+            <span>
+              {monthFilter === "all"
+                ? "All Months"
+                : getMonthLabel(monthFilter)}
+            </span>
+          </div>
 
           {categoryBreakdown.length === 0 ? (
             <div className="expense-chart-empty">
               <PieChart size={30} />
-              <span>No category data yet</span>
+
+              <span>
+                {monthFilter === "all"
+                  ? "No category data yet"
+                  : `No expenses recorded for ${getMonthLabel(
+                      monthFilter
+                    )}`}
+              </span>
             </div>
           ) : (
             <div className="expense-donut-layout">
@@ -706,17 +761,29 @@ function Expenses() {
                 className="expense-donut"
                 style={{ background: categoryGradient }}
                 role="img"
-                aria-label="Expenses split by category"
+                aria-label={`Expense category breakdown for ${
+                  monthFilter === "all"
+                    ? "all months"
+                    : getMonthLabel(monthFilter)
+                }`}
               >
                 <div className="expense-donut-hole">
-                  <strong>{formatAmount(summary.totalExpenses)}</strong>
-                  <span>Total Expenses</span>
+                  <strong>{formatAmount(categoryChartTotal)}</strong>
+
+                  <span>
+                    {monthFilter === "all"
+                      ? "All Expenses"
+                      : "Month Total"}
+                  </span>
                 </div>
               </div>
 
               <div className="expense-category-legend">
                 {categoryBreakdown.map((item) => (
-                  <div className="expense-legend-row" key={item.value}>
+                  <div
+                    className="expense-legend-row"
+                    key={item.value}
+                  >
                     <span
                       className="expense-legend-dot"
                       style={{ background: item.color }}
@@ -738,13 +805,14 @@ function Expenses() {
           )}
         </article>
 
+        {/* Monthly spending trend */}
         <article className="expense-analytics-card expense-trend-chart">
           <div className="expense-chart-heading">
             <h2>Monthly Spending Trend</h2>
 
             <span>
               {monthFilter === "all"
-                ? "All years"
+                ? new Date().getFullYear()
                 : monthFilter.slice(0, 4)}
             </span>
           </div>
@@ -755,7 +823,9 @@ function Expenses() {
                 <span key={factor}>
                   {factor === 0
                     ? "₹0"
-                    : `₹${Math.round((maxTrend * factor) / 1000)}K`}
+                    : `₹${Math.round(
+                        (maxTrend * factor) / 1000
+                      )}K`}
                 </span>
               ))}
             </div>
@@ -774,14 +844,19 @@ function Expenses() {
                 );
 
                 return (
-                  <div className="expense-bar-column" key={item.month}>
+                  <div
+                    className="expense-bar-column"
+                    key={item.month}
+                  >
                     <div className="expense-bar-track">
                       <div
                         className={`expense-bar ${
                           activeMonth ? "is-active" : ""
                         }`}
                         style={{ height: `${height}%` }}
-                        title={`${item.month}: ${formatAmount(item.total)}`}
+                        title={`${item.month}: ${formatAmount(
+                          item.total
+                        )}`}
                       />
                     </div>
 
@@ -796,13 +871,18 @@ function Expenses() {
         </article>
       </section>
 
+      {/* Expense records */}
       <section className="expenses-list-section">
         <div className="expenses-list-heading">
           <div>
             <h2>Expense Records</h2>
+
             <p>
               {filteredExpenses.length}{" "}
-              {filteredExpenses.length === 1 ? "record" : "records"} found
+              {filteredExpenses.length === 1
+                ? "record"
+                : "records"}{" "}
+              found
             </p>
           </div>
 
@@ -817,6 +897,7 @@ function Expenses() {
           </button>
         </div>
 
+        {/* Filters */}
         <div className="expenses-filters">
           <div className="expenses-search">
             <Search size={18} />
@@ -861,7 +942,10 @@ function Expenses() {
             <option value="all">All Categories</option>
 
             {categories.map((category) => (
-              <option key={category.value} value={category.value}>
+              <option
+                key={category.value}
+                value={category.value}
+              >
                 {category.label}
               </option>
             ))}
@@ -882,8 +966,8 @@ function Expenses() {
           </select>
 
           {(search ||
-            monthFilter !== getMonthKey(todayString()) &&
-              monthFilter !== "all" ||
+            (monthFilter !== getMonthKey(todayString()) &&
+              monthFilter !== "all") ||
             categoryFilter !== "all" ||
             paymentFilter !== "all") && (
             <button
@@ -896,6 +980,7 @@ function Expenses() {
           )}
         </div>
 
+        {/* Empty state */}
         {filteredExpenses.length === 0 ? (
           <div className="expenses-empty-state">
             <div className="expenses-empty-icon">
@@ -937,15 +1022,21 @@ function Expenses() {
           <>
             <div className="expenses-groups">
               {groupedExpenses.map(([monthKey, monthExpenses]) => {
-                const isCollapsed = Boolean(collapsedMonths[monthKey]);
+                const isCollapsed = Boolean(
+                  collapsedMonths[monthKey]
+                );
 
                 const monthTotal = monthExpenses.reduce(
-                  (sum, expense) => sum + Number(expense.amount || 0),
+                  (sum, expense) =>
+                    sum + Number(expense.amount || 0),
                   0
                 );
 
                 return (
-                  <div className="expense-month-group" key={monthKey}>
+                  <div
+                    className="expense-month-group"
+                    key={monthKey}
+                  >
                     <button
                       type="button"
                       className="expense-month-heading"
@@ -960,6 +1051,7 @@ function Expenses() {
 
                         <div>
                           <strong>{getMonthLabel(monthKey)}</strong>
+
                           <span>
                             {monthExpenses.length}{" "}
                             {monthExpenses.length === 1
@@ -975,7 +1067,9 @@ function Expenses() {
                     {!isCollapsed && (
                       <div className="expenses-record-list">
                         {monthExpenses.map((expense) => {
-                          const category = getCategory(expense.category);
+                          const category = getCategory(
+                            expense.category
+                          );
 
                           return (
                             <article
@@ -993,7 +1087,8 @@ function Expenses() {
                                   <span
                                     className="expense-category-badge"
                                     style={{
-                                      "--category-color": category.color,
+                                      "--category-color":
+                                        category.color,
                                     }}
                                   >
                                     {category.label}
@@ -1008,7 +1103,9 @@ function Expenses() {
 
                                   <span>
                                     <CreditCard size={14} />
-                                    {getPaymentLabel(expense.paymentMethod)}
+                                    {getPaymentLabel(
+                                      expense.paymentMethod
+                                    )}
                                   </span>
 
                                   {expense.pgId?.name && (
@@ -1035,7 +1132,9 @@ function Expenses() {
                                   <button
                                     type="button"
                                     className="expense-edit-btn"
-                                    onClick={() => openEditModal(expense)}
+                                    onClick={() =>
+                                      openEditModal(expense)
+                                    }
                                     title="Edit expense"
                                     aria-label={`Edit ${expense.title}`}
                                   >
@@ -1045,8 +1144,12 @@ function Expenses() {
                                   <button
                                     type="button"
                                     className="expense-delete-btn"
-                                    onClick={() => handleDelete(expense)}
-                                    disabled={deletingId === expense._id}
+                                    onClick={() =>
+                                      handleDelete(expense)
+                                    }
+                                    disabled={
+                                      deletingId === expense._id
+                                    }
                                     title="Delete expense"
                                     aria-label={`Delete ${expense.title}`}
                                   >
@@ -1071,6 +1174,7 @@ function Expenses() {
               })}
             </div>
 
+            {/* Pagination */}
             {totalPages > 1 && (
               <div className="expenses-pagination">
                 <span>
@@ -1080,7 +1184,9 @@ function Expenses() {
                 <div>
                   <button
                     type="button"
-                    onClick={() => setPage((previous) => previous - 1)}
+                    onClick={() =>
+                      setPage((previous) => previous - 1)
+                    }
                     disabled={page <= 1}
                     aria-label="Previous page"
                   >
@@ -1090,7 +1196,9 @@ function Expenses() {
 
                   <button
                     type="button"
-                    onClick={() => setPage((previous) => previous + 1)}
+                    onClick={() =>
+                      setPage((previous) => previous + 1)
+                    }
                     disabled={page >= totalPages}
                     aria-label="Next page"
                   >
@@ -1104,6 +1212,7 @@ function Expenses() {
         )}
       </section>
 
+      {/* Add / Edit modal */}
       {showModal && (
         <div
           className="expense-modal-overlay"
@@ -1142,7 +1251,9 @@ function Expenses() {
               <button
                 type="button"
                 className="expense-modal-close"
-                onClick={() => !submitting && setShowModal(false)}
+                onClick={() =>
+                  !submitting && setShowModal(false)
+                }
                 disabled={submitting}
                 aria-label="Close modal"
               >
@@ -1166,7 +1277,9 @@ function Expenses() {
 
             <form className="expense-form" onSubmit={handleSubmit}>
               <div className="expense-form-group">
-                <label htmlFor="expense-title">Expense Title *</label>
+                <label htmlFor="expense-title">
+                  Expense Title *
+                </label>
 
                 <input
                   id="expense-title"
@@ -1182,7 +1295,9 @@ function Expenses() {
 
               <div className="expense-form-row">
                 <div className="expense-form-group">
-                  <label htmlFor="expense-category">Category *</label>
+                  <label htmlFor="expense-category">
+                    Category *
+                  </label>
 
                   <select
                     id="expense-category"
@@ -1203,7 +1318,9 @@ function Expenses() {
                 </div>
 
                 <div className="expense-form-group">
-                  <label htmlFor="expense-amount">Amount (₹) *</label>
+                  <label htmlFor="expense-amount">
+                    Amount (₹) *
+                  </label>
 
                   <input
                     id="expense-amount"
@@ -1221,7 +1338,9 @@ function Expenses() {
 
               <div className="expense-form-row">
                 <div className="expense-form-group">
-                  <label htmlFor="expense-date">Expense Date *</label>
+                  <label htmlFor="expense-date">
+                    Expense Date *
+                  </label>
 
                   <input
                     id="expense-date"
@@ -1277,7 +1396,9 @@ function Expenses() {
                 <button
                   type="button"
                   className="expense-cancel-btn"
-                  onClick={() => !submitting && setShowModal(false)}
+                  onClick={() =>
+                    !submitting && setShowModal(false)
+                  }
                   disabled={submitting}
                 >
                   Cancel

@@ -4,6 +4,7 @@ import { loginUser } from "../controllers/authController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import User from "../models/User.js";
 import Tenant from "../models/Tenant.js";
+import bcrypt from "bcryptjs";
 
 const router = express.Router();
 
@@ -94,5 +95,204 @@ router.get("/subscription-status", protect, async (req, res) => {
     });
   }
 });
+
+
+router.patch("/profile", protect, async (req, res) => {
+  try {
+    const { name, mobile } = req.body;
+
+    if (!name?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Name is required.",
+      });
+    }
+
+    if (!/^\d{10}$/.test(String(mobile || ""))) {
+      return res.status(400).json({
+        success: false,
+        message: "Mobile number must contain exactly 10 digits.",
+      });
+    }
+
+    const duplicate = await User.findOne({
+      mobile,
+      _id: { $ne: req.user._id },
+    });
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "This mobile number is already registered.",
+      });
+    }
+
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $set: {
+          name: name.trim(),
+          mobile,
+        },
+      },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updated) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Profile updated successfully.",
+      user: {
+        id: updated._id,
+        name: updated.name,
+        mobile: updated.mobile,
+        role: updated.role,
+      },
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "This mobile number is already registered.",
+      });
+    }
+
+    console.error("Profile update error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to update profile.",
+    });
+  }
+});
+
+router.post("/verify-current-password", protect, async (req, res) => {
+  try {
+    const { currentPassword } = req.body;
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Enter your current password.",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const valid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Current password verified.",
+    });
+  } catch (error) {
+    console.error("Password verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to verify password.",
+    });
+  }
+});
+
+router.post("/change-password", protect, async (req, res) => {
+  try {
+    const {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "All password fields are required.",
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must contain at least 8 characters.",
+      });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Passwords do not match.",
+      });
+    }
+
+    if (newPassword === currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Choose a password different from your current password.",
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    const valid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!valid) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect. Verify it again.",
+      });
+    }
+
+    // Hash explicitly and update without invoking password save hooks twice.
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { password: hashedPassword } }
+    );
+
+    return res.json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Unable to change password.",
+    });
+  }
+});
+
 
 export default router;

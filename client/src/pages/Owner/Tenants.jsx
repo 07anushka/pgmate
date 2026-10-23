@@ -897,9 +897,14 @@ function Tenants() {
           );
         }
 
-        setAvailableBeds(
-          data.beds || []
-        );
+        const beds = Array.isArray(data.beds)
+          ? data.beds
+          : Array.isArray(data.availableBeds)
+          ? data.availableBeds
+          : Array.isArray(data)
+          ? data
+          : [];
+        setAvailableBeds(beds);
       } catch (
         fetchError
       ) {
@@ -1352,6 +1357,7 @@ documentType: tenant.documentType || "",
   const startQrScanner = async () => {
     setScanMessage("");
     setDocumentPreview("");
+    setDocumentType("aadhaar");
     setShowQrScanner(true);
     setScanningDocument(true);
     try {
@@ -1412,6 +1418,7 @@ documentType: tenant.documentType || "",
       if (documentType === "aadhaar" && scanStep === "front") {
         setFrontDocumentImage(imageData);
         setDocumentPreview(imageData);
+        setForm((previous) => ({ ...previous, tenantPhoto: imageData, documentType: "aadhaar" }));
         setScanStep("back");
         setScanMessage("Front captured. Turn the Aadhaar card over and capture the address side. Keep the card flat and text sharp.");
         return;
@@ -1424,6 +1431,7 @@ documentType: tenant.documentType || "",
       } else {
         setBackDocumentImage(imageData);
         setDocumentPreview(imageData);
+        setForm((previous) => ({ ...previous, tenantPhoto: frontDocumentImage || imageData, documentType: "aadhaar" }));
       }
 
       setScanMessage("Enhancing the captured image and reading printed text. Please wait...");
@@ -1497,8 +1505,6 @@ documentType: tenant.documentType || "",
         .split("\n")
         .map((line) => line.replace(/\s+/g, " ").trim())
         .filter(Boolean);
-      const normalized = text.toUpperCase();
-
       const cleanLine = (value) =>
         String(value || "")
           .replace(/^[\s:;|,.-]+|[\s:;|,.-]+$/g, "")
@@ -1566,25 +1572,14 @@ documentType: tenant.documentType || "",
       };
 
       let extractedAadhaar = "";
-      let extractedPan = "";
       let extractedDob = "";
       let extractedGender = "";
-      let extractedName = "";
-      let extractedAddress = "";
 
-      if (documentType === "aadhaar") {
-        const candidates = [...text.matchAll(/(?:^|\D)(\d{4}[\s-]?\d{4}[\s-]?\d{4})(?!\d)/g)]
-          .map((match) => match[1].replace(/\D/g, ""))
-          .filter((value) => value.length === 12 && verhoeffValid(value));
-        const uniqueCandidates = [...new Set(candidates)];
-        if (uniqueCandidates.length === 1) extractedAadhaar = uniqueCandidates[0];
-      } else {
-        const panCandidates = [...normalized.matchAll(/\b([A-Z]{5}[\s-]*[0-9]{4}[\s-]*[A-Z])\b/g)]
-          .map((match) => match[1].replace(/[\s-]/g, ""))
-          .filter((value) => /^[A-Z]{5}[0-9]{4}[A-Z]$/.test(value));
-        const uniquePanCandidates = [...new Set(panCandidates)];
-        if (uniquePanCandidates.length === 1) extractedPan = uniquePanCandidates[0];
-      }
+      const candidates = [...text.matchAll(/(?:^|\D)(\d{4}[\s-]?\d{4}[\s-]?\d{4})(?!\d)/g)]
+        .map((match) => match[1].replace(/\D/g, ""))
+        .filter((value) => value.length === 12 && verhoeffValid(value));
+      const uniqueCandidates = [...new Set(candidates)];
+      if (uniqueCandidates.length === 1) extractedAadhaar = uniqueCandidates[0];
 
       const labelledDate = text.match(
         /(?:DOB|D\.?\s*O\.?\s*B\.?|DATE\s+OF\s+BIRTH|BIRTH\s+DATE|जन्म\s*तिथि)\s*[:\-]?\s*(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}|\d{4}[\/.-]\d{1,2}[\/.-]\d{1,2})/i
@@ -1602,62 +1597,23 @@ documentType: tenant.documentType || "",
       else if (/\b(female|woman)\b/i.test(text) || /महिला|ಸ್ತ್ರೀ/i.test(text)) extractedGender = "Female";
       else if (/\bmale\b/i.test(text) || /पुरुष|ಪುರುಷ/i.test(text)) extractedGender = "Male";
 
-      // Do not globally replace OCR lookalikes (e.g. | -> I): that corrupts names/numbers.
-      const panIndex = extractedPan ? normalized.indexOf(extractedPan) : -1;
-      const dobIndex = text.search(/DOB|D\.?\s*O\.?\s*B\.?|DATE\s+OF\s+BIRTH/i);
-      const nameCandidates = lines
-        .map((line, index) => ({ line: cleanLine(line), index }))
-        .filter(({ line }) => isPlausibleName(line) && !ignoredLine.test(line));
-
-      if (documentType === "pan") {
-        const beforePan = nameCandidates.filter(({ index }) => {
-          const before = lines.slice(0, index).join(" ").toUpperCase();
-          return panIndex >= 0 && before.length < panIndex;
-        });
-        extractedName = beforePan[0]?.line || "";
-      } else {
-        const beforeDob = nameCandidates.filter(({ index }) => dobIndex < 0 || index < lines.findIndex((line) => /DOB|D\.?\s*O\.?\s*B\.?|DATE OF BIRTH/i.test(line)));
-        extractedName = beforeDob[0]?.line || nameCandidates[0]?.line || "";
-      }
-
-      if (documentType === "aadhaar") {
-        const addressMatch = text.match(/(?:ADDRESS|PERMANENT\s+ADDRESS|पता|ವಿಳಾಸ)\s*[:\-]?\s*([\s\S]{10,500})/i);
-        if (addressMatch) {
-          extractedAddress = addressMatch[1]
-            .split(/\n\s*(?:DOB|D\.?\s*O\.?\s*B\.?|DATE OF BIRTH|NAME|GENDER|MALE|FEMALE)\b/i)[0]
-            .split(/\n/)
-            .map(cleanLine)
-            .filter((line) => line && !ignoredLine.test(line))
-            .join(", ")
-            .replace(/\s+/g, " ")
-            .slice(0, 300);
-        }
-      }
+      // Only scan the fields requested: Aadhaar number, full DOB and gender.
+      // Never infer or auto-fill tenant name, address, PAN, or other details.
 
       if (!text.trim()) throw new Error("No readable text was detected.");
 
-      // Only auto-fill a name when OCR has reasonable overall confidence.
-      // Every extracted field remains editable and must be visually reviewed.
-      const confidenceAllowsName = averageConfidence >= 65;
-      if (!confidenceAllowsName) extractedName = "";
-
       const detectedFields = [];
-      if (extractedName) detectedFields.push("name");
       if (extractedDob) detectedFields.push("date of birth");
       if (extractedGender) detectedFields.push("gender");
-      if (extractedAddress) detectedFields.push("address");
       if (extractedAadhaar) detectedFields.push("Aadhaar number");
-      if (extractedPan) detectedFields.push("PAN number");
 
       setForm((previous) => ({
         ...previous,
-        ...(extractedName ? { name: extractedName } : {}),
         ...(extractedDob ? { dateOfBirth: extractedDob } : {}),
         ...(extractedGender ? { gender: extractedGender } : {}),
-        ...(extractedAddress ? { address: extractedAddress } : {}),
         ...(extractedAadhaar ? { aadhaarNumber: extractedAadhaar } : {}),
-        ...(extractedPan ? { panNumber: extractedPan } : {}),
-        documentType: documentType || "aadhaar",
+        documentType: "aadhaar",
+        tenantPhoto: frontDocumentImage || imageData,
       }));
 
       // This flag means OCR finished, not that the document was officially verified.
@@ -1666,10 +1622,8 @@ documentType: tenant.documentType || "",
       await stopQrScanner();
 
       const warnings = [];
-      if (averageConfidence < 65) warnings.push("OCR confidence is low, so the name was not auto-filled");
-      if (documentType === "aadhaar" && !extractedAadhaar) warnings.push("Aadhaar number was not confidently read or did not pass its checksum");
-      if (documentType === "pan" && !extractedPan) warnings.push("PAN number was not confidently read");
-      if (!extractedName) warnings.push("name needs manual entry");
+      if (averageConfidence < 65) warnings.push("OCR confidence is low; review the extracted values manually");
+      if (!extractedAadhaar) warnings.push("Aadhaar number was not confidently read or did not pass its checksum");
       setScanMessage(
         `${detectedFields.length ? `Extracted: ${detectedFields.join(", ")}.` : "The document was captured, but no fields were confidently extracted."} ${warnings.join("; ")}. Check every field against the physical card before saving. OCR is not identity verification.`
       );
@@ -1688,6 +1642,44 @@ documentType: tenant.documentType || "",
     setScanStep("front");
     setDocumentVerified(false);
     setScanMessage("");
+  };
+
+  const handleManualDocumentUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setTenantError("Please upload an image document.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      const image = new Image();
+      const source = URL.createObjectURL(file);
+      image.src = source;
+      await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+      });
+      const canvas = document.createElement("canvas");
+      const maxDimension = 2000;
+      const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+      canvas.width = Math.round(image.naturalWidth * scale);
+      canvas.height = Math.round(image.naturalHeight * scale);
+      canvas.getContext("2d").drawImage(image, 0, 0, canvas.width, canvas.height);
+      const jpegDataUrl = canvas.toDataURL("image/jpeg", 0.92);
+      URL.revokeObjectURL(source);
+      setDocumentPreview(jpegDataUrl);
+      setForm((previous) => ({
+        ...previous,
+        tenantPhoto: jpegDataUrl,
+        documentType: "aadhaar",
+      }));
+      setTenantError("");
+      setScanMessage("Document image converted to JPEG and attached to this tenant. Review it before saving.");
+    } catch (uploadError) {
+      setTenantError("Could not process that image. Please choose a JPG, PNG or other supported image.");
+    }
+    event.target.value = "";
   };
 
   const handleDocumentScan = async (event) => {
@@ -3843,7 +3835,7 @@ documentType: tenant.documentType || "",
     <ScanLine size={22} />
     <span>
       <strong>Scan Document</strong>
-      <small>Auto-fill from Aadhaar or PAN Card</small>
+      <small>Read Aadhaar number, DOB and gender only</small>
     </span>
   </button>
 
@@ -3865,11 +3857,10 @@ documentType: tenant.documentType || "",
 {entryMode === "scan" && (
   <div className="tenant-document-panel">
     <h3>{documentType === "pan" ? "Scan PAN Card" : "Scan Aadhaar Card"}</h3>
-    <p>For Aadhaar, capture the front and back separately. For PAN, capture the front side. Keep the entire card inside the guide and ensure the printed text is sharp. The camera cannot guarantee perfect OCR, so verify the extracted values below.</p>
 
     <div className="tenant-document-types">
       <button type="button" className={documentType === "aadhaar" ? "selected" : ""} onClick={() => { setDocumentType("aadhaar"); resetDocumentScan(); }}>Aadhaar Card</button>
-      <button type="button" className={documentType === "pan" ? "selected" : ""} onClick={() => { setDocumentType("pan"); resetDocumentScan(); }}>PAN Card</button>
+      <button type="button" disabled className="">PAN scanning disabled</button>
     </div>
 
     <div className="tenant-scan-steps" aria-label="Document capture steps">
@@ -3895,10 +3886,8 @@ documentType: tenant.documentType || "",
         <div className="tenant-camera-step-label">{scanStep === "front" ? "STEP 1 · FRONT SIDE" : "STEP 2 · BACK SIDE"}</div>
         <div className="tenant-camera-guide">
           <video ref={cameraVideoRef} className="tenant-document-camera-video" autoPlay muted playsInline aria-label="Live identity document camera preview" />
-          <div className="tenant-card-alignment-frame" aria-hidden="true"><span>Align card inside this frame</span></div>
         </div>
         <canvas ref={captureCanvasRef} style={{ display: "none" }} />
-        <p>Move closer until the printed text is clear, avoid glare, and hold still. Green alignment guides are visual guidance only; this browser implementation does not reliably detect every card edge or guarantee autofocus.</p>
         <div className="tenant-camera-actions">
           <button type="button" className="tenant-camera-capture" onClick={captureAndReadDocument} disabled={scanningDocument}>
             {scanningDocument ? <LoaderCircle size={15} /> : <Camera size={15} />}
@@ -3929,9 +3918,29 @@ documentType: tenant.documentType || "",
       {frontDocumentImage && !documentVerified && !showQrScanner && <button type="button" onClick={() => { setScanStep("back"); startQrScanner(); }}>Capture Back Side</button>}
       {documentVerified && <button type="button" onClick={() => { setEntryMode("manual"); stopQrScanner(); }}>Continue to Tenant Form</button>}
     </div>
-    <p className="tenant-scan-disclaimer">OCR can misread characters, especially in glare, low light, small text, or regional-language text. Do not save until the name, number, date of birth, gender, and address have been checked against the original document.</p>
+    <p className="tenant-scan-disclaimer">OCR can misread characters. Check the Aadhaar number, full date of birth and gender against the original document. Enter the tenant name, mobile number, address and all other details manually.</p>
   </div>
 )}
+
+              {entryMode === "manual" && (
+                <div className="tenant-document-panel">
+                  <h3>Add Document / Tenant Photo</h3>
+                  <p>Upload a document image manually. It will be converted to JPEG and attached to this tenant record.</p>
+                  <label className="tenant-document-upload">
+                    <Upload size={22} />
+                    <strong>Add Document</strong>
+                    <small>Choose an image from your device</small>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleManualDocumentUpload}
+                    />
+                  </label>
+                  {documentPreview && (
+                    <img className="tenant-document-preview" src={documentPreview} alt="Tenant document preview" />
+                  )}
+                </div>
+              )}
 
               {/* BASIC */}
 
@@ -4212,7 +4221,7 @@ documentType: tenant.documentType || "",
                             ? "Loading rooms..."
                             : rooms.length ===
                               0
-                            ? "No available rooms"
+                            ? "No rooms with available beds"
                             : "Select room"}
                         </option>
 

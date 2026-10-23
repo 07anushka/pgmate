@@ -227,18 +227,30 @@ export const getMyTenants = async (req, res) => {
   }
 };
 
+
 /* =====================================================
    GET AVAILABLE BEDS
    OWNER ONLY
+   - pgId only: return available beds with room details
+   - pgId + roomId: return beds for the selected room
 ===================================================== */
 
 export const getAvailableBeds = async (req, res) => {
   try {
     const { pgId, roomId } = req.query;
+    const ownerId = req.user.userId;
 
+    if (!pgId) {
+      return res.status(400).json({
+        success: false,
+        message: "PG ID is required.",
+      });
+    }
+
+    // Confirm the PG belongs to the logged-in owner.
     const pg = await PG.findOne({
       _id: pgId,
-      ownerId: req.user.userId,
+      ownerId,
     });
 
     if (!pg) {
@@ -248,24 +260,39 @@ export const getAvailableBeds = async (req, res) => {
       });
     }
 
-    const room = await Room.findOne({
-      _id: roomId,
-      pgId,
-      isActive: true,
-    });
-
-    if (!room) {
-      return res.status(404).json({
-        success: false,
-        message: "Room not found.",
+    // Only validate a room when the caller selected one.
+    if (roomId) {
+      const room = await Room.findOne({
+        _id: roomId,
+        pgId,
+        isActive: true,
       });
+
+      if (!room) {
+        return res.status(404).json({
+          success: false,
+          message: "Room not found in the selected PG.",
+        });
+      }
     }
 
-    const beds = await Bed.find({
+    // Initially fetch all available beds in this PG.
+    // After a room is selected, limit the results to that room.
+    const bedQuery = {
       pgId,
-      roomId,
       status: "available",
-    }).sort({ bedNumber: 1 });
+    };
+
+    if (roomId) {
+      bedQuery.roomId = roomId;
+    }
+
+    const beds = await Bed.find(bedQuery)
+      .populate(
+        "roomId",
+        "roomNumber roomType monthlyRent rent floor isActive"
+      )
+      .sort({ bedNumber: 1 });
 
     return res.status(200).json({
       success: true,
@@ -281,6 +308,7 @@ export const getAvailableBeds = async (req, res) => {
     });
   }
 };
+
 
 /* =====================================================
    CREATE TENANT
@@ -553,12 +581,28 @@ export const createTenant = async (req, res) => {
       console.error("Tenant creation rollback error:", rollbackError);
     }
 
+
     if (error?.code === 11000) {
+      console.error("Duplicate key error:", {
+        collection: error?.message,
+        keyPattern: error?.keyPattern,
+        keyValue: error?.keyValue,
+        indexName: error?.message?.match(/index:\s+([^\s]+)/)?.[1],
+      });
+
+      const field = Object.keys(error?.keyPattern || {})[0];
+      const value = field
+        ? error?.keyValue?.[field]
+        : undefined;
+
       return res.status(409).json({
         success: false,
-        message: "A tenant or user with the provided details already exists.",
+        message: field
+          ? `Duplicate value for ${field}${value !== undefined ? `: ${value}` : ""}.`
+          : "A database unique-index conflict occurred. Check backend logs.",
       });
     }
+
 
     return res.status(500).json({
       success: false,
@@ -566,6 +610,7 @@ export const createTenant = async (req, res) => {
     });
   }
 };
+
 
 /* =====================================================
    VACATE TENANT
@@ -591,11 +636,47 @@ export const vacateTenant = async (req, res) => {
       });
     }
 
+    const vacatedAt = new Date();
+
+    // Ensure the current month's rent record exists before
+    // calculating the tenant's outstanding rent.
+    await syncCurrentRentRecord(tenant);
+
+    const currentMonth = vacatedAt.getMonth() + 1;
+    const currentYear = vacatedAt.getFullYear();
+
+    const unpaidRecords = await RentRecord.find({
+      tenantId: tenant._id,
+      status: { $ne: "paid" },
+      $or: [
+        { year: { $lt: currentYear } },
+        {
+          year: currentYear,
+          month: { $lte: currentMonth },
+        },
+      ],
+    }).select("amount");
+
+    const outstandingBalance = Number(
+      unpaidRecords
+        .reduce(
+          (total, record) =>
+            total + Number(record.amount || 0),
+          0
+        )
+        .toFixed(2)
+    );
+
+    // Persist debt and vacating status together on the tenant.
     tenant.status = "vacated";
-    tenant.vacatedAt = new Date();
+    tenant.vacatedAt = vacatedAt;
+    tenant.outstandingBalance = outstandingBalance;
+    tenant.debtSettledAt =
+      outstandingBalance === 0 ? vacatedAt : null;
 
     await tenant.save();
 
+    // Release the bed without deleting tenant or rent history.
     await Bed.findOneAndUpdate(
       {
         _id: tenant.bedId,
@@ -613,6 +694,7 @@ export const vacateTenant = async (req, res) => {
       success: true,
       message: "Tenant vacated successfully.",
       tenant,
+      outstandingBalance,
     });
   } catch (error) {
     console.error("Vacate tenant error:", error);
@@ -623,6 +705,7 @@ export const vacateTenant = async (req, res) => {
     });
   }
 };
+
 
 /* =====================================================
    UPDATE TENANT

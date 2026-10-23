@@ -937,3 +937,158 @@
     flex-direction: column;
   }
 }
+
+
+/* Status highlighting for monthly rent rows */
+.rent-record-row {
+  transition: background-color 0.2s ease;
+}
+
+.rent-record-row.rent-pending {
+  background: #fffaf0;
+  border-left: 4px solid #e9a23b;
+}
+
+.rent-record-row.rent-overdue {
+  background: #fff5f4;
+  border-left: 4px solid #dc514a;
+}
+
+.rent-record-row.rent-paid {
+  background: #ffffff;
+  border-left: 4px solid #37a475;
+}
+
+.rent-record-row.rent-pending:hover {
+  background: #fff3dc;
+}
+
+.rent-record-row.rent-overdue:hover {
+  background: #ffe9e6;
+}
+
+.payment-room-details {
+  display: block;
+  margin-top: 4px;
+  color: #71847b;
+  font-size: 11px;
+}
+
+.vacated-tenant-label {
+  display: inline-block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.payment-balance-info {
+  min-width: 120px;
+}
+
+.balance-due {
+  color: #c74c45 !important;
+}
+
+.balance-clear {
+  color: #258151 !important;
+}
+
+
+/* Vacated tenant status */
+.payment-status.vacated {
+  color: #7c3aed;
+  background: #f3e8ff;
+  border: 1px solid #ddd6fe;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Vacated tenant label */
+.vacated-tenant-label {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: #f3e8ff;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Room information */
+.payment-room-details {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Outstanding balance */
+.payment-balance-info .balance-due {
+  color: #dc2626;
+  font-weight: 700;
+}
+
+.payment-balance-info .balance-clear {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+/* Outstanding balance for vacated tenants */
+.vacated-balance-notice {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+
+/* Vacated tenant outstanding balance */
+
+.vacated-balance-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fff5f5;
+  color: #c62828;
+}
+
+/* Mark as Collected button */
+
+.payments-collect-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 14px;
+  border: none;
+  border-radius: 8px;
+  background: #087f5b;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.payments-collect-btn:hover {
+  background: #066749;
+}
+
+.payments-collect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

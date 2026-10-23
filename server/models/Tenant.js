@@ -128,7 +128,19 @@ const tenantSchema = new mongoose.Schema(
       default: "active",
     },
 
-    vacatedAt: {
+        vacatedAt: {
+      type: Date,
+      default: null,
+    },
+
+    // Outstanding rent debt retained after vacating
+    outstandingBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    debtSettledAt: {
       type: Date,
       default: null,
     },

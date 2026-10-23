@@ -6,7 +6,6 @@ export const loginUser = async (req, res) => {
   try {
     const { mobile, password } = req.body;
 
-    // Validate input
     if (!mobile || !password) {
       return res.status(400).json({
         success: false,
@@ -14,7 +13,6 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Find user
     const user = await User.findOne({ mobile });
 
     if (!user) {
@@ -24,7 +22,6 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Check password
     const isPasswordCorrect = await bcrypt.compare(
       password,
       user.password
@@ -37,25 +34,28 @@ export const loginUser = async (req, res) => {
       });
     }
 
-    // Create JWT
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET is missing from environment variables");
+
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
+      });
+    }
+
     const token = jwt.sign(
       {
         userId: user._id,
         role: user.role,
       },
       process.env.JWT_SECRET,
-      {
-        expiresIn: "7d",
-      }
+      { expiresIn: "7d" }
     );
 
-    // Send response
     return res.status(200).json({
       success: true,
       message: "Login successful",
-
       token,
-
       user: {
         id: user._id,
         name: user.name,

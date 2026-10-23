@@ -1,4 +1,3 @@
-
 import express from "express";
 
 import {
@@ -8,6 +7,7 @@ import {
   createPayment,
   updatePaymentStatus,
   deletePayment,
+  collectVacatedDebt,
 } from "../controllers/paymentController.js";
 
 import {
@@ -44,6 +44,15 @@ router.post(
   authorizeRoles("owner"),
   checkSubscription,
   createPayment
+);
+
+// Collect a vacated tenant's outstanding debt
+router.post(
+  "/tenants/:tenantId/collect-debt",
+  protect,
+  authorizeRoles("owner"),
+  checkSubscription,
+  collectVacatedDebt
 );
 
 // Update payment status

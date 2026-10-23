@@ -55,6 +55,7 @@ import Expenses from "./Expenses";
 import Complaints from "./Complaints";
 import FoodMenu from "./FoodMenu";
 import Notices from "./Notices";
+import OwnerProfile from "./OwnerProfile";
 
 /* --------------------------------------------------
    GENERAL HELPERS
@@ -98,9 +99,9 @@ const paymentDate = (payment) =>
 const paymentAmount = (payment) =>
   safeNumber(
     payment?.amount ??
-      payment?.paidAmount ??
-      payment?.rentAmount ??
-      payment?.totalAmount
+    payment?.paidAmount ??
+    payment?.rentAmount ??
+    payment?.totalAmount
   );
 
 const paymentStatus = (payment) =>
@@ -135,10 +136,10 @@ const getRoomBeds = (room) =>
 const isOccupiedBed = (bed) =>
   Boolean(
     bed?.tenantId ||
-      bed?.tenant ||
-      ["occupied", "booked", "filled"].includes(
-        String(bed?.status || "").toLowerCase()
-      )
+    bed?.tenant ||
+    ["occupied", "booked", "filled"].includes(
+      String(bed?.status || "").toLowerCase()
+    )
   );
 
 const roomCapacity = (room) => {
@@ -148,10 +149,10 @@ const roomCapacity = (room) => {
 
   return safeNumber(
     room?.totalBeds ??
-      room?.capacity ??
-      room?.bedCapacity ??
-      room?.numberOfBeds ??
-      room?.bedCount
+    room?.capacity ??
+    room?.bedCapacity ??
+    room?.numberOfBeds ??
+    room?.bedCount
   );
 };
 
@@ -164,9 +165,9 @@ const roomOccupied = (room) => {
 
   return safeNumber(
     room?.occupiedBeds ??
-      room?.occupiedCount ??
-      room?.currentOccupancy ??
-      room?.occupied
+    room?.occupiedCount ??
+    room?.currentOccupancy ??
+    room?.occupied
   );
 };
 
@@ -471,8 +472,8 @@ function OwnerDashboard() {
           activePGId === "all"
             ? pgs
             : pgs.filter(
-                (pg) => String(pg._id) === String(activePGId)
-              );
+              (pg) => String(pg._id) === String(activePGId)
+            );
 
         if (!properties.length) {
           setOverviewData({
@@ -599,8 +600,8 @@ function OwnerDashboard() {
       .filter((expense) =>
         getMonthKey(
           expense?.expenseDate ||
-            expense?.date ||
-            expense?.createdAt
+          expense?.date ||
+          expense?.createdAt
         ) === currentMonth
       )
       .reduce((sum, expense) => sum + safeNumber(expense?.amount), 0);
@@ -694,8 +695,8 @@ function OwnerDashboard() {
     activePGId === "all"
       ? `${pgs.length} properties combined`
       : [activePG?.city, activePG?.state].filter(Boolean).join(", ") ||
-        activePG?.address ||
-        "Property location";
+      activePG?.address ||
+      "Property location";
 
   const todayLabel = now.toLocaleDateString("en-IN", {
     weekday: "short",
@@ -814,9 +815,8 @@ function OwnerDashboard() {
       {/* SIDEBAR */}
 
       <aside
-        className={`owner-sidebar ${
-          mobileMenuOpen ? "owner-sidebar-open" : ""
-        }`}
+        className={`owner-sidebar ${mobileMenuOpen ? "owner-sidebar-open" : ""
+          }`}
       >
         <div className="owner-brand">
           <div className="owner-brand-icon">
@@ -873,9 +873,8 @@ function OwnerDashboard() {
             return (
               <button
                 key={item.key}
-                className={`owner-nav-item ${
-                  activeSection === item.key ? "active" : ""
-                }`}
+                className={`owner-nav-item ${activeSection === item.key ? "active" : ""
+                  }`}
                 onClick={() => goTo(item.key)}
               >
                 <Icon size={17} />
@@ -905,8 +904,8 @@ function OwnerDashboard() {
               {activeSection === "overview"
                 ? `${greeting}, ${ownerName}`
                 : navigationItems.find(
-                    (item) => item.key === activeSection
-                  )?.label || "Dashboard"}
+                  (item) => item.key === activeSection
+                )?.label || "Dashboard"}
             </h1>
 
             <p>
@@ -955,811 +954,693 @@ function OwnerDashboard() {
           ) : activeSection === "notices" ? (
             <Notices />
           ) : activeSection === "profile" ? (
-            <div className="owner-profile-page">
-              <div className="owner-mobile-page-title">
-                <span>ACCOUNT</span>
-                <h1>Profile</h1>
-                <p>Manage your account and properties.</p>
-              </div>
-
-              <section className="owner-section">
-                <div className="owner-section-header">
-                  <div>
-                    <h2>Account Information</h2>
-                    <p>Your PGmate owner account</p>
-                  </div>
-                </div>
-
-                <div className="owner-account-info">
-                  <div>
-                    <span>Name</span>
-                    <strong>{user?.name || "—"}</strong>
-                  </div>
-
-                  <div>
-                    <span>Mobile</span>
-                    <strong>{user?.mobile || "—"}</strong>
-                  </div>
-
-                  <div>
-                    <span>Role</span>
-                    <strong>PG Owner</strong>
-                  </div>
-                </div>
-              </section>
-
-              <section className="owner-section">
-                <div className="owner-section-header">
-                  <div>
-                    <h2>My Properties</h2>
-                    <p>Add and manage your PGs</p>
-                  </div>
-
-                  <button
-                    className="owner-profile-add-button"
-                    onClick={() => {
-                      setPGError("");
-                      setShowPGModal(true);
-                    }}
-                  >
-                    <Plus size={14} />
-                    Add PG
-                  </button>
-                </div>
-
-                <div className="owner-properties-list">
-                  {pgLoading ? (
-                    <div className="owner-empty-state">
-                      Loading properties...
-                    </div>
-                  ) : pgs.length === 0 ? (
-                    <div className="owner-empty-state">
-                      <Building2 size={30} />
-                      <strong>No properties yet</strong>
-                      <span>Add your first PG to get started.</span>
-                      <button onClick={() => setShowPGModal(true)}>
-                        <Plus size={14} />
-                        Add Your First PG
-                      </button>
-                    </div>
-                  ) : (
-                    pgs.map((pg) => (
-                      <div
-                        className={`owner-property-card ${
-                          String(activePGId) === String(pg._id)
-                            ? "selected"
-                            : ""
-                        }`}
-                        key={pg._id}
-                      >
-                        <div className="owner-property-card-icon">
-                          <Building2 size={19} />
-                        </div>
-
-                        <div className="owner-property-card-info">
-                          <div className="owner-property-card-title">
-                            <strong>{pg.name}</strong>
-                            {String(activePGId) === String(pg._id) && (
-                              <span>Active</span>
-                            )}
-                          </div>
-
-                          <p>
-                            <MapPin size={12} />
-                            {[pg.address, pg.city, pg.state]
-                              .filter(Boolean)
-                              .join(", ")}
-                          </p>
-
-                          <p>
-                            <Phone size={12} />
-                            {pg.contactNumber || "No contact number"}
-                          </p>
-                        </div>
-
-                        <button
-                          className="owner-switch-property"
-                          onClick={() => {
-                            handlePropertyChange(pg._id);
-                            goTo("overview");
-                          }}
-                        >
-                          {String(activePGId) === String(pg._id) ? (
-                            <>
-                              <Check size={12} />
-                              Active
-                            </>
-                          ) : (
-                            "Switch"
-                          )}
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </section>
-            </div>
+            <OwnerProfile />
           ) : (
             <>
-            {pgLoading || overviewData.loading ? (
-              <div className="ov-loading">
-                Loading your dashboard...
-              </div>
-            ) : (
-              <>
-                {overviewData.error && (
-                  <div className="ov-error">
-                    <AlertCircle size={17} />
-                    <span>{overviewData.error}</span>
-
-                    <button
-                      onClick={() => loadOverview(true)}
-                      disabled={refreshing}
-                    >
-                      <RefreshCw size={14} />
-                      {refreshing ? "Loading..." : "Retry"}
-                    </button>
-                  </div>
-                )}
-
-                {pgs.length === 0 ? (
-                  <section className="ov-panel ov-no-property">
-                    <Building2 size={38} />
-                    <h2>Welcome to PGmate!</h2>
-                    <p>Add your first PG property to start managing rooms, tenants, and rent.</p>
-
-                    <button
-                      className="ov-property-link"
-                      onClick={() => {
-                        setPGError("");
-                        setShowPGModal(true);
-                      }}
-                    >
-                      <Plus size={16} />
-                      Add your first property
-                    </button>
-                  </section>
-                ) : (
-                  <>
-                    {/* ACTIVE PROPERTY BANNER */}
-
-                    <section className="ov-property-banner">
-                      <div className="ov-property-art">
-                        <Building2 size={68} strokeWidth={1.1} />
-                      </div>
-
-                      <div className="ov-property-main">
-                        <span>ACTIVE PROPERTY</span>
-                        <h2>{propertyName}</h2>
-
-                        <p>
-                          <MapPin size={15} />
-                          {propertyLocation}
-                        </p>
-                      </div>
-
-                      <div className="ov-property-metrics">
-                        <div>
-                          <Building2 size={22} />
-                          <strong>{dashboard.capacity}</strong>
-                          <span>Total Capacity</span>
-                        </div>
-
-                        <div>
-                          <Users size={23} />
-                          <strong>{dashboard.occupied}</strong>
-                          <span>Current Occupancy</span>
-                        </div>
-
-                        <div>
-                          <KeyRound size={22} />
-                          <strong>{dashboard.vacant}</strong>
-                          <span>Vacant Beds</span>
-                        </div>
-                      </div>
+              {pgLoading || overviewData.loading ? (
+                <div className="ov-loading">
+                  Loading your dashboard...
+                </div>
+              ) : (
+                <>
+                  {overviewData.error && (
+                    <div className="ov-error">
+                      <AlertCircle size={17} />
+                      <span>{overviewData.error}</span>
 
                       <button
-                        className="ov-property-link"
-                        onClick={() => goTo("profile")}
+                        onClick={() => loadOverview(true)}
+                        disabled={refreshing}
                       >
-                        View property
-                        <ArrowRight size={16} />
+                        <RefreshCw size={14} />
+                        {refreshing ? "Loading..." : "Retry"}
                       </button>
+                    </div>
+                  )}
+
+
+                  {pgs.length === 0 ? (
+                    <section className="owner-first-property">
+                      <div className="owner-first-property-content">
+                        <Building2 size={44} strokeWidth={2} />
+
+                        <h2>No properties yet</h2>
+
+                        <p>Add your first PG to get started.</p>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPGError("");
+                            setShowPGModal(true);
+                          }}
+                          disabled={creatingPG}
+                        >
+                          <Plus size={17} />
+                          Add Your First PG
+                        </button>
+                      </div>
                     </section>
+                  ) : (
 
-                    {/* SUMMARY CARDS */}
+                    <>
+                      {/* ACTIVE PROPERTY BANNER */}
 
-                    <section className="ov-stats-grid">
-                      <article className="ov-stat-card">
-                        <div className="ov-stat-icon ov-orange">
-                          <BedDouble size={23} />
+                      <section className="ov-property-banner">
+                        <div className="ov-property-art">
+                          <Building2 size={68} strokeWidth={1.1} />
                         </div>
 
-                        <div className="ov-stat-content">
-                          <span className="ov-stat-label">Occupancy</span>
+                        <div className="ov-property-main">
+                          <span>ACTIVE PROPERTY</span>
+                          <h2>{propertyName}</h2>
 
-                          <strong className="ov-stat-value">
-                            {dashboard.occupied} / {dashboard.capacity}
-                          </strong>
-
-                          <div className="ov-progress-track">
-                            <span
-                              style={{
-                                width: `${dashboard.occupancyPercent}%`,
-                              }}
-                            />
-                          </div>
-
-                          <small>
-                            {dashboard.occupancyPercent}% occupied
-                          </small>
-                        </div>
-                      </article>
-
-                      <article className="ov-stat-card">
-                        <div className="ov-stat-icon ov-green">
-                          <Wallet size={23} />
+                          <p>
+                            <MapPin size={15} />
+                            {propertyLocation}
+                          </p>
                         </div>
 
-                        <div className="ov-stat-content">
-                          <span className="ov-stat-label">
-                            Rent Collected
-                          </span>
-
-                          <strong className="ov-stat-value">
-                            {money(dashboard.collected)}
-                          </strong>
-
-                          <small>Current month</small>
-                        </div>
-                      </article>
-
-                      <article className="ov-stat-card">
-                        <div className="ov-stat-icon ov-red">
-                          <AlertCircle size={23} />
-                        </div>
-
-                        <div className="ov-stat-content">
-                          <span className="ov-stat-label">
-                            Pending Rent
-                          </span>
-
-                          <strong className="ov-stat-value">
-                            {money(dashboard.pendingAmount)}
-                          </strong>
-
-                          <small>
-                            {dashboard.overdueCount} overdue payments
-                          </small>
-                        </div>
-                      </article>
-
-                      <article className="ov-stat-card">
-                        <div className="ov-stat-icon ov-blue">
-                          <TrendingUp size={23} />
-                        </div>
-
-                        <div className="ov-stat-content">
-                          <span className="ov-stat-label">Net Income</span>
-
-                          <strong className="ov-stat-value">
-                            {money(dashboard.netIncome)}
-                          </strong>
-
-                          <small>After expenses</small>
-                        </div>
-                      </article>
-                    </section>
-
-                    {/* REVENUE AND OCCUPANCY */}
-
-                    <section className="ov-analytics-grid">
-                      <article className="ov-panel ov-revenue-card">
-                        <div className="ov-panel-heading">
+                        <div className="ov-property-metrics">
                           <div>
-                            <h2>Revenue Overview</h2>
-                            <p>Rent collection trend over time</p>
+                            <Building2 size={22} />
+                            <strong>{dashboard.capacity}</strong>
+                            <span>Total Capacity</span>
                           </div>
 
-                          <div className="ov-period-switch">
-                            <button
-                              type="button"
-                              className={
-                                chartPeriod === 6 ? "active" : ""
-                              }
-                              onClick={() => setChartPeriod(6)}
-                            >
-                              6 months
-                            </button>
+                          <div>
+                            <Users size={23} />
+                            <strong>{dashboard.occupied}</strong>
+                            <span>Current Occupancy</span>
+                          </div>
 
-                            <button
-                              type="button"
-                              className={
-                                chartPeriod === 12 ? "active" : ""
-                              }
-                              onClick={() => setChartPeriod(12)}
-                            >
-                              12 months
-                            </button>
+                          <div>
+                            <KeyRound size={22} />
+                            <strong>{dashboard.vacant}</strong>
+                            <span>Vacant Beds</span>
                           </div>
                         </div>
 
-                        <div className="ov-chart-layout">
-                          <div className="ov-chart-axis">
-                            <span>{money(revenueMax)}</span>
-                            <span>{money(revenueMax * 0.66)}</span>
-                            <span>{money(revenueMax * 0.33)}</span>
-                            <span>₹0</span>
+                        <button
+                          className="ov-property-link"
+                          onClick={() => goTo("profile")}
+                        >
+                          View property
+                          <ArrowRight size={16} />
+                        </button>
+                      </section>
+
+                      {/* SUMMARY CARDS */}
+
+                      <section className="ov-stats-grid">
+                        <article className="ov-stat-card">
+                          <div className="ov-stat-icon ov-orange">
+                            <BedDouble size={23} />
                           </div>
 
-                          <svg
-                            className="ov-chart-svg"
-                            viewBox="0 0 600 160"
-                            role="img"
-                            aria-label="Monthly rent collection chart"
-                          >
-                            <defs>
-                              <linearGradient
-                                id="ov-revenue-gradient"
-                                x1="0"
-                                y1="0"
-                                x2="0"
-                                y2="1"
+                          <div className="ov-stat-content">
+                            <span className="ov-stat-label">Occupancy</span>
+
+                            <strong className="ov-stat-value">
+                              {dashboard.occupied} / {dashboard.capacity}
+                            </strong>
+
+                            <div className="ov-progress-track">
+                              <span
+                                style={{
+                                  width: `${dashboard.occupancyPercent}%`,
+                                }}
+                              />
+                            </div>
+
+                            <small>
+                              {dashboard.occupancyPercent}% occupied
+                            </small>
+                          </div>
+                        </article>
+
+                        <article className="ov-stat-card">
+                          <div className="ov-stat-icon ov-green">
+                            <Wallet size={23} />
+                          </div>
+
+                          <div className="ov-stat-content">
+                            <span className="ov-stat-label">
+                              Rent Collected
+                            </span>
+
+                            <strong className="ov-stat-value">
+                              {money(dashboard.collected)}
+                            </strong>
+
+                            <small>Current month</small>
+                          </div>
+                        </article>
+
+                        <article className="ov-stat-card">
+                          <div className="ov-stat-icon ov-red">
+                            <AlertCircle size={23} />
+                          </div>
+
+                          <div className="ov-stat-content">
+                            <span className="ov-stat-label">
+                              Pending Rent
+                            </span>
+
+                            <strong className="ov-stat-value">
+                              {money(dashboard.pendingAmount)}
+                            </strong>
+
+                            <small>
+                              {dashboard.overdueCount} overdue payments
+                            </small>
+                          </div>
+                        </article>
+
+                        <article className="ov-stat-card">
+                          <div className="ov-stat-icon ov-blue">
+                            <TrendingUp size={23} />
+                          </div>
+
+                          <div className="ov-stat-content">
+                            <span className="ov-stat-label">Net Income</span>
+
+                            <strong className="ov-stat-value">
+                              {money(dashboard.netIncome)}
+                            </strong>
+
+                            <small>After expenses</small>
+                          </div>
+                        </article>
+                      </section>
+
+                      {/* REVENUE AND OCCUPANCY */}
+
+                      <section className="ov-analytics-grid">
+                        <article className="ov-panel ov-revenue-card">
+                          <div className="ov-panel-heading">
+                            <div>
+                              <h2>Revenue Overview</h2>
+                              <p>Rent collection trend over time</p>
+                            </div>
+
+                            <div className="ov-period-switch">
+                              <button
+                                type="button"
+                                className={
+                                  chartPeriod === 6 ? "active" : ""
+                                }
+                                onClick={() => setChartPeriod(6)}
                               >
-                                <stop
-                                  offset="0%"
-                                  stopColor="#08a66a"
-                                  stopOpacity="0.35"
-                                />
+                                6 months
+                              </button>
 
-                                <stop
-                                  offset="100%"
-                                  stopColor="#08a66a"
-                                  stopOpacity="0.04"
-                                />
-                              </linearGradient>
-                            </defs>
+                              <button
+                                type="button"
+                                className={
+                                  chartPeriod === 12 ? "active" : ""
+                                }
+                                onClick={() => setChartPeriod(12)}
+                              >
+                                12 months
+                              </button>
+                            </div>
+                          </div>
 
-                            {[12, 53, 94, 135].map((y) => (
-                              <line
-                                key={y}
-                                x1="10"
-                                x2="590"
-                                y1={y}
-                                y2={y}
-                                className="ov-grid-line"
-                              />
-                            ))}
+                          <div className="ov-chart-layout">
+                            <div className="ov-chart-axis">
+                              <span>{money(revenueMax)}</span>
+                              <span>{money(revenueMax * 0.66)}</span>
+                              <span>{money(revenueMax * 0.33)}</span>
+                              <span>₹0</span>
+                            </div>
 
-                            {revenuePoints.map((point) => (
-                              <line
-                                key={`grid-${point.key}`}
-                                x1={point.x}
-                                x2={point.x}
-                                y1="12"
-                                y2="135"
-                                className="ov-grid-line ov-grid-vertical"
-                              />
-                            ))}
-
-                            {revenueArea && (
-                              <polygon
-                                points={revenueArea}
-                                fill="url(#ov-revenue-gradient)"
-                              />
-                            )}
-
-                            <polyline
-                              points={revenueLine}
-                              className="ov-chart-line"
-                            />
-
-                            {revenuePoints.map((point) => (
-                              <g key={point.key}>
-                                <circle
-                                  cx={point.x}
-                                  cy={point.y}
-                                  r="4.5"
-                                  className="ov-chart-point"
-                                />
-
-                                <text
-                                  x={point.x}
-                                  y="155"
-                                  textAnchor="middle"
-                                  className="ov-chart-label"
+                            <svg
+                              className="ov-chart-svg"
+                              viewBox="0 0 600 160"
+                              role="img"
+                              aria-label="Monthly rent collection chart"
+                            >
+                              <defs>
+                                <linearGradient
+                                  id="ov-revenue-gradient"
+                                  x1="0"
+                                  y1="0"
+                                  x2="0"
+                                  y2="1"
                                 >
-                                  {point.label}
-                                </text>
-                              </g>
-                            ))}
-                          </svg>
-                        </div>
+                                  <stop
+                                    offset="0%"
+                                    stopColor="#08a66a"
+                                    stopOpacity="0.35"
+                                  />
 
-                        {dashboard.payments.length === 0 && (
-                          <div className="ov-chart-empty">
-                            No payment records available yet.
+                                  <stop
+                                    offset="100%"
+                                    stopColor="#08a66a"
+                                    stopOpacity="0.04"
+                                  />
+                                </linearGradient>
+                              </defs>
+
+                              {[12, 53, 94, 135].map((y) => (
+                                <line
+                                  key={y}
+                                  x1="10"
+                                  x2="590"
+                                  y1={y}
+                                  y2={y}
+                                  className="ov-grid-line"
+                                />
+                              ))}
+
+                              {revenuePoints.map((point) => (
+                                <line
+                                  key={`grid-${point.key}`}
+                                  x1={point.x}
+                                  x2={point.x}
+                                  y1="12"
+                                  y2="135"
+                                  className="ov-grid-line ov-grid-vertical"
+                                />
+                              ))}
+
+                              {revenueArea && (
+                                <polygon
+                                  points={revenueArea}
+                                  fill="url(#ov-revenue-gradient)"
+                                />
+                              )}
+
+                              <polyline
+                                points={revenueLine}
+                                className="ov-chart-line"
+                              />
+
+                              {revenuePoints.map((point) => (
+                                <g key={point.key}>
+                                  <circle
+                                    cx={point.x}
+                                    cy={point.y}
+                                    r="4.5"
+                                    className="ov-chart-point"
+                                  />
+
+                                  <text
+                                    x={point.x}
+                                    y="155"
+                                    textAnchor="middle"
+                                    className="ov-chart-label"
+                                  >
+                                    {point.label}
+                                  </text>
+                                </g>
+                              ))}
+                            </svg>
                           </div>
-                        )}
-                      </article>
 
-                      <article className="ov-panel ov-occupancy-card">
-                        <div className="ov-panel-heading">
-                          <div>
-                            <h2>Occupancy Snapshot</h2>
-                            <p>Current room occupancy status</p>
-                          </div>
-                        </div>
+                          {dashboard.payments.length === 0 && (
+                            <div className="ov-chart-empty">
+                              No payment records available yet.
+                            </div>
+                          )}
+                        </article>
 
-                        <div className="ov-occupancy-layout">
-                          <div
-                            className="ov-donut"
-                            style={{
-                              background: `conic-gradient(#08a66a ${
-                                dashboard.occupancyPercent * 3.6
-                              }deg, #a9ead8 0deg)`,
-                            }}
-                          >
-                            <div className="ov-donut-inner">
-                              <strong>
-                                {dashboard.occupancyPercent}%
-                              </strong>
-                              <span>Occupied</span>
+                        <article className="ov-panel ov-occupancy-card">
+                          <div className="ov-panel-heading">
+                            <div>
+                              <h2>Occupancy Snapshot</h2>
+                              <p>Current room occupancy status</p>
                             </div>
                           </div>
 
-                          <div className="ov-legend">
-                            <div className="ov-legend-row">
-                              <i className="ov-dot ov-dot-green" />
-                              <span>Occupied Beds</span>
-                              <strong>{dashboard.occupied}</strong>
-                              <small>
-                                {dashboard.occupancyPercent}%
-                              </small>
+                          <div className="ov-occupancy-layout">
+                            <div
+                              className="ov-donut"
+                              style={{
+                                background: `conic-gradient(#08a66a ${dashboard.occupancyPercent * 3.6
+                                  }deg, #a9ead8 0deg)`,
+                              }}
+                            >
+                              <div className="ov-donut-inner">
+                                <strong>
+                                  {dashboard.occupancyPercent}%
+                                </strong>
+                                <span>Occupied</span>
+                              </div>
                             </div>
 
-                            <div className="ov-legend-row">
-                              <i className="ov-dot ov-dot-mint" />
-                              <span>Vacant Beds</span>
-                              <strong>{dashboard.vacant}</strong>
-                              <small>
-                                {dashboard.capacity
-                                  ? Math.round(
+                            <div className="ov-legend">
+                              <div className="ov-legend-row">
+                                <i className="ov-dot ov-dot-green" />
+                                <span>Occupied Beds</span>
+                                <strong>{dashboard.occupied}</strong>
+                                <small>
+                                  {dashboard.occupancyPercent}%
+                                </small>
+                              </div>
+
+                              <div className="ov-legend-row">
+                                <i className="ov-dot ov-dot-mint" />
+                                <span>Vacant Beds</span>
+                                <strong>{dashboard.vacant}</strong>
+                                <small>
+                                  {dashboard.capacity
+                                    ? Math.round(
                                       (dashboard.vacant /
                                         dashboard.capacity) *
-                                        100
+                                      100
                                     )
-                                  : 0}
-                                %
-                              </small>
-                            </div>
+                                    : 0}
+                                  %
+                                </small>
+                              </div>
 
-                            <div className="ov-capacity-row">
-                              <BedDouble size={22} />
-                              <span>Total Capacity</span>
-                              <strong>{dashboard.capacity}</strong>
+                              <div className="ov-capacity-row">
+                                <BedDouble size={22} />
+                                <span>Total Capacity</span>
+                                <strong>{dashboard.capacity}</strong>
+                              </div>
                             </div>
                           </div>
+                        </article>
+                      </section>
+
+                      {/* RECENT RENT PAYMENTS */}
+
+                      <section className="ov-panel ov-payments-panel">
+                        <div className="ov-panel-heading">
+                          <div>
+                            <h2>Recent Rent Payments</h2>
+                            <p>Latest rent collections</p>
+                          </div>
+
+                          <button
+                            type="button"
+                            className="ov-text-link"
+                            onClick={() => goTo("payments")}
+                          >
+                            View All
+                            <ArrowRight size={15} />
+                          </button>
                         </div>
-                      </article>
-                    </section>
 
-                    {/* RECENT RENT PAYMENTS */}
-
-                    <section className="ov-panel ov-payments-panel">
-                      <div className="ov-panel-heading">
-                        <div>
-                          <h2>Recent Rent Payments</h2>
-                          <p>Latest rent collections</p>
-                        </div>
-
-                        <button
-                          type="button"
-                          className="ov-text-link"
-                          onClick={() => goTo("payments")}
-                        >
-                          View All
-                          <ArrowRight size={15} />
-                        </button>
-                      </div>
-
-                      <div className="ov-table-wrap">
-                        <table className="ov-payments-table">
-                          <thead>
-                            <tr>
-                              <th>Tenant</th>
-                              <th>Room</th>
-                              <th>Amount</th>
-                              <th>Date</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-
-                          <tbody>
-                            {dashboard.recentPayments.map(
-                              (payment, index) => {
-                                const status = getStatusLabel(payment);
-
-                                return (
-                                  <tr
-                                    key={
-                                      payment._id ||
-                                      payment.id ||
-                                      `${paymentDate(payment)}-${index}`
-                                    }
-                                  >
-                                    <td>
-                                      <div className="ov-tenant-cell">
-                                        <span
-                                          className={`ov-initial ov-initial-${
-                                            index % 4
-                                          }`}
-                                        >
-                                          {getTenantName(payment)
-                                            .charAt(0)
-                                            .toUpperCase()}
-                                        </span>
-
-                                        <strong>
-                                          {getTenantName(payment)}
-                                        </strong>
-                                      </div>
-                                    </td>
-
-                                    <td>{getRoomName(payment)}</td>
-
-                                    <td className="ov-amount-cell">
-                                      {money(paymentAmount(payment))}
-                                    </td>
-
-                                    <td>
-                                      {dateLabel(paymentDate(payment))}
-                                    </td>
-
-                                    <td>
-                                      <span
-                                        className={`ov-status ${status.toLowerCase()}`}
-                                      >
-                                        {status}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                );
-                              }
-                            )}
-
-                            {dashboard.recentPayments.length === 0 && (
+                        <div className="ov-table-wrap">
+                          <table className="ov-payments-table">
+                            <thead>
                               <tr>
-                                <td colSpan={5}>
-                                  No rent payments found.
-                                </td>
+                                <th>Tenant</th>
+                                <th>Room</th>
+                                <th>Amount</th>
+                                <th>Date</th>
+                                <th>Status</th>
                               </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </section>
+                            </thead>
 
-                    {/* NEEDS ATTENTION */}
+                            <tbody>
+                              {dashboard.recentPayments.map(
+                                (payment, index) => {
+                                  const status = getStatusLabel(payment);
 
-                    <section className="ov-panel ov-attention-panel">
-                      <div className="ov-panel-heading">
-                        <div>
-                          <h2>Needs Attention</h2>
-                          <p>Items that require your action</p>
+                                  return (
+                                    <tr
+                                      key={
+                                        payment._id ||
+                                        payment.id ||
+                                        `${paymentDate(payment)}-${index}`
+                                      }
+                                    >
+                                      <td>
+                                        <div className="ov-tenant-cell">
+                                          <span
+                                            className={`ov-initial ov-initial-${index % 4
+                                              }`}
+                                          >
+                                            {getTenantName(payment)
+                                              .charAt(0)
+                                              .toUpperCase()}
+                                          </span>
+
+                                          <strong>
+                                            {getTenantName(payment)}
+                                          </strong>
+                                        </div>
+                                      </td>
+
+                                      <td>{getRoomName(payment)}</td>
+
+                                      <td className="ov-amount-cell">
+                                        {money(paymentAmount(payment))}
+                                      </td>
+
+                                      <td>
+                                        {dateLabel(paymentDate(payment))}
+                                      </td>
+
+                                      <td>
+                                        <span
+                                          className={`ov-status ${status.toLowerCase()}`}
+                                        >
+                                          {status}
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  );
+                                }
+                              )}
+
+                              {dashboard.recentPayments.length === 0 && (
+                                <tr>
+                                  <td colSpan={5}>
+                                    No rent payments found.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
+                      </section>
 
-                      <div className="ov-attention-grid">
-                        <button
-                          type="button"
-                          className="ov-attention-item ov-attention-red"
-                          onClick={() => goTo("payments")}
-                        >
-                          <span className="ov-attention-icon">
-                            <AlertCircle size={23} />
-                          </span>
+                      {/* NEEDS ATTENTION */}
 
-                          <span className="ov-attention-text">
-                            <strong>
-                              {dashboard.overdueCount} Rent Payments
-                              Overdue
-                            </strong>
+                      <section className="ov-panel ov-attention-panel">
+                        <div className="ov-panel-heading">
+                          <div>
+                            <h2>Needs Attention</h2>
+                            <p>Items that require your action</p>
+                          </div>
+                        </div>
 
-                            <small>
-                              Follow up with tenants for pending payments
-                            </small>
-                          </span>
+                        <div className="ov-attention-grid">
+                          <button
+                            type="button"
+                            className="ov-attention-item ov-attention-red"
+                            onClick={() => goTo("payments")}
+                          >
+                            <span className="ov-attention-icon">
+                              <AlertCircle size={23} />
+                            </span>
 
-                          <ArrowRight size={17} />
-                        </button>
+                            <span className="ov-attention-text">
+                              <strong>
+                                {dashboard.overdueCount} Rent Payments
+                                Overdue
+                              </strong>
 
-                        <button
-                          type="button"
-                          className="ov-attention-item ov-attention-orange"
-                          onClick={() => goTo("complaints")}
-                        >
-                          <span className="ov-attention-icon">
-                            <Wrench size={23} />
-                          </span>
+                              <small>
+                                Follow up with tenants for pending payments
+                              </small>
+                            </span>
 
-                          <span className="ov-attention-text">
-                            <strong>
-                              {dashboard.openComplaints.length} Maintenance
-                              Requests
-                            </strong>
+                            <ArrowRight size={17} />
+                          </button>
 
-                            <small>
-                              Address reported issues in rooms
-                            </small>
-                          </span>
+                          <button
+                            type="button"
+                            className="ov-attention-item ov-attention-orange"
+                            onClick={() => goTo("complaints")}
+                          >
+                            <span className="ov-attention-icon">
+                              <Wrench size={23} />
+                            </span>
 
-                          <ArrowRight size={17} />
-                        </button>
+                            <span className="ov-attention-text">
+                              <strong>
+                                {dashboard.openComplaints.length} Maintenance
+                                Requests
+                              </strong>
 
-                        <button
-                          type="button"
-                          className="ov-attention-item ov-attention-blue"
-                          onClick={() => goTo("rooms")}
-                        >
-                          <span className="ov-attention-icon">
-                            <BedDouble size={23} />
-                          </span>
+                              <small>
+                                Address reported issues in rooms
+                              </small>
+                            </span>
 
-                          <span className="ov-attention-text">
-                            <strong>
-                              {dashboard.vacant} Beds Available
-                            </strong>
+                            <ArrowRight size={17} />
+                          </button>
 
-                            <small>
-                              View available space for new tenants
-                            </small>
-                          </span>
+                          <button
+                            type="button"
+                            className="ov-attention-item ov-attention-blue"
+                            onClick={() => goTo("rooms")}
+                          >
+                            <span className="ov-attention-icon">
+                              <BedDouble size={23} />
+                            </span>
 
-                          <ArrowRight size={17} />
-                        </button>
-                      </div>
-                    </section>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        )}
-      </section>
-    </main>
+                            <span className="ov-attention-text">
+                              <strong>
+                                {dashboard.vacant} Beds Available
+                              </strong>
 
-    {/* ADD PROPERTY MODAL */}
+                              <small>
+                                View available space for new tenants
+                              </small>
+                            </span>
 
-    {showPGModal && (
-      <div
-        className="owner-modal-overlay"
-        onClick={() => {
-          if (!creatingPG) setShowPGModal(false);
-        }}
-      >
+                            <ArrowRight size={17} />
+                          </button>
+                        </div>
+                      </section>
+                    </>
+                  )}
+                </>
+              )}
+            </>
+          )}
+        </section>
+      </main>
+
+      {/* ADD PROPERTY MODAL */}
+
+      {showPGModal && (
         <div
-          className="owner-modal"
-          onClick={(event) => event.stopPropagation()}
+          className="owner-modal-overlay"
+          onClick={() => {
+            if (!creatingPG) setShowPGModal(false);
+          }}
         >
-          <div className="owner-modal-header">
-            <div>
-              <h2>Add New PG</h2>
-              <p>Enter your property details</p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowPGModal(false)}
-              disabled={creatingPG}
-              aria-label="Close modal"
-            >
-              <X size={18} />
-            </button>
-          </div>
-
-          <form onSubmit={handleCreatePG}>
-            <div className="owner-form-group">
-              <label>PG Name</label>
-              <input
-                type="text"
-                name="name"
-                value={pgForm.name}
-                onChange={handlePGChange}
-                placeholder="Enter PG name"
-                required
-              />
-            </div>
-
-            <div className="owner-form-group">
-              <label>Address</label>
-              <input
-                type="text"
-                name="address"
-                value={pgForm.address}
-                onChange={handlePGChange}
-                placeholder="Enter full address"
-                required
-              />
-            </div>
-
-            <div className="owner-form-row">
-              <div className="owner-form-group">
-                <label>City</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={pgForm.city}
-                  onChange={handlePGChange}
-                  placeholder="City"
-                  required
-                />
+          <div
+            className="owner-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="owner-modal-header">
+              <div>
+                <h2>Add New PG</h2>
+                <p>Enter your property details</p>
               </div>
 
-              <div className="owner-form-group">
-                <label>State</label>
-                <input
-                  type="text"
-                  name="state"
-                  value={pgForm.state}
-                  onChange={handlePGChange}
-                  placeholder="State"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="owner-form-group">
-              <label>Contact Number</label>
-              <input
-                type="tel"
-                name="contactNumber"
-                value={pgForm.contactNumber}
-                onChange={handlePGChange}
-                placeholder="PG contact number"
-                required
-              />
-            </div>
-
-            <div className="owner-form-group">
-              <label>Description</label>
-              <textarea
-                name="description"
-                value={pgForm.description}
-                onChange={handlePGChange}
-                placeholder="Short description of your PG"
-                rows={3}
-              />
-            </div>
-
-            {pgError && (
-              <div className="owner-form-error">{pgError}</div>
-            )}
-
-            <div className="owner-modal-actions">
               <button
                 type="button"
-                className="owner-modal-cancel"
                 onClick={() => setShowPGModal(false)}
                 disabled={creatingPG}
+                aria-label="Close modal"
               >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="owner-modal-submit"
-                disabled={creatingPG}
-              >
-                {creatingPG ? "Saving..." : "Add PG"}
+                <X size={18} />
               </button>
             </div>
-          </form>
+
+            <form onSubmit={handleCreatePG}>
+              <div className="owner-form-group">
+                <label>PG Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={pgForm.name}
+                  onChange={handlePGChange}
+                  placeholder="Enter PG name"
+                  required
+                />
+              </div>
+
+              <div className="owner-form-group">
+                <label>Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={pgForm.address}
+                  onChange={handlePGChange}
+                  placeholder="Enter full address"
+                  required
+                />
+              </div>
+
+              <div className="owner-form-row">
+                <div className="owner-form-group">
+                  <label>City</label>
+                  <input
+                    type="text"
+                    name="city"
+                    value={pgForm.city}
+                    onChange={handlePGChange}
+                    placeholder="City"
+                    required
+                  />
+                </div>
+
+                <div className="owner-form-group">
+                  <label>State</label>
+                  <input
+                    type="text"
+                    name="state"
+                    value={pgForm.state}
+                    onChange={handlePGChange}
+                    placeholder="State"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="owner-form-group">
+                <label>Contact Number</label>
+                <input
+                  type="tel"
+                  name="contactNumber"
+                  value={pgForm.contactNumber}
+                  onChange={handlePGChange}
+                  placeholder="PG contact number"
+                  required
+                />
+              </div>
+
+              <div className="owner-form-group">
+                <label>Description</label>
+                <textarea
+                  name="description"
+                  value={pgForm.description}
+                  onChange={handlePGChange}
+                  placeholder="Short description of your PG"
+                  rows={3}
+                />
+              </div>
+
+              {pgError && (
+                <div className="owner-form-error">{pgError}</div>
+              )}
+
+              <div className="owner-modal-actions">
+                <button
+                  type="button"
+                  className="owner-modal-cancel"
+                  onClick={() => setShowPGModal(false)}
+                  disabled={creatingPG}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="submit"
+                  className="owner-modal-submit"
+                  disabled={creatingPG}
+                >
+                  {creatingPG ? "Saving..." : "Add PG"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }
 
 export default OwnerDashboard;

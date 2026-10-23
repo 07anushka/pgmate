@@ -1,3 +1,4 @@
+
 import {
   createContext,
   useContext,
@@ -8,8 +9,7 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const savedUser =
-      localStorage.getItem("pgmate_user");
+    const savedUser = localStorage.getItem("pgmate_user");
 
     if (!savedUser) {
       return null;
@@ -36,10 +36,23 @@ export function AuthProvider({ children }) {
       JSON.stringify(userData)
     );
 
-    localStorage.setItem(
-      "pgmate_token",
-      jwtToken
-    );
+    localStorage.setItem("pgmate_token", jwtToken);
+  };
+
+  const updateUser = (updatedUser) => {
+    setUser((currentUser) => {
+      const nextUser = {
+        ...currentUser,
+        ...updatedUser,
+      };
+
+      localStorage.setItem(
+        "pgmate_user",
+        JSON.stringify(nextUser)
+      );
+
+      return nextUser;
+    });
   };
 
   const logout = () => {
@@ -57,6 +70,7 @@ export function AuthProvider({ children }) {
         token,
         login,
         logout,
+        updateUser,
         isAuthenticated: Boolean(token),
       }}
     >
