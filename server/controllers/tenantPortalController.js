@@ -4,6 +4,8 @@ import FoodMenu from "../models/FoodMenu.js";
 import Notice from "../models/Notice.js";
 import Complaint from "../models/Complaint.js";
 import NoticeDismissal from "../models/NoticeDismissal.js";
+import bcrypt from "bcryptjs";
+import User from "../models/User.js";
 
 /* =========================================================
    HELPER
@@ -68,6 +70,203 @@ export const getMyTenantProfile =
             });
         }
     };
+
+
+/* =========================================================
+   UPDATE TENANT PROFILE
+   Tenant can update name and emergency contact only.
+   Mobile number cannot be changed here.
+========================================================= */
+
+export const updateMyTenantProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const allowedFields = [
+      "name",
+      "emergencyContactName",
+      "emergencyContactNumber",
+    ];
+
+    const suppliedFields = Object.keys(req.body || {});
+
+    if (
+      suppliedFields.length === 0 ||
+      suppliedFields.some((field) => !allowedFields.includes(field))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Only name and emergency contact details can be updated.",
+      });
+    }
+
+    const tenant = await Tenant.findOne({
+      userId,
+      status: "active",
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Active tenant profile not found.",
+      });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      role: "tenant",
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant account not found.",
+      });
+    }
+
+    if (req.body.name !== undefined) {
+      const name = String(req.body.name).trim();
+
+      if (!name || name.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "Name must be between 1 and 100 characters.",
+        });
+      }
+
+      user.name = name;
+      await user.save();
+    }
+
+    if (req.body.emergencyContactName !== undefined) {
+      const name = String(req.body.emergencyContactName).trim();
+
+      if (name.length > 100) {
+        return res.status(400).json({
+          success: false,
+          message: "Emergency contact name is too long.",
+        });
+      }
+
+      tenant.emergencyContactName = name;
+    }
+
+    if (req.body.emergencyContactNumber !== undefined) {
+      const number = String(
+        req.body.emergencyContactNumber
+      ).trim();
+
+      if (number && !/^[0-9+\-\s()]{7,20}$/.test(number)) {
+        return res.status(400).json({
+          success: false,
+          message: "Enter a valid emergency contact number.",
+        });
+      }
+
+      tenant.emergencyContactNumber = number;
+    }
+
+    await tenant.save();
+
+    const updatedTenant = await Tenant.findById(tenant._id)
+      .populate("userId", "name mobile role")
+      .populate("pgId")
+      .populate("roomId")
+      .populate("bedId");
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+      tenant: updatedTenant,
+    });
+  } catch (error) {
+    console.error("Update tenant profile error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update profile.",
+    });
+  }
+};
+
+
+/* =========================================================
+   CHANGE TENANT PASSWORD
+   Requires the current password.
+========================================================= */
+
+export const changeMyTenantPassword = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (
+      typeof currentPassword !== "string" ||
+      typeof newPassword !== "string" ||
+      !currentPassword ||
+      !newPassword
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required.",
+      });
+    }
+
+    if (newPassword.length < 8 || newPassword.length > 128) {
+      return res.status(400).json({
+        success: false,
+        message: "New password must be between 8 and 128 characters.",
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Your new password must be different.",
+      });
+    }
+
+    const user = await User.findOne({
+      _id: userId,
+      role: "tenant",
+    }).select("+password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant account not found.",
+      });
+    }
+
+    const passwordMatches = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+
+    if (!passwordMatches) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password is incorrect.",
+      });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 12);
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  } catch (error) {
+    console.error("Change tenant password error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to change password.",
+    });
+  }
+};
 
 
 /* =========================================================

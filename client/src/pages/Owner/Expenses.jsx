@@ -172,6 +172,12 @@ function Expenses() {
     categoryTotals: {},
   });
 
+  const notifyExpensesChanged = () => {
+    window.dispatchEvent(
+      new Event("pgmate-expenses-changed")
+    );
+  };
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState("");
@@ -230,7 +236,27 @@ function Expenses() {
   }, [selectedPgId]);
 
   useEffect(() => {
-    loadExpenses();
+    const handlePGChange = () => {
+      loadExpenses();
+    };
+
+    handlePGChange();
+
+    window.addEventListener(
+      "pgmate-pg-changed",
+      handlePGChange
+    );
+
+    window.addEventListener("storage", handlePGChange);
+
+    return () => {
+      window.removeEventListener(
+        "pgmate-pg-changed",
+        handlePGChange
+      );
+
+      window.removeEventListener("storage", handlePGChange);
+    };
   }, [loadExpenses]);
 
   // Available months for the filter.
@@ -476,13 +502,13 @@ function Expenses() {
       amount: String(expense.amount ?? ""),
       expenseDate: expense.expenseDate
         ? (() => {
-            const date = new Date(expense.expenseDate);
-            const localDate = new Date(
-              date.getTime() - date.getTimezoneOffset() * 60000
-            );
+          const date = new Date(expense.expenseDate);
+          const localDate = new Date(
+            date.getTime() - date.getTimezoneOffset() * 60000
+          );
 
-            return localDate.toISOString().slice(0, 10);
-          })()
+          return localDate.toISOString().slice(0, 10);
+        })()
         : todayString(),
       paymentMethod: expense.paymentMethod || "cash",
       notes: expense.notes || "",
@@ -549,6 +575,8 @@ function Expenses() {
         setNotice("Expense added successfully.");
       }
 
+      notifyExpensesChanged();
+
       setShowModal(false);
       setEditingExpense(null);
       setForm(emptyForm());
@@ -577,6 +605,8 @@ function Expenses() {
       setNotice("");
 
       await deleteExpenseApi(expense._id);
+
+      notifyExpensesChanged();
 
       setExpenses((previous) =>
         previous.filter((item) => item._id !== expense._id)
@@ -751,8 +781,8 @@ function Expenses() {
                 {monthFilter === "all"
                   ? "No category data yet"
                   : `No expenses recorded for ${getMonthLabel(
-                      monthFilter
-                    )}`}
+                    monthFilter
+                  )}`}
               </span>
             </div>
           ) : (
@@ -761,11 +791,10 @@ function Expenses() {
                 className="expense-donut"
                 style={{ background: categoryGradient }}
                 role="img"
-                aria-label={`Expense category breakdown for ${
-                  monthFilter === "all"
-                    ? "all months"
-                    : getMonthLabel(monthFilter)
-                }`}
+                aria-label={`Expense category breakdown for ${monthFilter === "all"
+                  ? "all months"
+                  : getMonthLabel(monthFilter)
+                  }`}
               >
                 <div className="expense-donut-hole">
                   <strong>{formatAmount(categoryChartTotal)}</strong>
@@ -824,8 +853,8 @@ function Expenses() {
                   {factor === 0
                     ? "₹0"
                     : `₹${Math.round(
-                        (maxTrend * factor) / 1000
-                      )}K`}
+                      (maxTrend * factor) / 1000
+                    )}K`}
                 </span>
               ))}
             </div>
@@ -850,9 +879,8 @@ function Expenses() {
                   >
                     <div className="expense-bar-track">
                       <div
-                        className={`expense-bar ${
-                          activeMonth ? "is-active" : ""
-                        }`}
+                        className={`expense-bar ${activeMonth ? "is-active" : ""
+                          }`}
                         style={{ height: `${height}%` }}
                         title={`${item.month}: ${formatAmount(
                           item.total
@@ -970,14 +998,14 @@ function Expenses() {
               monthFilter !== "all") ||
             categoryFilter !== "all" ||
             paymentFilter !== "all") && (
-            <button
-              type="button"
-              className="expenses-clear-filters"
-              onClick={clearFilters}
-            >
-              Clear filters
-            </button>
-          )}
+              <button
+                type="button"
+                className="expenses-clear-filters"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </button>
+            )}
         </div>
 
         {/* Empty state */}

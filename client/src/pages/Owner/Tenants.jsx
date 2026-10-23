@@ -41,6 +41,8 @@ import {
   UserRound,
 } from "lucide-react";
 
+import { Eye } from "lucide-react";
+
 import { useAuth } from "../../context/AuthContext";
 import MessageCard from "../../components/MessageCard";
 
@@ -298,9 +300,9 @@ const getCurrentCyclePayment = (
 
         return (
           paymentDate >=
-            cycleStart &&
+          cycleStart &&
           paymentDate <=
-            today
+          today
         );
       }
     );
@@ -396,9 +398,9 @@ const getPeriodPayment = (
 
         return (
           paymentDate >=
-            range.start &&
+          range.start &&
           paymentDate <=
-            range.end
+          range.end
         );
       }
     );
@@ -500,6 +502,10 @@ function Tenants() {
     `${selectedYear}-${String(
       selectedMonth
     ).padStart(2, "0")}`;
+
+  const [aadhaarModalTenant, setAadhaarModalTenant] = useState(null);
+  const [deletingAadhaar, setDeletingAadhaar] = useState(false);
+  const [aadhaarError, setAadhaarError] = useState("");
 
   /* ===================================================
      PAYMENTS
@@ -669,7 +675,7 @@ function Tenants() {
       const data =
         await response.json();
 
-        console.log("Rent payment update response:", data);
+      console.log("Rent payment update response:", data);
       if (!response.ok) {
         throw new Error(
           data.message ||
@@ -681,7 +687,7 @@ function Tenants() {
         data.pgs || []
       );
     } catch (
-      fetchError
+    fetchError
     ) {
       console.error(
         "Fetch PGs error:",
@@ -701,140 +707,119 @@ function Tenants() {
     }
   };
 
+
   /* ===================================================
-     FETCH TENANTS
+     FETCH TENANTS — SELECTED PG ONLY
   =================================================== */
 
-  const fetchTenants =
-    async () => {
-      try {
-        setLoading(true);
-        setError("");
+  const fetchTenants = async () => {
+    try {
+      const activePGId = localStorage.getItem("pgmate_active_pg");
 
-        const activePGId =
-          localStorage.getItem(
-            "pgmate_active_pg"
-          ) || "all";
+      setError("");
 
-        const query =
-          activePGId &&
-            activePGId !== "all"
-            ? `?pgId=${encodeURIComponent(
-                activePGId
-              )}`
-            : "";
-
-        const response =
-          await fetch(
-            `${API_URL}/tenants/my${query}`,
-            {
-              headers:
-                getHeaders(),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-            "Failed to fetch tenants."
-          );
-        }
-
-        setTenants(
-          data.tenants || []
-        );
-      } catch (
-        fetchError
-      ) {
-        console.error(
-          "Fetch tenants error:",
-          fetchError
-        );
-
-        setError(
-          fetchError.message ||
-          "Failed to load tenants."
-        );
-      } finally {
+      if (!activePGId || activePGId === "all") {
+        setTenants([]);
         setLoading(false);
+        return;
       }
-    };
+
+      setLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/tenants/my?pgId=${encodeURIComponent(activePGId)}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch tenants.");
+      }
+
+      setTenants(data.tenants || []);
+    } catch (fetchError) {
+      console.error("Fetch tenants error:", fetchError);
+      setError(fetchError.message || "Failed to load tenants.");
+      setTenants([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
 
   /* ===================================================
-     FETCH PAYMENTS
+     FETCH PAYMENTS — SELECTED PG ONLY
   =================================================== */
 
-  const fetchPayments =
-    async () => {
-      try {
-        setPaymentsLoading(
-          true
-        );
+  const fetchPayments = async () => {
+    try {
+      const activePGId = localStorage.getItem("pgmate_active_pg");
 
-        const activePGId =
-          localStorage.getItem(
-            "pgmate_active_pg"
-          ) || "";
-
-        const query =
-          activePGId
-            ? `?pgId=${encodeURIComponent(
-                activePGId
-              )}`
-            : "";
-
-        const response =
-          await fetch(
-            `${API_URL}/payments/my${query}`,
-            {
-              headers:
-                getHeaders(),
-            }
-          );
-
-        const data =
-          await response.json();
-
-        if (!response.ok) {
-          throw new Error(
-            data.message ||
-            "Failed to fetch payments."
-          );
-        }
-
-        setPayments(
-          data.payments || []
-        );
-      } catch (
-        paymentError
-      ) {
-        console.error(
-          "Fetch payments error:",
-          paymentError
-        );
-
+      if (!activePGId || activePGId === "all") {
         setPayments([]);
-      } finally {
-        setPaymentsLoading(
-          false
-        );
+        return;
       }
-    };
+
+      setPaymentsLoading(true);
+
+      const response = await fetch(
+        `${API_URL}/payments/my?pgId=${encodeURIComponent(activePGId)}`,
+        {
+          headers: getHeaders(),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch payments.");
+      }
+
+      setPayments(data.payments || []);
+    } catch (paymentError) {
+      console.error("Fetch payments error:", paymentError);
+      setPayments([]);
+    } finally {
+      setPaymentsLoading(false);
+    }
+  };
+
+
 
   /* ===================================================
-     INITIAL LOAD
+     INITIAL LOAD AND PG CHANGE
   =================================================== */
 
   useEffect(() => {
     if (!token) return;
 
     fetchPGs();
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+
     fetchTenants();
     fetchPayments();
+
+    const handlePGChanged = () => {
+      fetchTenants();
+      fetchPayments();
+    };
+
+    window.addEventListener("pgmate-pg-changed", handlePGChanged);
+    window.addEventListener("storage", handlePGChanged);
+
+    return () => {
+      window.removeEventListener("pgmate-pg-changed", handlePGChanged);
+      window.removeEventListener("storage", handlePGChanged);
+    };
   }, [token]);
+
 
   /* ===================================================
      FORM CHANGE
@@ -900,13 +885,13 @@ function Tenants() {
         const beds = Array.isArray(data.beds)
           ? data.beds
           : Array.isArray(data.availableBeds)
-          ? data.availableBeds
-          : Array.isArray(data)
-          ? data
-          : [];
+            ? data.availableBeds
+            : Array.isArray(data)
+              ? data
+              : [];
         setAvailableBeds(beds);
       } catch (
-        fetchError
+      fetchError
       ) {
         console.error(
           "Fetch beds error:",
@@ -1018,11 +1003,11 @@ function Tenants() {
 
       const validPGId =
         activePGId &&
-        activePGId !== "all"
+          activePGId !== "all"
           ? activePGId
           : pgs.length === 1
-          ? pgs[0]._id
-          : "";
+            ? pgs[0]._id
+            : "";
 
       setEditingTenant(
         null
@@ -1085,13 +1070,13 @@ function Tenants() {
 
         password: "",
         dateOfBirth: tenant.dateOfBirth
-  ? new Date(tenant.dateOfBirth)
-      .toISOString()
-      .split("T")[0]
-  : "",
+          ? new Date(tenant.dateOfBirth)
+            .toISOString()
+            .split("T")[0]
+          : "",
 
-gender: tenant.gender || "",
-documentType: tenant.documentType || "",
+        gender: tenant.gender || "",
+        documentType: tenant.documentType || "",
         aadhaarNumber: tenant.aadhaarNumber || "",
         panNumber: tenant.panNumber || "",
         address: tenant.address || "",
@@ -1116,17 +1101,17 @@ documentType: tenant.documentType || "",
         joiningDate:
           tenant.joiningDate
             ? new Date(
-                tenant.joiningDate
-              )
-                .toISOString()
-                .split("T")[0]
+              tenant.joiningDate
+            )
+              .toISOString()
+              .split("T")[0]
             : getInitialForm()
-                .joiningDate,
+              .joiningDate,
 
         rentDueDay:
           String(
             tenant.rentDueDay ||
-              5
+            5
           ),
 
         monthlyRent:
@@ -1259,11 +1244,11 @@ documentType: tenant.documentType || "",
       ).sort((a, b) =>
         String(
           a.roomNumber ||
-            ""
+          ""
         ).localeCompare(
           String(
             b.roomNumber ||
-              ""
+            ""
           ),
           undefined,
           {
@@ -1306,9 +1291,9 @@ documentType: tenant.documentType || "",
           editingTenant.bedId
             ._id
         ) ===
-          String(
-            form.bedId
-          ) &&
+        String(
+          form.bedId
+        ) &&
         !roomBeds.some(
           (bed) =>
             String(
@@ -1551,17 +1536,17 @@ documentType: tenant.documentType || "",
       // Aadhaar Verhoeff checksum: rejects many OCR digit substitutions.
       const verhoeffValid = (number) => {
         const d = [
-          [0,1,2,3,4,5,6,7,8,9],[1,2,3,4,0,6,7,8,9,5],
-          [2,3,4,0,1,7,8,9,5,6],[3,4,0,1,2,8,9,5,6,7],
-          [4,0,1,2,3,9,5,6,7,8],[5,9,8,7,6,0,4,3,2,1],
-          [6,5,9,8,7,1,0,4,3,2],[7,6,5,9,8,2,1,0,4,3],
-          [8,7,6,5,9,3,2,1,0,4],[9,8,7,6,5,4,3,2,1,0],
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 2, 3, 4, 0, 6, 7, 8, 9, 5],
+          [2, 3, 4, 0, 1, 7, 8, 9, 5, 6], [3, 4, 0, 1, 2, 8, 9, 5, 6, 7],
+          [4, 0, 1, 2, 3, 9, 5, 6, 7, 8], [5, 9, 8, 7, 6, 0, 4, 3, 2, 1],
+          [6, 5, 9, 8, 7, 1, 0, 4, 3, 2], [7, 6, 5, 9, 8, 2, 1, 0, 4, 3],
+          [8, 7, 6, 5, 9, 3, 2, 1, 0, 4], [9, 8, 7, 6, 5, 4, 3, 2, 1, 0],
         ];
         const p = [
-          [0,1,2,3,4,5,6,7,8,9],[1,5,7,6,2,8,3,0,9,4],
-          [5,8,0,3,7,9,6,1,4,2],[8,9,1,6,0,4,3,5,2,7],
-          [9,4,5,3,1,2,6,8,7,0],[4,2,8,6,5,7,3,9,0,1],
-          [2,7,9,3,8,0,6,4,1,5],[7,0,4,6,9,1,3,2,5,8],
+          [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], [1, 5, 7, 6, 2, 8, 3, 0, 9, 4],
+          [5, 8, 0, 3, 7, 9, 6, 1, 4, 2], [8, 9, 1, 6, 0, 4, 3, 5, 2, 7],
+          [9, 4, 5, 3, 1, 2, 6, 8, 7, 0], [4, 2, 8, 6, 5, 7, 3, 9, 0, 1],
+          [2, 7, 9, 3, 8, 0, 6, 4, 1, 5], [7, 0, 4, 6, 9, 1, 3, 2, 5, 8],
         ];
         let checksum = 0;
         const digits = String(number).split("").map(Number);
@@ -1725,7 +1710,7 @@ documentType: tenant.documentType || "",
         !form.roomId ||
         !form.bedId ||
         form.monthlyRent ===
-          "" ||
+        "" ||
         !form.rentDueDay
       ) {
         setTenantError(
@@ -1757,13 +1742,13 @@ documentType: tenant.documentType || "",
 
           mobile:
             form.mobile.trim(),
-            dateOfBirth: form.dateOfBirth || null,
-            gender: form.gender || "",
-            documentType: form.documentType || "",
-            aadhaarNumber: (form.aadhaarNumber || "").replace(/\s/g, ""),
-            panNumber: (form.panNumber || "").replace(/\s/g, "").toUpperCase(),
-            address: form.address || "",
-            tenantPhoto: form.tenantPhoto || "",
+          dateOfBirth: form.dateOfBirth || null,
+          gender: form.gender || "",
+          documentType: form.documentType || "",
+          aadhaarNumber: (form.aadhaarNumber || "").replace(/\s/g, ""),
+          panNumber: (form.panNumber || "").replace(/\s/g, "").toUpperCase(),
+          address: form.address || "",
+          tenantPhoto: form.tenantPhoto || "",
 
           pgId:
             form.pgId,
@@ -1789,11 +1774,11 @@ documentType: tenant.documentType || "",
 
           securityDeposit:
             form.securityDeposit ===
-            ""
+              ""
               ? 0
               : Number(
-                  form.securityDeposit
-                ),
+                form.securityDeposit
+              ),
 
           emergencyContactName:
             form.emergencyContactName.trim(),
@@ -1881,7 +1866,7 @@ documentType: tenant.documentType || "",
               : "Tenant account was created and the bed was assigned successfully.",
         });
       } catch (
-        submitError
+      submitError
       ) {
         console.error(
           "Tenant submit error:",
@@ -1912,14 +1897,14 @@ documentType: tenant.documentType || "",
       if (
         !tenant?._id ||
         tenant.status !==
-          "active"
+        "active"
       ) {
         return;
       }
 
       if (
         nextStatus ===
-          "paid" &&
+        "paid" &&
         !paymentMethod
       ) {
         setPaymentMethodTarget(
@@ -1968,11 +1953,11 @@ documentType: tenant.documentType || "",
 
                     ...(nextStatus ===
                       "paid" &&
-                    paymentMethod
+                      paymentMethod
                       ? {
-                          paymentMethod:
-                            paymentMethod,
-                        }
+                        paymentMethod:
+                          paymentMethod,
+                      }
                       : {}),
                   }),
               }
@@ -2010,7 +1995,7 @@ documentType: tenant.documentType || "",
                     amount:
                       Number(
                         tenant.monthlyRent ||
-                          0
+                        0
                       ),
 
                     paymentDate:
@@ -2018,7 +2003,7 @@ documentType: tenant.documentType || "",
 
                     paymentMethod:
                       nextStatus ===
-                      "paid"
+                        "paid"
                         ? paymentMethod
                         : "other",
 
@@ -2027,13 +2012,12 @@ documentType: tenant.documentType || "",
 
                     notes:
                       nextStatus ===
-                      "paid"
-                        ? `Rent marked as paid from Tenants page via ${
-                            paymentMethod ===
-                            "cash"
-                              ? "cash"
-                              : "online"
-                          }.`
+                        "paid"
+                        ? `Rent marked as paid from Tenants page via ${paymentMethod ===
+                          "cash"
+                          ? "cash"
+                          : "online"
+                        }.`
                         : "Rent marked as not paid from Tenants page.",
                   }),
               }
@@ -2065,11 +2049,10 @@ documentType: tenant.documentType || "",
             title:
               "Rent Marked Paid",
             message:
-              `${tenantName}'s rent has been marked as paid via ${
-                paymentMethod ===
+              `${tenantName}'s rent has been marked as paid via ${paymentMethod ===
                 "cash"
-                  ? "cash"
-                  : "online"
+                ? "cash"
+                : "online"
               }.`,
           });
         } else {
@@ -2082,7 +2065,7 @@ documentType: tenant.documentType || "",
           });
         }
       } catch (
-        rentError
+      rentError
       ) {
         console.error(
           "Update rent status error:",
@@ -2110,7 +2093,7 @@ documentType: tenant.documentType || "",
     if (
       !tenant?._id ||
       tenant.status !==
-        "active"
+      "active"
     ) {
       return;
     }
@@ -2200,7 +2183,7 @@ documentType: tenant.documentType || "",
             `${tenantName} has been marked as vacated and the bed has been released.`,
         });
       } catch (
-        vacateError
+      vacateError
       ) {
         console.error(
           "Vacate tenant error:",
@@ -2291,7 +2274,7 @@ documentType: tenant.documentType || "",
             `${tenantName} has been permanently deleted.`,
         });
       } catch (
-        deleteError
+      deleteError
       ) {
         console.error(
           "Delete tenant error:",
@@ -2417,15 +2400,15 @@ documentType: tenant.documentType || "",
             const joiningDate =
               tenant.joiningDate
                 ? new Date(
-                    tenant.joiningDate
-                  )
+                  tenant.joiningDate
+                )
                 : null;
 
             const vacatedDate =
               tenant.vacatedAt
                 ? new Date(
-                    tenant.vacatedAt
-                  )
+                  tenant.vacatedAt
+                )
                 : null;
 
             if (
@@ -2491,13 +2474,13 @@ documentType: tenant.documentType || "",
           ) {
             matchesCategory =
               tenant.status ===
-                "active" &&
+              "active" &&
               getPeriodRentStatus(
                 tenant,
                 payments,
                 selectedPeriod
               ) ===
-                "paid";
+              "paid";
           }
 
           if (
@@ -2506,13 +2489,13 @@ documentType: tenant.documentType || "",
           ) {
             matchesCategory =
               tenant.status ===
-                "active" &&
+              "active" &&
               getPeriodRentStatus(
                 tenant,
                 payments,
                 selectedPeriod
               ) ===
-                "pending";
+              "pending";
           }
 
           return (
@@ -2566,7 +2549,7 @@ documentType: tenant.documentType || "",
             const amount =
               Number(
                 tenant.monthlyRent ||
-                  0
+                0
               );
 
             const status =
@@ -2665,7 +2648,7 @@ documentType: tenant.documentType || "",
             RESIDENT MANAGEMENT
           </span>
 
-        
+
 
         </div>
 
@@ -2713,7 +2696,7 @@ documentType: tenant.documentType || "",
               }{" "}
               {
                 rentStats.pendingPeople ===
-                1
+                  1
                   ? "person"
                   : "people"
               }
@@ -2749,7 +2732,7 @@ documentType: tenant.documentType || "",
               }{" "}
               {
                 rentStats.paidPeople ===
-                1
+                  1
                   ? "person"
                   : "people"
               }
@@ -2814,7 +2797,7 @@ documentType: tenant.documentType || "",
             resident
             {
               filteredTenants.length !==
-              1
+                1
                 ? "s"
                 : ""
             }
@@ -2934,7 +2917,7 @@ documentType: tenant.documentType || "",
             type="button"
             className={
               categoryFilter ===
-              "active"
+                "active"
                 ? "active"
                 : ""
             }
@@ -2951,7 +2934,7 @@ documentType: tenant.documentType || "",
             type="button"
             className={
               categoryFilter ===
-              "vacated"
+                "vacated"
                 ? "active"
                 : ""
             }
@@ -2968,7 +2951,7 @@ documentType: tenant.documentType || "",
             type="button"
             className={
               categoryFilter ===
-              "paid"
+                "paid"
                 ? "active"
                 : ""
             }
@@ -2985,7 +2968,7 @@ documentType: tenant.documentType || "",
             type="button"
             className={
               categoryFilter ===
-              "not_paid"
+                "not_paid"
                 ? "active"
                 : ""
             }
@@ -3067,7 +3050,7 @@ documentType: tenant.documentType || "",
         {!loading &&
           !error &&
           filteredTenants.length ===
-            0 && (
+          0 && (
             <div className="tenants-empty-card">
 
               <div className="tenants-empty-icon">
@@ -3077,37 +3060,37 @@ documentType: tenant.documentType || "",
               <h3>
 
                 {tenants.length ===
-                0
+                  0
                   ? "No tenants yet"
                   : `No data for ${getPeriodLabel(
-                      selectedPeriod
-                    )}`}
+                    selectedPeriod
+                  )}`}
 
               </h3>
 
               <p>
 
                 {tenants.length ===
-                0
+                  0
                   ? "Add your first tenant and assign them to an available bed."
                   : `There is no tenant data available for ${getPeriodLabel(
-                      selectedPeriod
-                    )}.`}
+                    selectedPeriod
+                  )}.`}
 
               </p>
 
               {tenants.length ===
                 0 && (
-                <button
-                  type="button"
-                  onClick={
-                    openAddTenant
-                  }
-                >
-                  <Plus size={15} />
-                  Add Tenant
-                </button>
-              )}
+                  <button
+                    type="button"
+                    onClick={
+                      openAddTenant
+                    }
+                  >
+                    <Plus size={15} />
+                    Add Tenant
+                  </button>
+                )}
 
             </div>
           )}
@@ -3117,7 +3100,7 @@ documentType: tenant.documentType || "",
         {!loading &&
           !error &&
           filteredTenants.length >
-            0 && (
+          0 && (
             <div className="tenant-list">
 
               {filteredTenants.map(
@@ -3176,7 +3159,7 @@ documentType: tenant.documentType || "",
                       className={
                         "tenant-card " +
                         (rentStatus ===
-                        "paid"
+                          "paid"
                           ? "rent-paid-card "
                           : "rent-pending-card ") +
                         (isExpanded
@@ -3264,14 +3247,14 @@ documentType: tenant.documentType || "",
                           <strong
                             className={
                               rentStatus ===
-                              "paid"
+                                "paid"
                                 ? "paid-text"
                                 : "pending-text"
                             }
                           >
                             {formatCurrency(
                               rentStatus ===
-                              "paid"
+                                "paid"
                                 ? 0
                                 : tenant.monthlyRent
                             )}
@@ -3282,7 +3265,7 @@ documentType: tenant.documentType || "",
                         <div className="tenant-compact-status">
 
                           {tenant.status ===
-                          "active" ? (
+                            "active" ? (
                             <div className="rent-status-buttons">
 
                               <button
@@ -3290,7 +3273,7 @@ documentType: tenant.documentType || "",
                                 className={
                                   "rent-status-button paid " +
                                   (rentStatus ===
-                                  "paid"
+                                    "paid"
                                     ? "active"
                                     : "")
                                 }
@@ -3329,7 +3312,7 @@ documentType: tenant.documentType || "",
                                 className={
                                   "rent-status-button pending " +
                                   (rentStatus ===
-                                  "pending"
+                                    "pending"
                                     ? "active"
                                     : "")
                                 }
@@ -3645,7 +3628,7 @@ documentType: tenant.documentType || "",
 
                                 <strong>
                                   {rentStatus ===
-                                  "paid"
+                                    "paid"
                                     ? "Paid"
                                     : "Not Paid"}
                                 </strong>
@@ -3702,52 +3685,50 @@ documentType: tenant.documentType || "",
                             </div>
                           )}
 
-                          <div className="tenant-expanded-footer">
 
-                            {tenant.status ===
-                              "active" && (
+                          <div className="tenant-expanded-footer">
+                            <div className="tenant-footer-left">
+                              <button
+                                type="button"
+                                className="tenant-view-aadhaar-button"
+                                onClick={() => {
+                                  setAadhaarError("");
+                                  setAadhaarModalTenant({
+                                    ...tenant,
+                                    name: tenantName,
+                                  });
+                                }}
+                              >
+                                <Eye size={15} />
+                                View Aadhaar
+                              </button>
+                            </div>
+
+                            {tenant.status === "active" && (
                               <button
                                 type="button"
                                 className="tenant-vacate-button"
-                                disabled={
-                                  vacatingTenant ===
-                                  tenant._id
-                                }
-                                onClick={() =>
-                                  handleVacateTenant(
-                                    tenant
-                                  )
-                                }
+                                disabled={vacatingTenant === tenant._id}
+                                onClick={() => handleVacateTenant(tenant)}
                               >
-
-                                {vacatingTenant ===
-                                tenant._id ? (
+                                {vacatingTenant === tenant._id ? (
                                   <>
                                     <LoaderCircle
-                                      size={
-                                        14
-                                      }
+                                      size={14}
                                       className="tenant-button-spinner"
                                     />
-
                                     Vacating...
                                   </>
                                 ) : (
                                   <>
-                                    <UserX
-                                      size={
-                                        14
-                                      }
-                                    />
-
+                                    <UserX size={14} />
                                     Vacate Tenant
                                   </>
                                 )}
-
                               </button>
                             )}
-
                           </div>
+
 
                         </div>
                       )}
@@ -3759,6 +3740,136 @@ documentType: tenant.documentType || "",
 
             </div>
           )}
+
+        {/* VIEW AADHAAR MODAL */}
+        {aadhaarModalTenant && (
+          <div
+            className="aadhaar-modal-overlay"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !deletingAadhaar) {
+                setAadhaarModalTenant(null);
+                setAadhaarError("");
+              }
+            }}
+          >
+            <div
+              className="aadhaar-modal-card"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="aadhaar-modal-title"
+            >
+              <div className="aadhaar-modal-header">
+                <div>
+                  <span>TENANT DOCUMENT</span>
+                  <h2 id="aadhaar-modal-title">Aadhaar Card</h2>
+                  <p>{aadhaarModalTenant.name}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="aadhaar-modal-close"
+                  aria-label="Close Aadhaar preview"
+                  disabled={deletingAadhaar}
+                  onClick={() => {
+                    setAadhaarModalTenant(null);
+                    setAadhaarError("");
+                  }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="aadhaar-modal-body">
+                {aadhaarModalTenant.tenantPhoto ? (
+                  <img
+                    src={aadhaarModalTenant.tenantPhoto}
+                    alt={`Document uploaded for ${aadhaarModalTenant.name}`}
+                    className="aadhaar-modal-image"
+                  />
+                ) : (
+                  <div className="aadhaar-no-image">
+                    <Eye size={28} />
+                    <h3>No Aadhaar image available</h3>
+                    <p>No document image is currently saved for this tenant.</p>
+                  </div>
+                )}
+
+                {aadhaarError && (
+                  <div className="aadhaar-modal-error">
+                    {aadhaarError}
+                  </div>
+                )}
+              </div>
+
+              <div className="aadhaar-modal-footer">
+                <button
+                  type="button"
+                  className="aadhaar-delete-button"
+                  disabled={
+                    deletingAadhaar || !aadhaarModalTenant.tenantPhoto
+                  }
+                  onClick={async () => {
+                    const confirmed = window.confirm(
+                      `Delete the saved document image for ${aadhaarModalTenant.name}? This cannot be undone.`
+                    );
+
+                    if (!confirmed) return;
+
+                    try {
+                      setDeletingAadhaar(true);
+                      setAadhaarError("");
+
+                      const response = await fetch(
+                        `${API_URL}/tenants/${aadhaarModalTenant._id}/aadhaar-image`,
+                        {
+                          method: "DELETE",
+                          headers: getHeaders(),
+                        }
+                      );
+
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        throw new Error(
+                          data.message || "Failed to delete the image."
+                        );
+                      }
+
+                      await fetchTenants();
+
+                      setAadhaarModalTenant((previous) =>
+                        previous
+                          ? { ...previous, tenantPhoto: "" }
+                          : null
+                      );
+                    } catch (error) {
+                      setAadhaarError(
+                        error.message || "Failed to delete the image."
+                      );
+                    } finally {
+                      setDeletingAadhaar(false);
+                    }
+                  }}
+                >
+                  <Trash2 size={16} />
+                  {deletingAadhaar ? "Deleting..." : "Delete Aadhaar"}
+                </button>
+
+                <button
+                  type="button"
+                  className="aadhaar-done-button"
+                  disabled={deletingAadhaar}
+                  onClick={() => {
+                    setAadhaarModalTenant(null);
+                    setAadhaarError("");
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </section>
 
@@ -3824,103 +3935,101 @@ documentType: tenant.documentType || "",
               }
             >
 
-<div className="tenant-entry-options">
-  <button
-    type="button"
-    className={`tenant-entry-option ${
-      entryMode === "scan" ? "active" : ""
-    }`}
-    onClick={() => { setEntryMode("scan"); if (!showQrScanner && !documentVerified) startQrScanner(); }}
-  >
-    <ScanLine size={22} />
-    <span>
-      <strong>Scan Document</strong>
-      <small>Read Aadhaar number, DOB and gender only</small>
-    </span>
-  </button>
+              <div className="tenant-entry-options">
+                <button
+                  type="button"
+                  className={`tenant-entry-option ${entryMode === "scan" ? "active" : ""
+                    }`}
+                  onClick={() => { setEntryMode("scan"); if (!showQrScanner && !documentVerified) startQrScanner(); }}
+                >
+                  <ScanLine size={22} />
+                  <span>
+                    <strong>Scan Document</strong>
+                    <small>Read Aadhaar number, DOB and gender only</small>
+                  </span>
+                </button>
 
-  <button
-    type="button"
-    className={`tenant-entry-option ${
-      entryMode === "manual" ? "active" : ""
-    }`}
-    onClick={() => setEntryMode("manual")}
-  >
-    <PencilLine size={22} />
-    <span>
-      <strong>Enter Details Manually</strong>
-      <small>Fill in the information yourself</small>
-    </span>
-  </button>
-</div>
+                <button
+                  type="button"
+                  className={`tenant-entry-option ${entryMode === "manual" ? "active" : ""
+                    }`}
+                  onClick={() => setEntryMode("manual")}
+                >
+                  <PencilLine size={22} />
+                  <span>
+                    <strong>Enter Details Manually</strong>
+                    <small>Fill in the information yourself</small>
+                  </span>
+                </button>
+              </div>
 
-{entryMode === "scan" && (
-  <div className="tenant-document-panel">
-    <h3>{documentType === "pan" ? "Scan PAN Card" : "Scan Aadhaar Card"}</h3>
+              {entryMode === "scan" && (
+                <div className="tenant-document-panel">
+                  <h3>{documentType === "pan" ? "Scan PAN Card" : "Scan Aadhaar Card"}</h3>
 
-    <div className="tenant-document-types">
-      <button type="button" className={documentType === "aadhaar" ? "selected" : ""} onClick={() => { setDocumentType("aadhaar"); resetDocumentScan(); }}>Aadhaar Card</button>
-      <button type="button" disabled className="">PAN scanning disabled</button>
-    </div>
+                  <div className="tenant-document-types">
+                    <button type="button" className={documentType === "aadhaar" ? "selected" : ""} onClick={() => { setDocumentType("aadhaar"); resetDocumentScan(); }}>Aadhaar Card</button>
+                    <button type="button" disabled className="">PAN scanning disabled</button>
+                  </div>
 
-    <div className="tenant-scan-steps" aria-label="Document capture steps">
-      <div className={frontDocumentImage ? "complete" : scanStep === "front" ? "current" : ""}><span>{frontDocumentImage ? "✓" : "1"}</span><strong>Front side</strong></div>
-      {documentType === "aadhaar" ? (
-        <div className={backDocumentImage ? "complete" : scanStep === "back" ? "current" : ""}><span>{backDocumentImage ? "✓" : "2"}</span><strong>Back side</strong></div>
-      ) : (
-        <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "2"}</span><strong>Extract text</strong></div>
-      )}
-      <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "3"}</span><strong>Review details</strong></div>
-    </div>
+                  <div className="tenant-scan-steps" aria-label="Document capture steps">
+                    <div className={frontDocumentImage ? "complete" : scanStep === "front" ? "current" : ""}><span>{frontDocumentImage ? "✓" : "1"}</span><strong>Front side</strong></div>
+                    {documentType === "aadhaar" ? (
+                      <div className={backDocumentImage ? "complete" : scanStep === "back" ? "current" : ""}><span>{backDocumentImage ? "✓" : "2"}</span><strong>Back side</strong></div>
+                    ) : (
+                      <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "2"}</span><strong>Extract text</strong></div>
+                    )}
+                    <div className={documentVerified ? "complete" : ""}><span>{documentVerified ? "✓" : "3"}</span><strong>Review details</strong></div>
+                  </div>
 
-    {!showQrScanner && !documentVerified && (
-      <button type="button" className="tenant-document-upload tenant-camera-start" onClick={startQrScanner} disabled={scanningDocument}>
-        <Camera size={24} />
-        <strong>{frontDocumentImage && documentType === "aadhaar" ? "Continue to Back Side" : "Start Document Camera"}</strong>
-        <small>The live camera opens directly. No QR scan is required.</small>
-      </button>
-    )}
+                  {!showQrScanner && !documentVerified && (
+                    <button type="button" className="tenant-document-upload tenant-camera-start" onClick={startQrScanner} disabled={scanningDocument}>
+                      <Camera size={24} />
+                      <strong>{frontDocumentImage && documentType === "aadhaar" ? "Continue to Back Side" : "Start Document Camera"}</strong>
+                      <small>The live camera opens directly. No QR scan is required.</small>
+                    </button>
+                  )}
 
-    {showQrScanner && (
-      <div className="tenant-qr-camera-panel">
-        <div className="tenant-camera-step-label">{scanStep === "front" ? "STEP 1 · FRONT SIDE" : "STEP 2 · BACK SIDE"}</div>
-        <div className="tenant-camera-guide">
-          <video ref={cameraVideoRef} className="tenant-document-camera-video" autoPlay muted playsInline aria-label="Live identity document camera preview" />
-        </div>
-        <canvas ref={captureCanvasRef} style={{ display: "none" }} />
-        <div className="tenant-camera-actions">
-          <button type="button" className="tenant-camera-capture" onClick={captureAndReadDocument} disabled={scanningDocument}>
-            {scanningDocument ? <LoaderCircle size={15} /> : <Camera size={15} />}
-            {scanningDocument ? "Processing..." : scanStep === "front" ? "Capture Front Side" : "Capture Back Side"}
-          </button>
-          <button type="button" className="tenant-camera-cancel" onClick={stopQrScanner}><X size={15} /> Stop Camera</button>
-        </div>
-      </div>
-    )}
+                  {showQrScanner && (
+                    <div className="tenant-qr-camera-panel">
+                      <div className="tenant-camera-step-label">{scanStep === "front" ? "STEP 1 · FRONT SIDE" : "STEP 2 · BACK SIDE"}</div>
+                      <div className="tenant-camera-guide">
+                        <video ref={cameraVideoRef} className="tenant-document-camera-video" autoPlay muted playsInline aria-label="Live identity document camera preview" />
+                      </div>
+                      <canvas ref={captureCanvasRef} style={{ display: "none" }} />
+                      <div className="tenant-camera-actions">
+                        <button type="button" className="tenant-camera-capture" onClick={captureAndReadDocument} disabled={scanningDocument}>
+                          {scanningDocument ? <LoaderCircle size={15} /> : <Camera size={15} />}
+                          {scanningDocument ? "Processing..." : scanStep === "front" ? "Capture Front Side" : "Capture Back Side"}
+                        </button>
+                        <button type="button" className="tenant-camera-cancel" onClick={stopQrScanner}><X size={15} /> Stop Camera</button>
+                      </div>
+                    </div>
+                  )}
 
-    {(frontDocumentImage || backDocumentImage) && (
-      <div className="tenant-captured-sides">
-        {frontDocumentImage && <div><strong>Front captured</strong><img src={frontDocumentImage} alt="Captured document front side" /></div>}
-        {backDocumentImage && <div><strong>Back captured</strong><img src={backDocumentImage} alt="Captured document back side" /></div>}
-      </div>
-    )}
+                  {(frontDocumentImage || backDocumentImage) && (
+                    <div className="tenant-captured-sides">
+                      {frontDocumentImage && <div><strong>Front captured</strong><img src={frontDocumentImage} alt="Captured document front side" /></div>}
+                      {backDocumentImage && <div><strong>Back captured</strong><img src={backDocumentImage} alt="Captured document back side" /></div>}
+                    </div>
+                  )}
 
-    {documentVerified && (
-      <div className="tenant-document-verification">
-        <CheckCircle2 size={18} />
-        <div><strong>Document text extracted</strong><span>Review the values in Tenant Information below. OCR completion is not official identity verification.</span></div>
-      </div>
-    )}
+                  {documentVerified && (
+                    <div className="tenant-document-verification">
+                      <CheckCircle2 size={18} />
+                      <div><strong>Document text extracted</strong><span>Review the values in Tenant Information below. OCR completion is not official identity verification.</span></div>
+                    </div>
+                  )}
 
-    {scanMessage && <p className="tenant-scan-message" role="status">{scanMessage}</p>}
-    <div className="tenant-scan-actions">
-      {documentVerified && <button type="button" onClick={resetDocumentScan}>Scan Again</button>}
-      {frontDocumentImage && !documentVerified && !showQrScanner && <button type="button" onClick={() => { setScanStep("back"); startQrScanner(); }}>Capture Back Side</button>}
-      {documentVerified && <button type="button" onClick={() => { setEntryMode("manual"); stopQrScanner(); }}>Continue to Tenant Form</button>}
-    </div>
-    <p className="tenant-scan-disclaimer">OCR can misread characters. Check the Aadhaar number, full date of birth and gender against the original document. Enter the tenant name, mobile number, address and all other details manually.</p>
-  </div>
-)}
+                  {scanMessage && <p className="tenant-scan-message" role="status">{scanMessage}</p>}
+                  <div className="tenant-scan-actions">
+                    {documentVerified && <button type="button" onClick={resetDocumentScan}>Scan Again</button>}
+                    {frontDocumentImage && !documentVerified && !showQrScanner && <button type="button" onClick={() => { setScanStep("back"); startQrScanner(); }}>Capture Back Side</button>}
+                    {documentVerified && <button type="button" onClick={() => { setEntryMode("manual"); stopQrScanner(); }}>Continue to Tenant Form</button>}
+                  </div>
+                  <p className="tenant-scan-disclaimer">OCR can misread characters. Check the Aadhaar number, full date of birth and gender against the original document. Enter the tenant name, mobile number, address and all other details manually.</p>
+                </div>
+              )}
 
               {entryMode === "manual" && (
                 <div className="tenant-document-panel">
@@ -4030,76 +4139,76 @@ documentType: tenant.documentType || "",
                   </div>
 
                   <div className="tenant-form-group">
-  <label>Date of Birth</label>
-  <input
-    type="date"
-    name="dateOfBirth"
-    value={form.dateOfBirth || ""}
-    onChange={handleChange}
-  />
-</div>
+                    <label>Date of Birth</label>
+                    <input
+                      type="date"
+                      name="dateOfBirth"
+                      value={form.dateOfBirth || ""}
+                      onChange={handleChange}
+                    />
+                  </div>
 
-<div className="tenant-form-group">
-  <label>Gender</label>
-  <select
-    name="gender"
-    value={form.gender || ""}
-    onChange={handleChange}
-  >
-    <option value="">Select gender</option>
-    <option value="Male">Male</option>
-    <option value="Female">Female</option>
-    <option value="Other">Other</option>
-    <option value="Prefer not to say">Prefer not to say</option>
-  </select>
-</div>
+                  <div className="tenant-form-group">
+                    <label>Gender</label>
+                    <select
+                      name="gender"
+                      value={form.gender || ""}
+                      onChange={handleChange}
+                    >
+                      <option value="">Select gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                      <option value="Prefer not to say">Prefer not to say</option>
+                    </select>
+                  </div>
 
-<div className="tenant-form-group">
-  <label>Aadhaar Number</label>
-  <input
-    type="text"
-    name="aadhaarNumber"
-    inputMode="numeric"
-    autoComplete="off"
-    maxLength={14}
-    value={form.aadhaarNumber || ""}
-    onChange={(event) => {
-      const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
-      setForm((previous) => ({ ...previous, aadhaarNumber: digits }));
-      setTenantError("");
-    }}
-    placeholder="12-digit Aadhaar number"
-  />
-</div>
+                  <div className="tenant-form-group">
+                    <label>Aadhaar Number</label>
+                    <input
+                      type="text"
+                      name="aadhaarNumber"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      maxLength={14}
+                      value={form.aadhaarNumber || ""}
+                      onChange={(event) => {
+                        const digits = event.target.value.replace(/\D/g, "").slice(0, 12);
+                        setForm((previous) => ({ ...previous, aadhaarNumber: digits }));
+                        setTenantError("");
+                      }}
+                      placeholder="12-digit Aadhaar number"
+                    />
+                  </div>
 
-<div className="tenant-form-group">
-  <label>PAN Number</label>
-  <input
-    type="text"
-    name="panNumber"
-    autoComplete="off"
-    maxLength={10}
-    value={form.panNumber || ""}
-    onChange={(event) => {
-      const value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
-      setForm((previous) => ({ ...previous, panNumber: value }));
-      setTenantError("");
-    }}
-    placeholder="ABCDE1234F"
-  />
-</div>
+                  <div className="tenant-form-group">
+                    <label>PAN Number</label>
+                    <input
+                      type="text"
+                      name="panNumber"
+                      autoComplete="off"
+                      maxLength={10}
+                      value={form.panNumber || ""}
+                      onChange={(event) => {
+                        const value = event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+                        setForm((previous) => ({ ...previous, panNumber: value }));
+                        setTenantError("");
+                      }}
+                      placeholder="ABCDE1234F"
+                    />
+                  </div>
 
-<div className="tenant-form-group tenant-address-field">
-  <label>Address</label>
-  <textarea
-    name="address"
-    value={form.address || ""}
-    onChange={handleChange}
-    rows={2}
-    maxLength={300}
-    placeholder="Address as printed on the document"
-  />
-</div>
+                  <div className="tenant-form-group tenant-address-field">
+                    <label>Address</label>
+                    <textarea
+                      name="address"
+                      value={form.address || ""}
+                      onChange={handleChange}
+                      rows={2}
+                      maxLength={300}
+                      placeholder="Address as printed on the document"
+                    />
+                  </div>
 
                   <div className="tenant-form-group">
 
@@ -4211,7 +4320,7 @@ documentType: tenant.documentType || "",
                           !form.pgId ||
                           bedsLoading ||
                           rooms.length ===
-                            0
+                          0
                         }
                         required
                       >
@@ -4221,8 +4330,8 @@ documentType: tenant.documentType || "",
                             ? "Loading rooms..."
                             : rooms.length ===
                               0
-                            ? "No rooms with available beds"
-                            : "Select room"}
+                              ? "No rooms with available beds"
+                              : "Select room"}
                         </option>
 
                         {rooms.map(
@@ -4284,11 +4393,11 @@ documentType: tenant.documentType || "",
                           {bedsLoading
                             ? "Loading beds..."
                             : !form.roomId
-                            ? "Select room first"
-                            : filteredBeds.length ===
-                              0
-                            ? "No available beds"
-                            : "Select bed"}
+                              ? "Select room first"
+                              : filteredBeds.length ===
+                                0
+                                ? "No available beds"
+                                : "Select bed"}
                         </option>
 
                         {filteredBeds.map(
@@ -4326,21 +4435,20 @@ documentType: tenant.documentType || "",
 
                     <span>
                       {form.bedId
-                        ? `Bed ${
-                            filteredBeds.find(
-                              (
-                                bed
-                              ) =>
-                                String(
-                                  bed._id
-                                ) ===
-                                String(
-                                  form.bedId
-                                )
+                        ? `Bed ${filteredBeds.find(
+                          (
+                            bed
+                          ) =>
+                            String(
+                              bed._id
+                            ) ===
+                            String(
+                              form.bedId
                             )
-                              ?.bedNumber ||
-                            ""
-                          } is selected.`
+                        )
+                          ?.bedNumber ||
+                        ""
+                        } is selected.`
                         : "Select a room and bed to continue."}
                     </span>
 

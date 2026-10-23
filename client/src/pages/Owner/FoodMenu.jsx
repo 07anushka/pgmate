@@ -309,6 +309,12 @@ function FoodMenu() {
       daysCovered: 0,
     });
 
+  const notifyMenuChanged = () => {
+    window.dispatchEvent(
+      new Event("pgmate-menu-changed")
+    );
+  };
+
   const [loading, setLoading] =
     useState(true);
 
@@ -436,7 +442,7 @@ function FoodMenu() {
 
       setError(
         err.message ||
-          "Failed to load food menu."
+        "Failed to load food menu."
       );
     } finally {
       setLoading(false);
@@ -444,7 +450,33 @@ function FoodMenu() {
   };
 
   useEffect(() => {
-    loadFoodMenu();
+    const handleRefresh = () => {
+      loadFoodMenu();
+    };
+
+    handleRefresh();
+
+    window.addEventListener(
+      "pgmate-pg-changed",
+      handleRefresh
+    );
+
+    window.addEventListener(
+      "storage",
+      handleRefresh
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pgmate-pg-changed",
+        handleRefresh
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleRefresh
+      );
+    };
   }, [
     dayFilter,
     mealFilter,
@@ -826,6 +858,8 @@ function FoodMenu() {
         );
       }
 
+      notifyMenuChanged();
+
       setShowModal(false);
       setEditingItem(null);
 
@@ -842,7 +876,7 @@ function FoodMenu() {
 
       setError(
         err.message ||
-          "Failed to save food item."
+        "Failed to save food item."
       );
     } finally {
       setSubmitting(false);
@@ -873,6 +907,8 @@ function FoodMenu() {
         id
       );
 
+      notifyMenuChanged();
+
       await loadFoodMenu();
     } catch (err) {
       console.error(
@@ -882,7 +918,7 @@ function FoodMenu() {
 
       setError(
         err.message ||
-          "Failed to delete food item."
+        "Failed to delete food item."
       );
     } finally {
       setDeletingId(null);
@@ -941,7 +977,7 @@ function FoodMenu() {
             MEALS
           </span>
 
-       
+
           <p>
             Manage your PG's
             weekly mess menu.
@@ -1188,16 +1224,16 @@ function FoodMenu() {
 
             if (
               dayFilter !==
-                "all" &&
+              "all" &&
               dayFilter !==
-                day.value
+              day.value
             ) {
               return null;
             }
 
             const dayItems =
               groupedByDay[
-                day.value
+              day.value
               ] || [];
 
             const primaryMeals = [
@@ -1253,17 +1289,16 @@ function FoodMenu() {
                         {totalMeals}{" "}
                         meal
                         {totalMeals !==
-                        1
+                          1
                           ? "s"
                           : ""}
                         {snacks.length >
-                        0
-                          ? ` · ${snacks.length} snack${
-                              snacks.length !==
-                              1
-                                ? "s"
-                                : ""
-                            }`
+                          0
+                          ? ` · ${snacks.length} snack${snacks.length !==
+                            1
+                            ? "s"
+                            : ""
+                          }`
                           : ""}
                       </span>
                     </div>
@@ -1342,7 +1377,7 @@ function FoodMenu() {
                           {/* FOOD */}
 
                           {items.length >
-                          0 ? (
+                            0 ? (
 
                             <div className="meal-food-list">
 
@@ -1361,9 +1396,8 @@ function FoodMenu() {
                                     <div className="meal-food-main">
 
                                       <span
-                                        className={`food-type-dot ${
-                                          item.foodType
-                                        }`}
+                                        className={`food-type-dot ${item.foodType
+                                          }`}
                                       />
 
                                       <div className="meal-food-details">
@@ -1417,7 +1451,7 @@ function FoodMenu() {
                                         title="Delete"
                                       >
                                         {deletingId ===
-                                        item._id ? (
+                                          item._id ? (
                                           <Loader2
                                             size={14}
                                             className="food-spinner"
@@ -1476,96 +1510,95 @@ function FoodMenu() {
                 {snacks.length >
                   0 && (
 
-                  <div className="snacks-row">
+                    <div className="snacks-row">
 
-                    <div className="snacks-label">
+                      <div className="snacks-label">
 
-                      <Cookie
-                        size={17}
-                      />
+                        <Cookie
+                          size={17}
+                        />
 
-                      <span>
-                        Snacks
-                      </span>
+                        <span>
+                          Snacks
+                        </span>
+
+                      </div>
+
+                      <div className="snacks-items">
+
+                        {snacks.map(
+                          (item) => (
+
+                            <div
+                              className="snack-item"
+                              key={
+                                item._id
+                              }
+                            >
+
+                              <span
+                                className={`food-type-dot ${item.foodType
+                                  }`}
+                              />
+
+                              <div>
+                                <strong>
+                                  {
+                                    item.name
+                                  }
+                                </strong>
+
+                                <small>
+                                  {convertTo12Hour(
+                                    item.timingFrom
+                                  )}{" "}
+                                  —{" "}
+                                  {convertTo12Hour(
+                                    item.timingTo
+                                  )}
+                                </small>
+                              </div>
+
+                              <div className="snack-actions">
+
+                                <button
+                                  onClick={() =>
+                                    openEditModal(
+                                      item
+                                    )
+                                  }
+                                  title="Edit"
+                                >
+                                  <Pencil
+                                    size={13}
+                                  />
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    handleDelete(
+                                      item._id
+                                    )
+                                  }
+                                  title="Delete"
+                                >
+                                  <Trash2
+                                    size={13}
+                                  />
+                                </button>
+
+                              </div>
+
+                            </div>
+
+                          )
+                        )}
+
+                      </div>
 
                     </div>
 
-                    <div className="snacks-items">
-
-                      {snacks.map(
-                        (item) => (
-
-                          <div
-                            className="snack-item"
-                            key={
-                              item._id
-                            }
-                          >
-
-                            <span
-                              className={`food-type-dot ${
-                                item.foodType
-                              }`}
-                            />
-
-                            <div>
-                              <strong>
-                                {
-                                  item.name
-                                }
-                              </strong>
-
-                              <small>
-                                {convertTo12Hour(
-                                  item.timingFrom
-                                )}{" "}
-                                —{" "}
-                                {convertTo12Hour(
-                                  item.timingTo
-                                )}
-                              </small>
-                            </div>
-
-                            <div className="snack-actions">
-
-                              <button
-                                onClick={() =>
-                                  openEditModal(
-                                    item
-                                  )
-                                }
-                                title="Edit"
-                              >
-                                <Pencil
-                                  size={13}
-                                />
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  handleDelete(
-                                    item._id
-                                  )
-                                }
-                                title="Delete"
-                              >
-                                <Trash2
-                                  size={13}
-                                />
-                              </button>
-
-                            </div>
-
-                          </div>
-
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )}
+                  )}
 
               </section>
             );

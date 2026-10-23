@@ -17,7 +17,7 @@ import {
 } from "../middleware/authMiddleware.js";
 
 import { authorizeRoles } from "../middleware/roleMiddleware.js";
-
+import { deleteTenantAadhaarImage } from "../controllers/tenantController.js";
 const router = express.Router();
 
 /* =========================================
@@ -90,6 +90,13 @@ router.delete(
   authorizeRoles("owner"),
   checkSubscription,
   deleteTenant
+);
+
+router.delete(
+  "/:tenantId/aadhaar-image",
+  protect,
+  authorizeRoles("owner"),
+  deleteTenantAadhaarImage
 );
 
 export default router;

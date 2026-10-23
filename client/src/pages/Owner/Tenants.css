@@ -3471,3 +3471,232 @@
     bottom: 22%
   }
 }
+
+/* VIEW AADHAAR BUTTON */
+.tenant-view-aadhaar-button {
+  min-height: 35px;
+  padding: 0 12px;
+  border: 1px solid #cce8de;
+  border-radius: 9px;
+  background: #effaf5;
+  color: #176b52;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.tenant-view-aadhaar-button:hover {
+  background: #dff5eb;
+}
+
+/* BLURRED BACKGROUND */
+.aadhaar-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  padding: 20px;
+  background: rgba(8, 32, 26, 0.48);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* MODAL CARD */
+.aadhaar-modal-card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  border: 1px solid #dcebe5;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.26);
+  animation: aadhaarModalIn 0.2s ease;
+}
+
+.aadhaar-modal-header {
+  padding: 22px 24px;
+  border-bottom: 1px solid #e7efeb;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.aadhaar-modal-header span {
+  color: #54a991;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.aadhaar-modal-header h2 {
+  margin: 6px 0;
+  color: #173d33;
+  font-size: 22px;
+}
+
+.aadhaar-modal-header p {
+  margin: 0;
+  color: #7d938a;
+  font-size: 12px;
+}
+
+.aadhaar-modal-close {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border: none;
+  border-radius: 10px;
+  background: #edf5f1;
+  color: #315e50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.aadhaar-modal-close:hover {
+  background: #dcece5;
+}
+
+.aadhaar-modal-body {
+  padding: 22px;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.aadhaar-modal-image {
+  display: block;
+  width: 100%;
+  max-height: 440px;
+  object-fit: contain;
+  border: 1px solid #e0e9e5;
+  border-radius: 12px;
+  background: #f7faf8;
+}
+
+.aadhaar-no-image {
+  width: 100%;
+  padding: 35px 15px;
+  border: 1px dashed #d1e4dc;
+  border-radius: 14px;
+  background: #f8fcfa;
+  color: #729187;
+  text-align: center;
+}
+
+.aadhaar-no-image h3 {
+  margin: 12px 0 5px;
+  color: #31594c;
+  font-size: 15px;
+}
+
+.aadhaar-no-image p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.aadhaar-modal-error {
+  width: 100%;
+  margin-top: 14px;
+  padding: 11px 13px;
+  border-radius: 9px;
+  background: #fff0ee;
+  color: #bd4942;
+  font-size: 12px;
+}
+
+.aadhaar-modal-footer {
+  padding: 16px 22px 22px;
+  border-top: 1px solid #e7efeb;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.aadhaar-delete-button,
+.aadhaar-done-button {
+  min-height: 42px;
+  padding: 0 15px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.aadhaar-delete-button {
+  border: 1px solid #f0d2ce;
+  background: #fff4f2;
+  color: #c64f46;
+}
+
+.aadhaar-delete-button:hover:not(:disabled) {
+  background: #ffe6e2;
+}
+
+.aadhaar-done-button {
+  border: 1px solid #d9e7e1;
+  background: #f0f7f4;
+  color: #315e50;
+}
+
+.aadhaar-modal-card button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@keyframes aadhaarModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 520px) {
+  .aadhaar-modal-overlay {
+    padding: 12px;
+  }
+
+  .aadhaar-modal-card {
+    border-radius: 17px;
+  }
+
+  .aadhaar-modal-header,
+  .aadhaar-modal-body {
+    padding: 16px;
+  }
+
+  .aadhaar-modal-footer {
+    padding: 14px 16px 16px;
+  }
+
+  .aadhaar-modal-image {
+    max-height: 55vh;
+  }
+
+  .aadhaar-delete-button,
+  .aadhaar-done-button {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+}

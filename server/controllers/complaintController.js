@@ -4,31 +4,165 @@ import Complaint from "../models/Complaint.js";
 import Tenant from "../models/Tenant.js";
 import PG from "../models/PG.js";
 
+const CATEGORIES = [
+  "maintenance",
+  "electricity",
+  "water",
+  "cleaning",
+  "food",
+  "internet",
+  "room",
+  "noise",
+  "security",
+  "other",
+];
 
-// --------------------------------------------------
-// GET MY COMPLAINTS
-// --------------------------------------------------
+const PRIORITIES = ["low", "medium", "high", "urgent"];
+
+const STATUSES = ["open", "in_progress", "resolved", "closed"];
+
+const isValidId = (id) => mongoose.Types.ObjectId.isValid(id);
+
+const getUserId = (req) => req.user?.userId;
+
+const getSelectedPG = async (pgId, ownerId) => {
+  if (!pgId || !isValidId(pgId)) {
+    return {
+      error: "A valid PG ID is required.",
+      status: 400,
+    };
+  }
+
+  const pg = await PG.findOne({
+    _id: pgId,
+    ownerId,
+  }).select("_id ownerId name");
+
+  if (!pg) {
+    return {
+      error: "You do not have access to this PG.",
+      status: 403,
+    };
+  }
+
+  return { pg };
+};
+
+const validateFilters = (res, { status, category, priority }) => {
+  if (status && status !== "all" && !STATUSES.includes(status)) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid complaint status.",
+    });
+    return false;
+  }
+
+  if (
+    category &&
+    category !== "all" &&
+    !CATEGORIES.includes(category)
+  ) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid complaint category.",
+    });
+    return false;
+  }
+
+  if (
+    priority &&
+    priority !== "all" &&
+    !PRIORITIES.includes(priority)
+  ) {
+    res.status(400).json({
+      success: false,
+      message: "Invalid complaint priority.",
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const ownerComplaintPopulate = (query) =>
+  query
+    .populate({
+      path: "tenantId",
+      populate: [
+        {
+          path: "userId",
+          select: "name mobile",
+        },
+        {
+          path: "roomId",
+          select: "roomNumber roomType",
+        },
+        {
+          path: "bedId",
+          select: "bedNumber",
+        },
+      ],
+    })
+    .populate("userId", "name mobile")
+    .populate("pgId", "name city");
+
+
+// =====================================================
+// TENANT: GET MY COMPLAINTS
+// =====================================================
 
 export const getMyComplaints = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = getUserId(req);
+    const { pgId, status, category, priority } = req.query;
 
-    const tenant = await Tenant.findOne({
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    if (!validateFilters(res, { status, category, priority })) {
+      return;
+    }
+
+    const tenantFilter = {
       userId,
       status: "active",
-    });
+    };
+
+    if (pgId) {
+      if (!isValidId(pgId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid PG ID.",
+        });
+      }
+
+      tenantFilter.pgId = pgId;
+    }
+
+    const tenant = await Tenant.findOne(tenantFilter);
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: "No active tenant record found for this account.",
+        message: "No active tenant record found for this account and PG.",
       });
     }
 
-    const complaints = await Complaint.find({
+    const filter = {
       tenantId: tenant._id,
       userId,
-    })
+      pgId: tenant.pgId,
+    };
+
+    if (status && status !== "all") filter.status = status;
+    if (category && category !== "all") filter.category = category;
+    if (priority && priority !== "all") filter.priority = priority;
+
+    const complaints = await Complaint.find(filter)
       .populate("pgId", "name city")
       .populate("tenantId", "roomId bedId")
       .sort({ createdAt: -1 });
@@ -48,64 +182,50 @@ export const getMyComplaints = async (req, res) => {
   }
 };
 
-// --------------------------------------------------
-// GET OWNER'S COMPLAINTS
-// --------------------------------------------------
+
+// =====================================================
+// OWNER: GET COMPLAINTS
+// =====================================================
 
 export const getOwnerComplaints = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
+    const ownerId = getUserId(req);
     const { pgId, status, category, priority } = req.query;
+
+    if (!ownerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
+
+    if (!validateFilters(res, { status, category, priority })) {
+      return;
+    }
 
     const filter = { ownerId };
 
-    // Only allow filtering by a PG belonging to this owner
+    // When pgId is provided, verify ownership before querying.
     if (pgId) {
-      if (!mongoose.Types.ObjectId.isValid(pgId)) {
-        return res.status(400).json({
+      const result = await getSelectedPG(pgId, ownerId);
+
+      if (result.error) {
+        return res.status(result.status).json({
           success: false,
-          message: "Invalid PG ID",
+          message: result.error,
         });
       }
 
-      const pg = await PG.findOne({
-        _id: pgId,
-        ownerId,
-      });
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have access to this PG",
-        });
-      }
-
-      filter.pgId = pgId;
+      filter.pgId = result.pg._id;
     }
 
-    if (status && status !== "all") {
-      filter.status = status;
-    }
+    if (status && status !== "all") filter.status = status;
+    if (category && category !== "all") filter.category = category;
+    if (priority && priority !== "all") filter.priority = priority;
 
-    if (category && category !== "all") {
-      filter.category = category;
-    }
-
-    if (priority && priority !== "all") {
-      filter.priority = priority;
-    }
-
-    const complaints = await Complaint.find(filter)
-      .populate({
-        path: "tenantId",
-        populate: {
-          path: "userId",
-          select: "name mobile",
-        },
-      })
-      .populate("userId", "name mobile")
-      .populate("pgId", "name city")
-      .sort({ createdAt: -1 });
+    const complaints = await ownerComplaintPopulate(
+      Complaint.find(filter)
+    ).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -117,188 +237,118 @@ export const getOwnerComplaints = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch owner complaints",
+      message: "Failed to fetch owner complaints.",
     });
   }
 };
 
-// --------------------------------------------------
-// GET COMPLAINT SUMMARY
-// --------------------------------------------------
 
-export const getComplaintSummary = async (
-  req,
-  res
-) => {
+// =====================================================
+// OWNER: COMPLAINT SUMMARY
+// =====================================================
+export const getComplaintSummary = async (req, res) => {
   try {
     const ownerId = req.user.userId;
-
     const { pgId } = req.query;
 
-    const filter = {
-      ownerId,
-    };
-
-    // ----------------------------------------------
-    // PG FILTER
-    // ----------------------------------------------
+    const filter = { ownerId };
 
     if (pgId) {
-      if (!mongoose.Types.ObjectId.isValid(pgId)) {
-        return res.status(400).json({
+      const result = await getSelectedPG(pgId, ownerId);
+
+      if (result.error) {
+        return res.status(result.status).json({
           success: false,
-          message: "Invalid PG ID",
+          message: result.error,
         });
       }
 
-      const pg = await PG.findOne({
-        _id: pgId,
-        ownerId,
-      });
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You do not have access to this PG",
-        });
-      }
-
-      filter.pgId = pgId;
+      filter.pgId = result.pg._id;
     }
 
-    const complaints = await Complaint.find(
-      filter
-    );
+    const complaints = await Complaint.find(filter)
+      .select("status priority")
+      .lean();
 
-    const total = complaints.length;
+    const summary = {
+      total: complaints.length,
+      open: 0,
+      inProgress: 0,
+      resolved: 0,
+      closed: 0,
+      urgent: 0,
+      high: 0,
+    };
 
-    const open = complaints.filter(
-      (item) => item.status === "open"
-    ).length;
+    for (const complaint of complaints) {
+      if (complaint.status === "open") summary.open++;
+      if (complaint.status === "in_progress") summary.inProgress++;
+      if (complaint.status === "resolved") summary.resolved++;
+      if (complaint.status === "closed") summary.closed++;
 
-    const inProgress = complaints.filter(
-      (item) =>
-        item.status === "in_progress"
-    ).length;
+      const isActive = !["resolved", "closed"].includes(complaint.status);
 
-    const resolved = complaints.filter(
-      (item) =>
-        item.status === "resolved"
-    ).length;
-
-    const closed = complaints.filter(
-      (item) =>
-        item.status === "closed"
-    ).length;
-
-    const urgent = complaints.filter(
-      (item) =>
-        item.priority === "urgent" &&
-        item.status !== "closed" &&
-        item.status !== "resolved"
-    ).length;
-
-    const high = complaints.filter(
-      (item) =>
-        item.priority === "high" &&
-        item.status !== "closed" &&
-        item.status !== "resolved"
-    ).length;
+      if (isActive && complaint.priority === "urgent") summary.urgent++;
+      if (isActive && complaint.priority === "high") summary.high++;
+    }
 
     return res.status(200).json({
       success: true,
-      summary: {
-        total,
-        open,
-        inProgress,
-        resolved,
-        closed,
-        urgent,
-        high,
-      },
+      summary,
     });
   } catch (error) {
-    console.error(
-      "Complaint summary error:",
-      error
-    );
+    console.error("Complaint summary error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch complaint summary",
+      message: "Failed to fetch complaint summary.",
     });
   }
 };
 
 
-// --------------------------------------------------
-// GET ACTIVE TENANTS
-// --------------------------------------------------
+// =====================================================
+// OWNER: GET ACTIVE TENANTS
+// =====================================================
 
-export const getComplaintTenants = async (
-  req,
-  res
-) => {
+export const getComplaintTenants = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
-
+    const ownerId = getUserId(req);
     const { pgId } = req.query;
 
-    const filter = {
-      ownerId,
-      status: "active",
-    };
-
-    // ----------------------------------------------
-    // PG FILTER
-    // ----------------------------------------------
-
-    if (pgId) {
-      if (!mongoose.Types.ObjectId.isValid(pgId)) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid PG ID",
-        });
-      }
-
-      const pg = await PG.findOne({
-        _id: pgId,
-        ownerId,
+    if (!ownerId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
       });
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You do not have access to this PG",
-        });
-      }
-
-      filter.pgId = pgId;
     }
 
-    const tenants = await Tenant.find(filter)
-      .populate(
-        "userId",
-        "name mobile"
-      )
-      .populate(
-        "pgId",
-        "name city"
-      )
-      .populate(
-        "roomId",
-        "roomNumber roomType"
-      )
-      .populate(
-        "bedId",
-        "bedNumber"
-      )
-      .sort({
-        createdAt: -1,
+    if (!pgId) {
+      return res.status(400).json({
+        success: false,
+        message: "Select a PG to load tenants.",
       });
+    }
+
+    const result = await getSelectedPG(pgId, ownerId);
+
+    if (result.error) {
+      return res.status(result.status).json({
+        success: false,
+        message: result.error,
+      });
+    }
+
+    const tenants = await Tenant.find({
+      ownerId,
+      pgId: result.pg._id,
+      status: "active",
+    })
+      .populate("userId", "name mobile")
+      .populate("pgId", "name city")
+      .populate("roomId", "roomNumber roomType")
+      .populate("bedId", "bedNumber")
+      .sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
@@ -306,74 +356,155 @@ export const getComplaintTenants = async (
       tenants,
     });
   } catch (error) {
-    console.error(
-      "Get complaint tenants error:",
-      error
-    );
+    console.error("Get complaint tenants error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to fetch active tenants",
+      message: "Failed to fetch active tenants.",
     });
   }
 };
 
 
-// --------------------------------------------------
+// =====================================================
 // CREATE COMPLAINT
-// --------------------------------------------------
+// Owner may create for a selected tenant.
+// Tenant may create for their own active tenancy.
+// =====================================================
 
 export const createComplaint = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = getUserId(req);
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required.",
+      });
+    }
 
     const {
+      tenantId,
+      pgId,
       title,
-      category,
+      category = "other",
       description,
-      priority,
+      priority = "medium",
+      notes = "",
     } = req.body;
 
-    if (
-      !title?.trim() ||
-      !description?.trim()
-    ) {
+    if (!title?.trim() || !description?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Title and description are required.",
       });
     }
 
-    const tenant = await Tenant.findOne({
-      userId,
-      status: "active",
-    });
-
-    if (!tenant) {
-      return res.status(404).json({
+    if (!CATEGORIES.includes(category)) {
+      return res.status(400).json({
         success: false,
-        message: "No active tenant record found for this account.",
+        message: "Invalid complaint category.",
       });
     }
 
+    if (!PRIORITIES.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid complaint priority.",
+      });
+    }
+
+    let tenant;
+    let ownerId;
+
+    if (tenantId) {
+      // Owner-created complaint: the requested tenant must belong
+      // to the logged-in owner and the selected PG.
+      if (!isValidId(tenantId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid tenant ID.",
+        });
+      }
+
+      if (!pgId) {
+        return res.status(400).json({
+          success: false,
+          message: "PG ID is required.",
+        });
+      }
+
+      const result = await getSelectedPG(pgId, userId);
+
+      if (result.error) {
+        return res.status(result.status).json({
+          success: false,
+          message: result.error,
+        });
+      }
+
+      tenant = await Tenant.findOne({
+        _id: tenantId,
+        ownerId: userId,
+        pgId: result.pg._id,
+        status: "active",
+      });
+
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          message: "Active tenant not found in the selected PG.",
+        });
+      }
+
+      ownerId = userId;
+    } else {
+      // Tenant-created complaint: only the tenant's own active
+      // tenancy is accepted; ownerId and pgId come from the DB.
+      const tenantFilter = {
+        userId,
+        status: "active",
+      };
+
+      if (pgId) {
+        if (!isValidId(pgId)) {
+          return res.status(400).json({
+            success: false,
+            message: "Invalid PG ID.",
+          });
+        }
+
+        tenantFilter.pgId = pgId;
+      }
+
+      tenant = await Tenant.findOne(tenantFilter);
+
+      if (!tenant) {
+        return res.status(404).json({
+          success: false,
+          message: "No active tenant record found for this account.",
+        });
+      }
+
+      ownerId = tenant.ownerId;
+    }
+
     const complaint = await Complaint.create({
-      ownerId: tenant.ownerId,
+      ownerId,
       pgId: tenant.pgId,
       tenantId: tenant._id,
-      userId,
+      userId: tenant.userId,
       title: title.trim(),
-      category: category || "other",
+      category,
       description: description.trim(),
-      priority: priority || "medium",
+      priority,
       status: "open",
+      notes: typeof notes === "string" ? notes.trim() : "",
     });
 
-    const populatedComplaint = await Complaint.findById(
-      complaint._id
-    )
-      .populate("pgId", "name city")
-      .populate("tenantId", "roomId bedId");
+    const populatedComplaint = await ownerComplaintPopulate(
+      Complaint.findById(complaint._id)
+    );
 
     return res.status(201).json({
       success: true,
@@ -391,216 +522,185 @@ export const createComplaint = async (req, res) => {
 };
 
 
-// --------------------------------------------------
-// UPDATE COMPLAINT
-// --------------------------------------------------
+// =====================================================
+// OWNER: UPDATE COMPLAINT
+// =====================================================
 
-export const updateComplaint = async (
-  req,
-  res
-) => {
+export const updateComplaint = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
+    const ownerId = getUserId(req);
+    const { complaintId } = req.params;
 
-    const { complaintId } =
-      req.params;
-
-    if (
-      !mongoose.Types.ObjectId.isValid(
-        complaintId
-      )
-    ) {
+    if (!isValidId(complaintId)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid complaint ID",
+        message: "Invalid complaint ID.",
       });
     }
 
-    const complaint =
-      await Complaint.findOne({
-        _id: complaintId,
-        ownerId,
-      });
+    const complaint = await Complaint.findOne({
+      _id: complaintId,
+      ownerId,
+    });
 
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message:
-          "Complaint not found",
+        message: "Complaint not found.",
       });
     }
 
-    const {
-      title,
-      category,
-      description,
-      priority,
-      status,
-      notes,
-    } = req.body;
-
-    // ----------------------------------------------
-    // UPDATE FIELDS
-    // ----------------------------------------------
+    const { title, category, description, priority, status, notes } = req.body;
 
     if (title !== undefined) {
-      complaint.title =
-        title.trim();
+      if (typeof title !== "string" || !title.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Title cannot be empty.",
+        });
+      }
+
+      complaint.title = title.trim();
+    }
+
+    if (description !== undefined) {
+      if (typeof description !== "string" || !description.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Description cannot be empty.",
+        });
+      }
+
+      complaint.description = description.trim();
     }
 
     if (category !== undefined) {
-      complaint.category =
-        category;
-    }
+      if (!CATEGORIES.includes(category)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid complaint category.",
+        });
+      }
 
-    if (
-      description !== undefined
-    ) {
-      complaint.description =
-        description.trim();
+      complaint.category = category;
     }
 
     if (priority !== undefined) {
-      complaint.priority =
-        priority;
+      if (!PRIORITIES.includes(priority)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid complaint priority.",
+        });
+      }
+
+      complaint.priority = priority;
     }
 
     if (status !== undefined) {
-      complaint.status =
-        status;
-
-      if (
-        status === "resolved" ||
-        status === "closed"
-      ) {
-        complaint.resolvedAt =
-          new Date();
-      } else {
-        complaint.resolvedAt =
-          null;
+      if (!STATUSES.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid complaint status.",
+        });
       }
+
+      complaint.status = status;
+      complaint.resolvedAt =
+        status === "resolved" || status === "closed"
+          ? complaint.resolvedAt || new Date()
+          : null;
     }
 
     if (notes !== undefined) {
-      complaint.notes =
-        notes;
+      if (typeof notes !== "string") {
+        return res.status(400).json({
+          success: false,
+          message: "Notes must be text.",
+        });
+      }
+
+      complaint.notes = notes.trim();
     }
 
     await complaint.save();
 
-    const updatedComplaint =
-      await Complaint.findById(
-        complaint._id
-      )
-        .populate({
-          path: "tenantId",
-          populate: {
-            path: "userId",
-            select: "name mobile",
-          },
-        })
-        .populate(
-          "userId",
-          "name mobile"
-        )
-        .populate(
-          "pgId",
-          "name city"
-        );
+    const updatedComplaint = await ownerComplaintPopulate(
+      Complaint.findById(complaint._id)
+    );
 
     return res.status(200).json({
       success: true,
-      message:
-        "Complaint updated successfully",
-      complaint:
-        updatedComplaint,
+      message: "Complaint updated successfully.",
+      complaint: updatedComplaint,
     });
   } catch (error) {
-    console.error(
-      "Update complaint error:",
-      error
-    );
+    console.error("Update complaint error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to update complaint",
+      message: "Failed to update complaint.",
     });
   }
 };
 
 
-// --------------------------------------------------
-// DELETE COMPLAINT
-// --------------------------------------------------
+// =====================================================
+// OWNER: DELETE COMPLAINT
+// =====================================================
 
-export const deleteComplaint = async (
-  req,
-  res
-) => {
+export const deleteComplaint = async (req, res) => {
   try {
-    const ownerId = req.user.userId;
+    const ownerId = getUserId(req);
+    const { complaintId } = req.params;
 
-    const { complaintId } =
-      req.params;
-
-    if (
-      !mongoose.Types.ObjectId.isValid(
-        complaintId
-      )
-    ) {
+    if (!isValidId(complaintId)) {
       return res.status(400).json({
         success: false,
-        message:
-          "Invalid complaint ID",
+        message: "Invalid complaint ID.",
       });
     }
 
-    const complaint =
-      await Complaint.findOneAndDelete({
-        _id: complaintId,
-        ownerId,
-      });
+    const complaint = await Complaint.findOneAndDelete({
+      _id: complaintId,
+      ownerId,
+    });
 
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message:
-          "Complaint not found",
+        message: "Complaint not found.",
       });
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        "Complaint deleted successfully",
+      message: "Complaint deleted successfully.",
     });
   } catch (error) {
-    console.error(
-      "Delete complaint error:",
-      error
-    );
+    console.error("Delete complaint error:", error);
 
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to delete complaint",
+      message: "Failed to delete complaint.",
     });
   }
 };
 
-// TENANT: UPDATE OWN COMPLAINT
+
+// =====================================================
+// TENANT: UPDATE OWN OPEN COMPLAINT
+// =====================================================
+
 export const updateMyComplaint = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = getUserId(req);
     const { complaintId } = req.params;
     const { title, category, priority, description } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+    if (!isValidId(complaintId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid complaint ID",
+        message: "Invalid complaint ID.",
       });
     }
 
@@ -612,7 +712,7 @@ export const updateMyComplaint = async (req, res) => {
     if (!complaint) {
       return res.status(404).json({
         success: false,
-        message: "Complaint not found",
+        message: "Complaint not found.",
       });
     }
 
@@ -630,31 +730,25 @@ export const updateMyComplaint = async (req, res) => {
       });
     }
 
-    const categories = [
-      "maintenance", "electricity", "water", "cleaning",
-      "food", "internet", "room", "noise", "security", "other",
-    ];
-
-    const priorities = ["low", "medium", "high", "urgent"];
-
-    if (category && !categories.includes(category)) {
+    if (category !== undefined && !CATEGORIES.includes(category)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid category",
+        message: "Invalid complaint category.",
       });
     }
 
-    if (priority && !priorities.includes(priority)) {
+    if (priority !== undefined && !PRIORITIES.includes(priority)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid priority",
+        message: "Invalid complaint priority.",
       });
     }
 
     complaint.title = title.trim();
     complaint.description = description.trim();
-    complaint.category = category || complaint.category;
-    complaint.priority = priority || complaint.priority;
+
+    if (category !== undefined) complaint.category = category;
+    if (priority !== undefined) complaint.priority = priority;
 
     await complaint.save();
 
@@ -674,16 +768,19 @@ export const updateMyComplaint = async (req, res) => {
 };
 
 
-// TENANT: DELETE OWN COMPLAINT
+// =====================================================
+// TENANT: DELETE OWN OPEN COMPLAINT
+// =====================================================
+
 export const deleteMyComplaint = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = getUserId(req);
     const { complaintId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(complaintId)) {
+    if (!isValidId(complaintId)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid complaint ID",
+        message: "Invalid complaint ID.",
       });
     }
 

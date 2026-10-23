@@ -8,11 +8,30 @@ import DebtCollection from "../models/DebtCollection.js";
    HELPERS
 ===================================================== */
 
-const getMonthRange = (month, year) => {
-  const start = new Date(year, month - 1, 1, 0, 0, 0, 0);
-  const end = new Date(year, month, 0, 23, 59, 59, 999);
+const getMonthRange = (month, year) => ({
+  start: new Date(year, month - 1, 1, 0, 0, 0, 0),
+  end: new Date(year, month, 0, 23, 59, 59, 999),
+});
 
-  return { start, end };
+const isValidMonthYear = (month, year) =>
+  Number.isInteger(Number(month)) &&
+  Number(month) >= 1 &&
+  Number(month) <= 12 &&
+  Number.isInteger(Number(year)) &&
+  Number(year) >= 2000 &&
+  Number(year) <= 9999;
+
+const isValidObjectId = (value) =>
+  typeof value === "string" &&
+  /^[a-f\d]{24}$/i.test(value);
+
+const validateAmount = (value) => {
+  const amount = Number(value);
+  return (
+    Number.isFinite(amount) &&
+    amount > 0 &&
+    Math.round(amount * 100) === amount * 100
+  );
 };
 
 const calculateDaysLate = (dueDate, paidDate) => {
@@ -20,6 +39,13 @@ const calculateDaysLate = (dueDate, paidDate) => {
 
   const due = new Date(dueDate);
   const paid = new Date(paidDate);
+
+  if (
+    Number.isNaN(due.getTime()) ||
+    Number.isNaN(paid.getTime())
+  ) {
+    return 0;
+  }
 
   const dueDay = new Date(
     due.getFullYear(),
@@ -35,18 +61,13 @@ const calculateDaysLate = (dueDate, paidDate) => {
 
   const difference = paidDay.getTime() - dueDay.getTime();
 
-  if (difference <= 0) return 0;
-
-  return Math.ceil(difference / (1000 * 60 * 60 * 24));
+  return difference <= 0
+    ? 0
+    : Math.ceil(difference / (1000 * 60 * 60 * 24));
 };
 
-/*
-  Populate tenant, room, bed, and user details.
-  This is used by payment and rent-record queries.
-*/
-
-const populateTenantDetails = (query) => {
-  return query
+const populateTenantDetails = (query) =>
+  query
     .populate({
       path: "tenantId",
       populate: [
@@ -70,6 +91,36 @@ const populateTenantDetails = (query) => {
     })
     .populate("userId", "name mobile")
     .populate("pgId", "name address city state");
+
+const verifyPGOwnership = async (pgId, ownerId) => {
+  if (!pgId || !isValidObjectId(String(pgId))) return null;
+
+  return PG.findOne({
+    _id: pgId,
+    ownerId,
+  });
+};
+
+const requireSelectedPG = async (pgId, ownerId, res) => {
+  if (!pgId || pgId === "all") {
+    res.status(400).json({
+      success: false,
+      message: "Select a PG to view payment details.",
+    });
+    return null;
+  }
+
+  const pg = await verifyPGOwnership(pgId, ownerId);
+
+  if (!pg) {
+    res.status(403).json({
+      success: false,
+      message: "You do not have access to this PG.",
+    });
+    return null;
+  }
+
+  return pg;
 };
 
 /* =====================================================
@@ -83,11 +134,10 @@ const updateOverdueRentRecords = async ({
   year,
 }) => {
   const { start, end } = getMonthRange(month, year);
-  const today = new Date();
 
   const records = await RentRecord.find({
     ownerId,
-    ...(pgId ? { pgId } : {}),
+    pgId,
     month,
     year,
     status: { $ne: "paid" },
@@ -97,8 +147,10 @@ const updateOverdueRentRecords = async ({
     },
   });
 
+  const now = new Date();
+
   for (const record of records) {
-    if (today > new Date(record.dueDate)) {
+    if (now > new Date(record.dueDate)) {
       record.status = "overdue";
       await record.save();
     }
@@ -106,7 +158,7 @@ const updateOverdueRentRecords = async ({
 };
 
 /* =====================================================
-   ENSURE RENT RECORDS FOR PERIOD
+   ENSURE RENT RECORDS FOR A SELECTED PG AND PERIOD
 ===================================================== */
 
 const ensureRentRecordsForPeriod = async ({
@@ -115,36 +167,37 @@ const ensureRentRecordsForPeriod = async ({
   month,
   year,
 }) => {
-  const tenantFilter = {
+  const tenants = await Tenant.find({
     ownerId,
+    pgId,
     status: "active",
-  };
+  });
 
-  if (pgId) {
-    tenantFilter.pgId = pgId;
-  }
-
-  const tenants = await Tenant.find(tenantFilter);
+  const monthEnd = new Date(
+    year,
+    month,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
 
   for (const tenant of tenants) {
-    const joiningDate = new Date(tenant.joiningDate);
+    if (tenant.joiningDate) {
+      const joiningDate = new Date(tenant.joiningDate);
 
-    const monthEnd = new Date(
-      year,
-      month,
-      0,
-      23,
-      59,
-      59,
-      999
-    );
-
-    // Do not create rent records before the tenant joined.
-    if (joiningDate > monthEnd) {
-      continue;
+      if (
+        !Number.isNaN(joiningDate.getTime()) &&
+        joiningDate > monthEnd
+      ) {
+        continue;
+      }
     }
 
     let rentRecord = await RentRecord.findOne({
+      ownerId,
+      pgId,
       tenantId: tenant._id,
       month,
       year,
@@ -166,13 +219,12 @@ const ensureRentRecordsForPeriod = async ({
         999
       );
 
-      const status = new Date() > dueDate
-        ? "overdue"
-        : "pending";
+      const status =
+        new Date() > dueDate ? "overdue" : "pending";
 
-      rentRecord = await RentRecord.create({
-        ownerId: tenant.ownerId,
-        pgId: tenant.pgId,
+      await RentRecord.create({
+        ownerId,
+        pgId,
         tenantId: tenant._id,
         userId: tenant.userId,
         month,
@@ -186,30 +238,19 @@ const ensureRentRecordsForPeriod = async ({
         paymentId: null,
         notes: "",
       });
-    } else if (rentRecord.status !== "paid") {
-      if (new Date() > new Date(rentRecord.dueDate)) {
-        rentRecord.status = "overdue";
-        await rentRecord.save();
-      }
+    } else if (
+      rentRecord.status !== "paid" &&
+      new Date() > new Date(rentRecord.dueDate)
+    ) {
+      rentRecord.status = "overdue";
+      await rentRecord.save();
     }
   }
 };
 
 /* =====================================================
-   VERIFY PG OWNERSHIP
-===================================================== */
-
-const verifyPGOwnership = async (pgId, ownerId) => {
-  if (!pgId) return null;
-
-  return PG.findOne({
-    _id: pgId,
-    ownerId,
-  });
-};
-
-/* =====================================================
    GET MY PAYMENTS
+   GET /api/payments?pgId=...&month=...&year=...
 ===================================================== */
 
 export const getMyPayments = async (req, res) => {
@@ -217,52 +258,46 @@ export const getMyPayments = async (req, res) => {
     const ownerId = req.user.userId;
     const { pgId, month, year } = req.query;
 
-    if (month && year) {
-      const monthNumber = Number(month);
-      const yearNumber = Number(year);
+    const pg = await requireSelectedPG(pgId, ownerId, res);
+    if (!pg) return;
 
-      if (
-        monthNumber < 1 ||
-        monthNumber > 12 ||
-        !yearNumber
-      ) {
+    if (
+      (month && !year) ||
+      (!month && year)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Month and year must be provided together.",
+      });
+    }
+
+    if (month && year) {
+      if (!isValidMonthYear(Number(month), Number(year))) {
         return res.status(400).json({
           success: false,
           message: "Invalid month or year.",
         });
       }
 
-      if (pgId) {
-        const pg = await verifyPGOwnership(pgId, ownerId);
-
-        if (!pg) {
-          return res.status(403).json({
-            success: false,
-            message: "You do not have access to this PG.",
-          });
-        }
-      }
-
       await ensureRentRecordsForPeriod({
         ownerId,
         pgId,
-        month: monthNumber,
-        year: yearNumber,
+        month: Number(month),
+        year: Number(year),
       });
 
       await updateOverdueRentRecords({
         ownerId,
         pgId,
-        month: monthNumber,
-        year: yearNumber,
+        month: Number(month),
+        year: Number(year),
       });
     }
 
-    const filter = { ownerId };
-
-    if (pgId) {
-      filter.pgId = pgId;
-    }
+    const filter = {
+      ownerId,
+      pgId,
+    };
 
     if (month && year) {
       const { start, end } = getMonthRange(
@@ -278,9 +313,7 @@ export const getMyPayments = async (req, res) => {
 
     const payments = await populateTenantDetails(
       Payment.find(filter)
-    ).sort({
-      paymentDate: -1,
-    });
+    ).sort({ paymentDate: -1 });
 
     return res.status(200).json({
       success: true,
@@ -297,10 +330,8 @@ export const getMyPayments = async (req, res) => {
   }
 };
 
-
 /* =====================================================
-   GET RENT SUMMARY
-   Includes rent payments and collected vacated-tenant debt
+   GET PAYMENT / RENT SUMMARY
 ===================================================== */
 
 export const getPaymentSummary = async (req, res) => {
@@ -318,40 +349,16 @@ export const getPaymentSummary = async (req, res) => {
 
     const { pgId } = req.query;
 
-    if (
-      !Number.isInteger(month) ||
-      month < 1 ||
-      month > 12
-    ) {
+    const pg = await requireSelectedPG(pgId, ownerId, res);
+    if (!pg) return;
+
+    if (!isValidMonthYear(month, year)) {
       return res.status(400).json({
         success: false,
-        message: "Month must be between 1 and 12.",
+        message: "Invalid month or year.",
       });
     }
 
-    if (
-      !Number.isInteger(year) ||
-      year < 2000
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid year.",
-      });
-    }
-
-    // Verify that this PG belongs to the logged-in owner.
-    if (pgId) {
-      const pg = await verifyPGOwnership(pgId, ownerId);
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have access to this PG.",
-        });
-      }
-    }
-
-    // Ensure rent records exist for the selected month.
     await ensureRentRecordsForPeriod({
       ownerId,
       pgId,
@@ -366,84 +373,67 @@ export const getPaymentSummary = async (req, res) => {
       year,
     });
 
-    const rentFilter = {
+    const rentRecords = await RentRecord.find({
       ownerId,
+      pgId,
       month,
       year,
-    };
+    });
 
-    if (pgId) {
-      rentFilter.pgId = pgId;
-    }
-
-    const rentRecords = await RentRecord.find(rentFilter);
-
-    let paidCount = 0;
-    let pendingCount = 0;
-    let overdueCount = 0;
+    let paid = 0;
+    let pending = 0;
+    let overdue = 0;
 
     let paidAmount = 0;
     let pendingAmount = 0;
     let overdueAmount = 0;
 
-    let paidOnTimeCount = 0;
-    let paidLateCount = 0;
+    let paidOnTime = 0;
+    let paidLate = 0;
     let totalLateDays = 0;
 
-    // Calculate monthly rent statistics.
     for (const record of rentRecords) {
       const amount = Number(record.amount || 0);
 
       if (record.status === "paid") {
-        paidCount++;
+        paid += 1;
         paidAmount += amount;
 
-        if (Number(record.daysLate || 0) === 0) {
-          paidOnTimeCount++;
+        const daysLate = Number(record.daysLate || 0);
+
+        if (daysLate > 0) {
+          paidLate += 1;
+          totalLateDays += daysLate;
         } else {
-          paidLateCount++;
-          totalLateDays += Number(record.daysLate || 0);
+          paidOnTime += 1;
         }
-      }
-
-      if (record.status === "pending") {
-        pendingCount++;
+      } else if (record.status === "pending") {
+        pending += 1;
         pendingAmount += amount;
-      }
-
-      if (record.status === "overdue") {
-        overdueCount++;
+      } else if (record.status === "overdue") {
+        overdue += 1;
         overdueAmount += amount;
       }
     }
 
-    // Calculate debt collected during the selected month.
-    // This is separate from monthly rent so it does not
-    // change the Paid, Pending, or Overdue rent counts.
     const { start, end } = getMonthRange(month, year);
-
-    const debtFilter = {
-      ownerId,
-      paymentDate: {
-        $gte: start,
-        $lte: end,
-      },
-    };
-
-    if (pgId) {
-      debtFilter.pgId = pgId;
-    }
 
     const debtCollections = await DebtCollection.aggregate([
       {
-        $match: debtFilter,
+        $match: {
+          ownerId: (await PG.findById(pgId).select("ownerId"))
+            ?.ownerId,
+          pgId: pg._id,
+          paymentDate: {
+            $gte: start,
+            $lte: end,
+          },
+        },
       },
       {
         $group: {
           _id: null,
-          total: {
-            $sum: "$amount",
-          },
+          total: { $sum: "$amount" },
         },
       },
     ]);
@@ -452,35 +442,23 @@ export const getPaymentSummary = async (req, res) => {
       debtCollections[0]?.total || 0
     );
 
-    // Total Collected = monthly rent collected
-    // + vacated-tenant debt collected in that month.
     const totalCollected = paidAmount + debtCollected;
 
     return res.status(200).json({
       success: true,
-
-      period: {
-        month,
-        year,
-      },
-
+      period: { month, year },
       summary: {
         totalTenants: rentRecords.length,
-
-        paid: paidCount,
-        pending: pendingCount,
-        overdue: overdueCount,
-
+        paid,
+        pending,
+        overdue,
         paidAmount,
         pendingAmount,
         overdueAmount,
-
-        // Additional collection totals.
         debtCollected,
         totalCollected,
-
-        paidOnTime: paidOnTimeCount,
-        paidLate: paidLateCount,
+        paidOnTime,
+        paidLate,
         totalLateDays,
       },
     });
@@ -494,10 +472,8 @@ export const getPaymentSummary = async (req, res) => {
   }
 };
 
-
 /* =====================================================
    GET RENT RECORDS
-   Includes tenant, room, bed, and PG details.
 ===================================================== */
 
 export const getRentRecords = async (req, res) => {
@@ -515,22 +491,14 @@ export const getRentRecords = async (req, res) => {
 
     const { pgId, status } = req.query;
 
-    if (month < 1 || month > 12) {
+    const pg = await requireSelectedPG(pgId, ownerId, res);
+    if (!pg) return;
+
+    if (!isValidMonthYear(month, year)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid month.",
+        message: "Invalid month or year.",
       });
-    }
-
-    if (pgId) {
-      const pg = await verifyPGOwnership(pgId, ownerId);
-
-      if (!pg) {
-        return res.status(403).json({
-          success: false,
-          message: "You do not have access to this PG.",
-        });
-      }
     }
 
     await ensureRentRecordsForPeriod({
@@ -549,13 +517,10 @@ export const getRentRecords = async (req, res) => {
 
     const filter = {
       ownerId,
+      pgId,
       month,
       year,
     };
-
-    if (pgId) {
-      filter.pgId = pgId;
-    }
 
     if (
       status &&
@@ -566,9 +531,7 @@ export const getRentRecords = async (req, res) => {
 
     const rentRecords = await populateTenantDetails(
       RentRecord.find(filter)
-    ).sort({
-      dueDate: 1,
-    });
+    ).sort({ dueDate: 1 });
 
     const recordsWithRoomDetails = rentRecords.map((record) => {
       const item = record.toObject();
@@ -624,7 +587,6 @@ export const createPayment = async (req, res) => {
 
     const {
       tenantId,
-      userId,
       pgId,
       amount,
       paymentDate,
@@ -641,30 +603,51 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    const pg = await verifyPGOwnership(pgId, ownerId);
-
-    if (!pg) {
-      return res.status(403).json({
+    if (!isValidObjectId(String(tenantId))) {
+      return res.status(400).json({
         success: false,
-        message: "You do not have access to this PG.",
+        message: "Invalid tenant ID.",
       });
     }
+
+    const pg = await requireSelectedPG(pgId, ownerId, res);
+    if (!pg) return;
 
     const tenant = await Tenant.findOne({
       _id: tenantId,
       ownerId,
+      pgId,
+      status: "active",
     });
 
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: "Tenant not found.",
+        message:
+          "Active tenant was not found in the selected PG.",
       });
     }
+
+    if (!validateAmount(amount)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Enter a valid amount with up to two decimal places.",
+      });
+    }
+
+    const numericAmount = Number(amount);
 
     const paidAt = paymentDate
       ? new Date(paymentDate)
       : new Date();
+
+    if (Number.isNaN(paidAt.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment date.",
+      });
+    }
 
     const paymentMonth = Number(
       month || paidAt.getMonth() + 1
@@ -673,6 +656,13 @@ export const createPayment = async (req, res) => {
     const paymentYear = Number(
       year || paidAt.getFullYear()
     );
+
+    if (!isValidMonthYear(paymentMonth, paymentYear)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid rent month or year.",
+      });
+    }
 
     await ensureRentRecordsForPeriod({
       ownerId,
@@ -683,8 +673,8 @@ export const createPayment = async (req, res) => {
 
     const rentRecord = await RentRecord.findOne({
       ownerId,
-      tenantId,
       pgId,
+      tenantId,
       month: paymentMonth,
       year: paymentYear,
     });
@@ -692,7 +682,16 @@ export const createPayment = async (req, res) => {
     if (!rentRecord) {
       return res.status(404).json({
         success: false,
-        message: "Rent record for this month could not be found.",
+        message:
+          "Rent record for this month could not be found.",
+      });
+    }
+
+    if (rentRecord.status === "paid") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Rent is already marked as paid for this month.",
       });
     }
 
@@ -701,21 +700,45 @@ export const createPayment = async (req, res) => {
       paidAt
     );
 
+    const method = paymentMethod || "cash";
+
+    const allowedMethods = [
+      "cash",
+      "upi",
+      "bank",
+      "card",
+      "other",
+    ];
+
+    if (!allowedMethods.includes(method)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment method.",
+      });
+    }
+
+    if (String(notes || "").length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "Notes cannot exceed 1000 characters.",
+      });
+    }
+
     const payment = await Payment.create({
       ownerId,
       pgId,
       tenantId,
-      userId: userId || tenant.userId,
-      amount: Number(amount),
+      userId: tenant.userId,
+      amount: numericAmount,
       paymentDate: paidAt,
-      paymentMethod: paymentMethod || "cash",
+      paymentMethod: method,
       status: "paid",
-      notes: notes || "",
+      notes: String(notes || "").trim(),
     });
 
     rentRecord.status = "paid";
     rentRecord.paidDate = paidAt;
-    rentRecord.paymentMethod = paymentMethod || "cash";
+    rentRecord.paymentMethod = method;
     rentRecord.daysLate = daysLate;
     rentRecord.paymentId = payment._id;
 
@@ -723,11 +746,12 @@ export const createPayment = async (req, res) => {
 
     return res.status(201).json({
       success: true,
-      message: daysLate > 0
-        ? `Rent marked as paid. Payment was ${daysLate} ${
-            daysLate === 1 ? "day" : "days"
-          } late.`
-        : "Rent marked as paid on time.",
+      message:
+        daysLate > 0
+          ? `Rent marked as paid ${daysLate} ${
+              daysLate === 1 ? "day" : "days"
+            } late.`
+          : "Rent marked as paid on time.",
       payment,
       rentRecord,
     });
@@ -751,6 +775,13 @@ export const updatePaymentStatus = async (req, res) => {
     const { paymentId } = req.params;
     const { status, paymentMethod } = req.body;
 
+    if (!isValidObjectId(String(paymentId || ""))) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment ID.",
+      });
+    }
+
     if (!["paid", "pending", "overdue"].includes(status)) {
       return res.status(400).json({
         success: false,
@@ -770,6 +801,15 @@ export const updatePaymentStatus = async (req, res) => {
       });
     }
 
+    const paymentDate = new Date(payment.paymentDate);
+
+    const rentRecord = await RentRecord.findOne({
+      ownerId,
+      pgId: payment.pgId,
+      tenantId: payment.tenantId,
+      paymentId: payment._id,
+    });
+
     if (status === "paid") {
       const paidDate = new Date();
 
@@ -782,68 +822,36 @@ export const updatePaymentStatus = async (req, res) => {
 
       await payment.save();
 
-      const paymentMonth = paidDate.getMonth() + 1;
-      const paymentYear = paidDate.getFullYear();
-
-      const rentRecord = await RentRecord.findOne({
-        ownerId,
-        tenantId: payment.tenantId,
-        pgId: payment.pgId,
-        month: paymentMonth,
-        year: paymentYear,
-      });
-
       if (rentRecord) {
-        const daysLate = calculateDaysLate(
+        rentRecord.status = "paid";
+        rentRecord.paidDate = paidDate;
+        rentRecord.daysLate = calculateDaysLate(
           rentRecord.dueDate,
           paidDate
         );
-
-        rentRecord.status = "paid";
-        rentRecord.paidDate = paidDate;
-        rentRecord.daysLate = daysLate;
         rentRecord.paymentMethod = payment.paymentMethod;
         rentRecord.paymentId = payment._id;
 
         await rentRecord.save();
-
-        return res.status(200).json({
-          success: true,
-          message: daysLate > 0
-            ? `Payment marked as paid ${daysLate} ${
-                daysLate === 1 ? "day" : "days"
-              } late.`
-            : "Payment marked as paid on time.",
-          payment,
-          rentRecord,
-        });
       }
 
       return res.status(200).json({
         success: true,
         message: "Payment marked as paid.",
         payment,
+        rentRecord,
       });
     }
 
     payment.status = status;
     await payment.save();
 
-    const paymentDate = new Date(payment.paymentDate);
-
-    const rentRecord = await RentRecord.findOne({
-      ownerId,
-      tenantId: payment.tenantId,
-      pgId: payment.pgId,
-      month: paymentDate.getMonth() + 1,
-      year: paymentDate.getFullYear(),
-    });
-
     if (rentRecord) {
       rentRecord.status = status;
       rentRecord.paidDate = null;
       rentRecord.daysLate = 0;
       rentRecord.paymentId = null;
+      rentRecord.paymentMethod = null;
 
       await rentRecord.save();
     }
@@ -870,18 +878,19 @@ export const updatePaymentStatus = async (req, res) => {
 
 export const deletePayment = async (req, res) => {
   try {
+    const ownerId = req.user.userId;
     const { paymentId } = req.params;
 
-    if (!paymentId) {
+    if (!isValidObjectId(String(paymentId || ""))) {
       return res.status(400).json({
         success: false,
-        message: "Payment ID is required.",
+        message: "Invalid payment ID.",
       });
     }
 
     const payment = await Payment.findOne({
       _id: paymentId,
-      ownerId: req.user.userId,
+      ownerId,
     });
 
     if (!payment) {
@@ -892,17 +901,18 @@ export const deletePayment = async (req, res) => {
     }
 
     const rentRecord = await RentRecord.findOne({
+      ownerId,
+      pgId: payment.pgId,
+      tenantId: payment.tenantId,
       paymentId: payment._id,
-      ownerId: req.user.userId,
     });
 
     if (rentRecord) {
-      const today = new Date();
+      const now = new Date();
       const dueDate = new Date(rentRecord.dueDate);
 
-      rentRecord.status = today > dueDate
-        ? "overdue"
-        : "pending";
+      rentRecord.status =
+        now > dueDate ? "overdue" : "pending";
 
       rentRecord.paidDate = null;
       rentRecord.paymentMethod = null;
@@ -914,12 +924,13 @@ export const deletePayment = async (req, res) => {
 
     await Payment.deleteOne({
       _id: payment._id,
-      ownerId: req.user.userId,
+      ownerId,
     });
 
     return res.status(200).json({
       success: true,
-      message: "Payment transaction deleted successfully.",
+      message:
+        "Payment transaction deleted successfully.",
     });
   } catch (error) {
     console.error("Delete payment error:", error);
@@ -927,18 +938,17 @@ export const deletePayment = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to delete payment.",
-      error: error.message,
     });
   }
 };
 
-
-// =====================================================
-// COLLECT VACATED TENANT DEBT
-// =====================================================
+/* =====================================================
+   COLLECT VACATED TENANT DEBT
+===================================================== */
 
 export const collectVacatedDebt = async (req, res) => {
   const ownerId = req.user.userId;
+
   let collection = null;
   let balanceUpdated = false;
 
@@ -956,14 +966,18 @@ export const collectVacatedDebt = async (req, res) => {
       "other",
     ];
 
-    if (
-      !Number.isFinite(amount) ||
-      amount <= 0 ||
-      Math.round(amount * 100) !== amount * 100
-    ) {
+    if (!isValidObjectId(String(tenantId || ""))) {
       return res.status(400).json({
         success: false,
-        message: "Enter a valid amount with up to two decimal places.",
+        message: "Invalid tenant ID.",
+      });
+    }
+
+    if (!validateAmount(amount)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Enter a valid amount with up to two decimal places.",
       });
     }
 
@@ -981,8 +995,6 @@ export const collectVacatedDebt = async (req, res) => {
       });
     }
 
-    // Only allow collection for a vacated tenant belonging
-    // to the currently authenticated owner.
     const tenant = await Tenant.findOne({
       _id: tenantId,
       ownerId,
@@ -1003,7 +1015,8 @@ export const collectVacatedDebt = async (req, res) => {
     if (currentBalance <= 0) {
       return res.status(400).json({
         success: false,
-        message: "This tenant has no outstanding balance.",
+        message:
+          "This tenant has no outstanding balance.",
       });
     }
 
@@ -1014,7 +1027,6 @@ export const collectVacatedDebt = async (req, res) => {
       });
     }
 
-    // 1. Save a separate collection transaction.
     collection = await DebtCollection.create({
       ownerId,
       pgId: tenant.pgId,
@@ -1026,9 +1038,6 @@ export const collectVacatedDebt = async (req, res) => {
       collectedBy: ownerId,
     });
 
-    // 2. Atomically subtract the collection amount.
-    // The condition prevents the balance from going below zero
-    // if another collection happens at the same time.
     const updatedTenant = await Tenant.findOneAndUpdate(
       {
         _id: tenant._id,
@@ -1057,7 +1066,8 @@ export const collectVacatedDebt = async (req, res) => {
 
       return res.status(409).json({
         success: false,
-        message: "The balance changed. Refresh and try again.",
+        message:
+          "The balance changed. Refresh and try again.",
       });
     }
 
@@ -1068,7 +1078,6 @@ export const collectVacatedDebt = async (req, res) => {
       Number(updatedTenant.outstandingBalance || 0)
     );
 
-    // 3. Mark the debt settled only when the full balance is paid.
     if (remainingBalance === 0) {
       try {
         await Tenant.updateOne(
@@ -1084,9 +1093,6 @@ export const collectVacatedDebt = async (req, res) => {
           }
         );
       } catch (settlementError) {
-        // The collection and balance update have already succeeded.
-        // Log this separately so the client isn't told the collection
-        // failed when the money was recorded.
         console.error(
           "Debt settlement timestamp update failed:",
           settlementError
@@ -1110,8 +1116,6 @@ export const collectVacatedDebt = async (req, res) => {
   } catch (error) {
     console.error("Collect vacated debt error:", error);
 
-    // If the collection was saved but the balance wasn't updated,
-    // remove the orphan collection record.
     if (collection && !balanceUpdated) {
       try {
         await DebtCollection.deleteOne({

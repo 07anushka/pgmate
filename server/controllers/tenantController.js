@@ -194,16 +194,42 @@ const normalizePanNumber = (value) =>
 const normalizeAddress = (value) =>
   String(value || "").trim().slice(0, 300);
 
+
 /* =====================================================
    GET MY TENANTS
-   OWNER ONLY
+   OWNER ONLY — FILTER BY SELECTED PG
 ===================================================== */
 
 export const getMyTenants = async (req, res) => {
   try {
     const ownerId = req.user.userId;
+    const { pgId } = req.query;
 
-    const tenants = await Tenant.find({ ownerId })
+    if (!pgId) {
+      return res.status(400).json({
+        success: false,
+        message: "Please select a PG.",
+      });
+    }
+
+    // Confirm that this PG belongs to the logged-in owner.
+    const pg = await PG.findOne({
+      _id: pgId,
+      ownerId,
+    });
+
+    if (!pg) {
+      return res.status(404).json({
+        success: false,
+        message: "PG not found or access denied.",
+      });
+    }
+
+    // Fetch tenants from this PG only.
+    const tenants = await Tenant.find({
+      ownerId,
+      pgId,
+    })
       .populate("userId", "name mobile role")
       .populate("pgId", "name address city state contactNumber")
       .populate("roomId", "roomNumber roomType monthlyRent floor")
@@ -226,6 +252,7 @@ export const getMyTenants = async (req, res) => {
     });
   }
 };
+
 
 
 /* =====================================================
@@ -607,6 +634,50 @@ export const createTenant = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Failed to create tenant.",
+    });
+  }
+};
+
+
+/* =====================================================
+   DELETE TENANT DOCUMENT IMAGE
+   OWNER ONLY
+===================================================== */
+
+export const deleteTenantAadhaarImage = async (req, res) => {
+  try {
+    const tenant = await Tenant.findOne({
+      _id: req.params.tenantId,
+      ownerId: req.user.userId,
+    });
+
+    if (!tenant) {
+      return res.status(404).json({
+        success: false,
+        message: "Tenant not found.",
+      });
+    }
+
+    if (!tenant.tenantPhoto) {
+      return res.status(404).json({
+        success: false,
+        message: "No saved document image exists.",
+      });
+    }
+
+    tenant.tenantPhoto = "";
+    await tenant.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Tenant document image deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Delete tenant image error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete tenant document image.",
     });
   }
 };

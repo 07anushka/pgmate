@@ -23,6 +23,8 @@ import {
   ChevronRight,
   Plus,
   LoaderCircle,
+  LockKeyhole,
+  Save,
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
@@ -62,6 +64,29 @@ function TenantDashboard() {
     mobileMenuOpen,
     setMobileMenuOpen,
   ] = useState(false);
+
+
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileMessage, setProfileMessage] = useState("");
+  const [profileError, setProfileError] = useState("");
+
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    emergencyContactName: "",
+    emergencyContactNumber: "",
+  });
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
 
 
   /* =========================================
@@ -627,6 +652,173 @@ function TenantDashboard() {
         setSubmittingComplaint(false);
       }
     };
+
+  const startProfileEdit = () => {
+    setProfileForm({
+      name: tenant?.userId?.name || user?.name || "",
+      emergencyContactName: tenant?.emergencyContactName || "",
+      emergencyContactNumber: tenant?.emergencyContactNumber || "",
+    });
+
+    setProfileError("");
+    setProfileMessage("");
+    setEditingProfile(true);
+  };
+
+  const cancelProfileEdit = () => {
+    setEditingProfile(false);
+    setProfileError("");
+    setProfileMessage("");
+  };
+
+  const handleProfileInputChange = (event) => {
+    const { name, value } = event.target;
+
+    setProfileForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handleProfileSave = async (event) => {
+    event.preventDefault();
+
+    setProfileError("");
+    setProfileMessage("");
+
+    if (!profileForm.name.trim()) {
+      setProfileError("Please enter your full name.");
+      return;
+    }
+
+    if (profileForm.name.trim().length > 100) {
+      setProfileError("Name cannot exceed 100 characters.");
+      return;
+    }
+
+    if (profileForm.emergencyContactName.trim().length > 100) {
+      setProfileError("Emergency contact name is too long.");
+      return;
+    }
+
+    if (
+      profileForm.emergencyContactNumber.trim() &&
+      !/^[0-9+\-\s()]{7,20}$/.test(
+        profileForm.emergencyContactNumber.trim()
+      )
+    ) {
+      setProfileError("Please enter a valid emergency contact number.");
+      return;
+    }
+
+    try {
+      setSavingProfile(true);
+
+      const response = await fetch(`${API_URL}/tenant-portal/me`, {
+        method: "PATCH",
+        headers: {
+          ...getHeaders(),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: profileForm.name.trim(),
+          emergencyContactName:
+            profileForm.emergencyContactName.trim(),
+          emergencyContactNumber:
+            profileForm.emergencyContactNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update profile.");
+      }
+
+      // Refresh the profile from the server.
+      await fetchProfile();
+
+      setEditingProfile(false);
+      setProfileMessage(data.message || "Profile updated successfully.");
+    } catch (err) {
+      setProfileError(err.message || "Failed to update profile.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePasswordInputChange = (event) => {
+    const { name, value } = event.target;
+
+    setPasswordForm((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  const handlePasswordSave = async (event) => {
+    event.preventDefault();
+
+    setPasswordError("");
+    setPasswordMessage("");
+
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      setPasswordError("Please fill in all password fields.");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("Your new password must contain at least 8 characters.");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation do not match.");
+      return;
+    }
+
+    try {
+      setSavingPassword(true);
+
+      const response = await fetch(
+        `${API_URL}/tenant-portal/me/password`,
+        {
+          method: "PATCH",
+          headers: {
+            ...getHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentPassword: passwordForm.currentPassword,
+            newPassword: passwordForm.newPassword,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to change password.");
+      }
+
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+
+      setShowPasswordForm(false);
+      setPasswordMessage(data.message || "Password changed successfully.");
+    } catch (err) {
+      setPasswordError(err.message || "Failed to change password.");
+    } finally {
+      setSavingPassword(false);
+    }
+  };
 
 
   /* =========================================
@@ -1661,36 +1853,110 @@ function TenantDashboard() {
                   <h2>{userData?.name || "Tenant"}</h2>
                   <p>PG Tenant</p>
                 </div>
+
+                {!editingProfile && (
+                  <button
+                    type="button"
+                    className="tenant-profile-action"
+                    onClick={startProfileEdit}
+                  >
+                    Edit Profile
+                  </button>
+                )}
               </section>
+
+              {profileMessage && (
+                <div className="tenant-profile-success">
+                  {profileMessage}
+                </div>
+              )}
+
+              {profileError && (
+                <div className="tenant-form-error">
+                  <AlertCircle size={16} />
+                  {profileError}
+                </div>
+              )}
 
               {/* PERSONAL INFORMATION + STAY DETAILS */}
               <div className="tenant-profile-columns">
+
                 <section className="tenant-profile-card">
                   <div className="tenant-profile-card-heading">
                     <div className="tenant-profile-card-icon">
                       <UserCircle size={25} />
                     </div>
+
                     <div>
                       <h2>Personal Information</h2>
                       <p>Your registered account details.</p>
                     </div>
                   </div>
 
-                  <div className="tenant-profile-detail">
-                    <UserCircle size={21} />
-                    <div>
-                      <span>Full Name</span>
-                      <strong>{userData?.name || "-"}</strong>
-                    </div>
-                  </div>
+                  {editingProfile ? (
+                    <form onSubmit={handleProfileSave}>
+                      <div className="tenant-profile-edit-field">
+                        <label htmlFor="profile-name">Full Name</label>
+                        <input
+                          id="profile-name"
+                          name="name"
+                          value={profileForm.name}
+                          onChange={handleProfileInputChange}
+                          maxLength={100}
+                          required
+                        />
+                      </div>
 
-                  <div className="tenant-profile-detail">
-                    <Phone size={21} />
-                    <div>
-                      <span>Mobile Number</span>
-                      <strong>{userData?.mobile || "-"}</strong>
-                    </div>
-                  </div>
+                      <div className="tenant-profile-edit-field">
+                        <label htmlFor="profile-mobile">Mobile Number</label>
+                        <input
+                          id="profile-mobile"
+                          value={userData?.mobile || ""}
+                          readOnly
+                          disabled
+                        />
+                        <small>Mobile number cannot be changed here.</small>
+                      </div>
+
+                      <div className="tenant-profile-edit-actions">
+                        <button
+                          type="button"
+                          className="tenant-profile-cancel"
+                          onClick={cancelProfileEdit}
+                          disabled={savingProfile}
+                        >
+                          Cancel
+                        </button>
+
+                        <button
+                          type="submit"
+                          className="tenant-profile-action"
+                          disabled={savingProfile}
+                        >
+                          <Save size={16} />
+                          {savingProfile ? "Saving..." : "Save Changes"}
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className="tenant-profile-detail">
+                        <UserCircle size={21} />
+                        <div>
+                          <span>Full Name</span>
+                          <strong>{userData?.name || "-"}</strong>
+                        </div>
+                      </div>
+
+                      <div className="tenant-profile-detail">
+                        <Phone size={21} />
+                        <div>
+                          <span>Mobile Number</span>
+                          <strong>{userData?.mobile || "-"}</strong>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </section>
 
                 <section className="tenant-profile-card">
@@ -1698,6 +1964,7 @@ function TenantDashboard() {
                     <div className="tenant-profile-card-icon">
                       <Building2 size={25} />
                     </div>
+
                     <div>
                       <h2>Stay Details</h2>
                       <p>Information about your current stay.</p>
@@ -1740,36 +2007,216 @@ function TenantDashboard() {
                   <div className="tenant-profile-card-icon">
                     <Phone size={25} />
                   </div>
+
                   <div>
                     <h2>Emergency Contact</h2>
                     <p>Contact information provided to your PG.</p>
                   </div>
                 </div>
 
-                <div className="tenant-profile-emergency-grid">
-                  <div className="tenant-profile-detail">
-                    <UserCircle size={21} />
-                    <div>
-                      <span>Name</span>
-                      <strong>{tenant?.emergencyContactName || "-"}</strong>
+                {editingProfile ? (
+                  <div className="tenant-profile-edit-grid">
+                    <div className="tenant-profile-edit-field">
+                      <label htmlFor="emergency-name">Contact Name</label>
+                      <input
+                        id="emergency-name"
+                        name="emergencyContactName"
+                        value={profileForm.emergencyContactName}
+                        onChange={handleProfileInputChange}
+                        maxLength={100}
+                      />
+                    </div>
+
+                    <div className="tenant-profile-edit-field">
+                      <label htmlFor="emergency-number">Contact Mobile Number</label>
+                      <input
+                        id="emergency-number"
+                        name="emergencyContactNumber"
+                        type="tel"
+                        value={profileForm.emergencyContactNumber}
+                        onChange={handleProfileInputChange}
+                        maxLength={20}
+                      />
                     </div>
                   </div>
-
-                  <div className="tenant-profile-detail">
-                    <Phone size={21} />
-                    <div>
-                      <span>Mobile Number</span>
-                      <strong>{tenant?.emergencyContactNumber || "-"}</strong>
+                ) : (
+                  <div className="tenant-profile-emergency-grid">
+                    <div className="tenant-profile-detail">
+                      <UserCircle size={21} />
+                      <div>
+                        <span>Name</span>
+                        <strong>{tenant?.emergencyContactName || "-"}</strong>
+                      </div>
                     </div>
+
+                    <div className="tenant-profile-detail">
+                      <Phone size={21} />
+                      <div>
+                        <span>Mobile Number</span>
+                        <strong>{tenant?.emergencyContactNumber || "-"}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* AADHAAR DOCUMENT */}
+              <section className="tenant-profile-card">
+                <div className="tenant-profile-card-heading">
+                  <div className="tenant-profile-card-icon">
+                    <LockKeyhole size={25} />
+                  </div>
+
+                  <div>
+                    <h2>Aadhaar Document</h2>
+                    <p>Document image currently stored in your tenant record.</p>
                   </div>
                 </div>
+
+                {tenant?.aadhaarCardImage || tenant?.tenantPhoto ? (
+                  <img
+                    className="tenant-aadhaar-image"
+                    src={tenant.aadhaarCardImage || tenant.tenantPhoto}
+                    alt="Uploaded tenant document"
+                    loading="lazy"
+                  />
+                ) : (
+                  <p className="tenant-profile-muted">
+                    No Aadhaar card uploaded.
+                  </p>
+                )}
+
+                <p className="tenant-profile-muted">
+                  This image is displayed from the existing tenant record. It does not
+                  indicate that Aadhaar has been officially verified.
+                </p>
               </section>
+
+              {/* CHANGE PASSWORD */}
+              <section className="tenant-profile-card">
+                <div className="tenant-profile-card-heading">
+                  <div className="tenant-profile-card-icon">
+                    <LockKeyhole size={25} />
+                  </div>
+
+                  <div>
+                    <h2>Account Security</h2>
+                    <p>Change your login password securely.</p>
+                  </div>
+                </div>
+
+                {passwordMessage && (
+                  <div className="tenant-profile-success">
+                    {passwordMessage}
+                  </div>
+                )}
+
+                {passwordError && (
+                  <div className="tenant-form-error">
+                    <AlertCircle size={16} />
+                    {passwordError}
+                  </div>
+                )}
+
+                {!showPasswordForm ? (
+                  <button
+                    type="button"
+                    className="tenant-profile-action"
+                    onClick={() => {
+                      setPasswordError("");
+                      setPasswordMessage("");
+                      setShowPasswordForm(true);
+                    }}
+                  >
+                    <LockKeyhole size={16} />
+                    Change Password
+                  </button>
+                ) : (
+                  <form
+                    className="tenant-password-form"
+                    onSubmit={handlePasswordSave}
+                  >
+                    <div className="tenant-profile-edit-field">
+                      <label htmlFor="current-password">Current Password</label>
+                      <input
+                        id="current-password"
+                        name="currentPassword"
+                        type="password"
+                        autoComplete="current-password"
+                        value={passwordForm.currentPassword}
+                        onChange={handlePasswordInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="tenant-profile-edit-field">
+                      <label htmlFor="new-password">New Password</label>
+                      <input
+                        id="new-password"
+                        name="newPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        maxLength={128}
+                        value={passwordForm.newPassword}
+                        onChange={handlePasswordInputChange}
+                        required
+                      />
+                      <small>Use at least 8 characters.</small>
+                    </div>
+
+                    <div className="tenant-profile-edit-field">
+                      <label htmlFor="confirm-password">Confirm New Password</label>
+                      <input
+                        id="confirm-password"
+                        name="confirmPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        maxLength={128}
+                        value={passwordForm.confirmPassword}
+                        onChange={handlePasswordInputChange}
+                        required
+                      />
+                    </div>
+
+                    <div className="tenant-profile-edit-actions">
+                      <button
+                        type="button"
+                        className="tenant-profile-cancel"
+                        disabled={savingPassword}
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          setPasswordError("");
+                          setPasswordForm({
+                            currentPassword: "",
+                            newPassword: "",
+                            confirmPassword: "",
+                          });
+                        }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        type="submit"
+                        className="tenant-profile-action"
+                        disabled={savingPassword}
+                      >
+                        <Save size={16} />
+                        {savingPassword ? "Updating..." : "Update Password"}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </section>
+
             </div>
-            )}
+          )}
 
 
 
-      {/* =========================================
+          {/* =========================================
           COMPLAINT MODAL
       ========================================= */}
 
@@ -2025,11 +2472,11 @@ function TenantDashboard() {
 
             </div>
 
-)}
-</section>
-</main>
-</div>
-);
+          )}
+        </section>
+      </main>
+    </div>
+  );
 }
 
 export default TenantDashboard;

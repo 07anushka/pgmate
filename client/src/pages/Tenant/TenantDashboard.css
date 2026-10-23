@@ -2631,3 +2631,173 @@ body {
     padding: 14px !important;
   }
 }
+
+
+
+/* =========================================
+   TENANT PROFILE EDITING
+========================================= */
+
+.tenant-profile-action,
+.tenant-profile-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.tenant-profile-action {
+  background: #2563eb;
+  color: #fff;
+  border: 1px solid #2563eb;
+}
+
+.tenant-profile-action:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.tenant-profile-action:disabled,
+.tenant-profile-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.tenant-profile-cancel {
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.tenant-profile-cancel:hover {
+  background: #f3f4f6;
+}
+
+.tenant-profile-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.tenant-profile-edit-field label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.tenant-profile-edit-field input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 43px;
+  padding: 11px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  color: #111827;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.tenant-profile-edit-field input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.tenant-profile-edit-field input:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+.tenant-profile-edit-field small {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.tenant-profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+
+.tenant-profile-edit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.tenant-password-form {
+  margin-top: 12px;
+  max-width: 540px;
+}
+
+.tenant-profile-success {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+}
+
+.tenant-profile-muted {
+  color: #6b7280;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tenant-aadhaar-image {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  max-height: 360px;
+  margin-top: 16px;
+  object-fit: contain;
+  object-position: left center;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #f9fafb;
+}
+
+@media (max-width: 640px) {
+  .tenant-profile-edit-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .tenant-profile-banner {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .tenant-profile-action,
+  .tenant-profile-cancel {
+    min-height: 42px;
+  }
+
+  .tenant-profile-edit-actions {
+    justify-content: stretch;
+  }
+
+  .tenant-profile-edit-actions button {
+    flex: 1;
+  }
+
+  .tenant-aadhaar-image {
+    max-height: 260px;
+  }
+}

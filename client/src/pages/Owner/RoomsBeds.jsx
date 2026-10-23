@@ -516,82 +516,109 @@ function RoomsBeds() {
     setBedNumber,
   ] = useState("");
 
+
   // ====================================================
   // ACTIVE PG
   // ====================================================
 
   const getStoredPGId = () => {
-    return localStorage.getItem(
-      "pgmate_active_pg"
-    );
+    const pgId = localStorage.getItem("pgmate_active_pg");
+
+    return pgId && pgId !== "all" ? pgId : "";
   };
 
   // ====================================================
-  // LOAD DATA
+  // LOAD DATA FOR THE SELECTED PG
   // ====================================================
 
-  const loadData = async () => {
+  const loadData = async (requestedPGId = getStoredPGId()) => {
     try {
       setLoading(true);
       setError("");
 
-      const pgResponse =
-        await getMyPGsApi();
-
-      const pgList =
-        pgResponse?.pgs || [];
+      const pgResponse = await getMyPGsApi();
+      const pgList = pgResponse?.pgs || [];
 
       setPgs(pgList);
 
-      if (!pgList.length) {
+      // No PG selected: do not show another PG's rooms.
+      if (!requestedPGId || requestedPGId === "all") {
         setActivePG(null);
         setRooms([]);
         return;
       }
 
-      const storedPGId =
-        getStoredPGId();
+      const selectedPG = pgList.find(
+        (pg) => String(pg._id) === String(requestedPGId)
+      );
 
-      const selectedPG =
-        pgList.find(
-          (pg) =>
-            String(pg._id) ===
-            String(storedPGId)
-        ) || pgList[0];
+      // The selected PG must exist in the owner's PG list.
+      if (!selectedPG) {
+        setActivePG(null);
+        setRooms([]);
+        setError("Selected PG was not found. Please select a valid PG.");
+        return;
+      }
 
+      // Do not overwrite localStorage here.
+      // The PG selector is responsible for changing it.
       setActivePG(selectedPG);
 
-      localStorage.setItem(
-        "pgmate_active_pg",
-        selectedPG._id
-      );
+      const roomResponse = await getMyRoomsApi(selectedPG._id);
 
-      const roomResponse =
-        await getMyRoomsApi(
-          selectedPG._id
-        );
+      // Ignore stale results if the user switched PG while loading.
+      if (getStoredPGId() !== String(selectedPG._id)) {
+        return;
+      }
 
-      setRooms(
-        roomResponse?.rooms || []
-      );
+      setRooms(roomResponse?.rooms || []);
     } catch (err) {
-      console.error(
-        "Rooms loading error:",
-        err
-      );
+      console.error("Rooms loading error:", err);
 
-      setError(
-        err.message ||
-          "Failed to load rooms."
-      );
+      setError(err.message || "Failed to load rooms.");
+      setRooms([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // ====================================================
+  // INITIAL LOAD + PG SWITCH LISTENER
+  // ====================================================
+
   useEffect(() => {
-    loadData();
+    const handlePGChange = () => {
+      loadData(getStoredPGId());
+    };
+
+    // Load the current selection when the page opens.
+    handlePGChange();
+
+    // Custom event handles PG changes in this same tab.
+    window.addEventListener(
+      "pgmate-pg-changed",
+      handlePGChange
+    );
+
+    // Storage event handles changes from another tab.
+    window.addEventListener(
+      "storage",
+      handlePGChange
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pgmate-pg-changed",
+        handlePGChange
+      );
+
+      window.removeEventListener(
+        "storage",
+        handlePGChange
+      );
+    };
   }, []);
+
 
   // ====================================================
   // STORAGE CHANGE
@@ -670,7 +697,7 @@ function RoomsBeds() {
               !query ||
               String(
                 room.roomNumber ||
-                  ""
+                ""
               )
                 .toLowerCase()
                 .includes(query) ||
@@ -688,12 +715,12 @@ function RoomsBeds() {
             const matchesFloor =
               floorFilter === "all" ||
               roomFloor ===
-                floorFilter;
+              floorFilter;
 
             const matchesSharing =
               sharingFilter === "all" ||
               roomType ===
-                sharingFilter;
+              sharingFilter;
 
             const matchesStatus =
               statusFilter === "all" ||
@@ -941,7 +968,7 @@ function RoomsBeds() {
 
       if (
         roomForm.monthlyRent ===
-          "" ||
+        "" ||
         Number(
           roomForm.monthlyRent
         ) < 0
@@ -1120,10 +1147,9 @@ function RoomsBeds() {
           type: "success",
           title: "Room Created",
           message:
-            `Room ${payload.roomNumber} and ${numberOfBeds} bed${
-              numberOfBeds > 1
-                ? "s"
-                : ""
+            `Room ${payload.roomNumber} and ${numberOfBeds} bed${numberOfBeds > 1
+              ? "s"
+              : ""
             } have been added successfully.`,
         });
       } catch (err) {
@@ -1461,7 +1487,7 @@ function RoomsBeds() {
             PROPERTY MANAGEMENT
           </span>
 
-         
+
         </div>
 
         <button
@@ -1723,20 +1749,20 @@ function RoomsBeds() {
           {(floorFilter !==
             "all" ||
             sharingFilter !==
-              "all" ||
+            "all" ||
             statusFilter !==
-              "all" ||
+            "all" ||
             search) && (
-            <button
-              className="rooms-clear-filter"
-              onClick={
-                clearFilters
-              }
-              type="button"
-            >
-              Clear
-            </button>
-          )}
+              <button
+                className="rooms-clear-filter"
+                onClick={
+                  clearFilters
+                }
+                type="button"
+              >
+                Clear
+              </button>
+            )}
         </div>
       </div>
 
@@ -1745,7 +1771,7 @@ function RoomsBeds() {
       ================================================== */}
 
       {groupedFloors.length ===
-      0 ? (
+        0 ? (
         <div className="rooms-empty">
           <div className="rooms-empty-icon">
             <Building2 size={25} />
@@ -1805,7 +1831,7 @@ function RoomsBeds() {
                         }{" "}
                         room
                         {floorRooms.length !==
-                        1
+                          1
                           ? "s"
                           : ""}
                       </span>
@@ -1855,7 +1881,7 @@ function RoomsBeds() {
                       const isExpanded =
                         Boolean(
                           expandedRooms[
-                            room._id
+                          room._id
                           ]
                         );
 
@@ -1905,7 +1931,7 @@ function RoomsBeds() {
                                   ₹{" "}
                                   {Number(
                                     room.monthlyRent ||
-                                      0
+                                    0
                                   ).toLocaleString(
                                     "en-IN"
                                   )}
@@ -2020,7 +2046,7 @@ function RoomsBeds() {
                           {isExpanded && (
                             <div className="room-card-content">
                               {beds.length >
-                              0 ? (
+                                0 ? (
                                 <div className="beds-list">
                                   {beds.map(
                                     (
@@ -2049,14 +2075,14 @@ function RoomsBeds() {
 
                                           <span>
                                             {bed.status ===
-                                            "available"
+                                              "available"
                                               ? "Ready for tenant"
                                               : bed.status ===
                                                 "occupied"
-                                              ? "Currently occupied"
-                                              : bed.status === "booked"
-                                              ? "Reserved for tenant"
-                                              : "Under maintenance"}
+                                                ? "Currently occupied"
+                                                : bed.status === "booked"
+                                                  ? "Reserved for tenant"
+                                                  : "Under maintenance"}
                                           </span>
                                         </div>
 
@@ -2082,7 +2108,7 @@ function RoomsBeds() {
                                             ))}
                                           </select>
 
-                                          
+
                                         </div>
                                       </div>
                                     )
@@ -2131,7 +2157,7 @@ function RoomsBeds() {
                                   className="room-delete-action"
                                 >
                                   {deletingRoomId ===
-                                  room._id ? (
+                                    room._id ? (
                                     <Loader2
                                       size={
                                         13
@@ -2162,7 +2188,7 @@ function RoomsBeds() {
                                   }
                                 >
                                   {addingBedRoomId ===
-                                  room._id ? (
+                                    room._id ? (
                                     <Loader2
                                       size={
                                         13
@@ -2408,7 +2434,7 @@ function RoomsBeds() {
                           >
                             {count}{" "}
                             {count ===
-                            1
+                              1
                               ? "Bed"
                               : "Beds"}
                           </option>
@@ -2433,13 +2459,12 @@ function RoomsBeds() {
 
                   <input
                     type="text"
-                    value={`${roomForm.numberOfBeds} ${
-                      Number(
-                        roomForm.numberOfBeds
-                      ) === 1
-                        ? "Bed"
-                        : "Beds"
-                    }`}
+                    value={`${roomForm.numberOfBeds} ${Number(
+                      roomForm.numberOfBeds
+                    ) === 1
+                      ? "Bed"
+                      : "Beds"
+                      }`}
                     disabled
                   />
 

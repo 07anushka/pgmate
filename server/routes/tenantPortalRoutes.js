@@ -3,6 +3,8 @@ import express from "express";
 
 import {
   getMyTenantProfile,
+  updateMyTenantProfile,
+  changeMyTenantPassword,
   getMyTenantPayments,
   getMyTenantFoodMenu,
   getMyTenantNotices,
@@ -71,6 +73,22 @@ router.post(
   authorizeRoles("tenant"),
   checkSubscription,
   createTenantComplaint
+);
+
+router.patch(
+  "/me",
+  protect,
+  authorizeRoles("tenant"),
+  checkSubscription,
+  updateMyTenantProfile
+);
+
+router.patch(
+  "/me/password",
+  protect,
+  authorizeRoles("tenant"),
+  checkSubscription,
+  changeMyTenantPassword
 );
 
 export default router;

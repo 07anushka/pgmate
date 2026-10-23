@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -28,304 +29,248 @@ import {
 
 import "./Complaints.css";
 
-
 const categories = [
-  {
-    value: "all",
-    label: "All Categories",
-  },
-  {
-    value: "maintenance",
-    label: "Maintenance",
-  },
-  {
-    value: "electricity",
-    label: "Electricity",
-  },
-  {
-    value: "water",
-    label: "Water",
-  },
-  {
-    value: "cleaning",
-    label: "Cleaning",
-  },
-  {
-    value: "food",
-    label: "Food",
-  },
-  {
-    value: "internet",
-    label: "Internet",
-  },
-  {
-    value: "room",
-    label: "Room",
-  },
-  {
-    value: "noise",
-    label: "Noise",
-  },
-  {
-    value: "security",
-    label: "Security",
-  },
-  {
-    value: "other",
-    label: "Other",
-  },
+  { value: "all", label: "All Categories" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "electricity", label: "Electricity" },
+  { value: "water", label: "Water" },
+  { value: "cleaning", label: "Cleaning" },
+  { value: "food", label: "Food" },
+  { value: "internet", label: "Internet" },
+  { value: "room", label: "Room" },
+  { value: "noise", label: "Noise" },
+  { value: "security", label: "Security" },
+  { value: "other", label: "Other" },
 ];
-
 
 const priorities = [
-  {
-    value: "all",
-    label: "All Priorities",
-  },
-  {
-    value: "low",
-    label: "Low",
-  },
-  {
-    value: "medium",
-    label: "Medium",
-  },
-  {
-    value: "high",
-    label: "High",
-  },
-  {
-    value: "urgent",
-    label: "Urgent",
-  },
+  { value: "all", label: "All Priorities" },
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+  { value: "urgent", label: "Urgent" },
 ];
-
 
 const statuses = [
-  {
-    value: "all",
-    label: "All Status",
-  },
-  {
-    value: "open",
-    label: "Open",
-  },
-  {
-    value: "in_progress",
-    label: "In Progress",
-  },
-  {
-    value: "resolved",
-    label: "Resolved",
-  },
-  {
-    value: "closed",
-    label: "Closed",
-  },
+  { value: "all", label: "All Status" },
+  { value: "open", label: "Open" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "resolved", label: "Resolved" },
+  { value: "closed", label: "Closed" },
 ];
 
+const EMPTY_SUMMARY = {
+  total: 0,
+  open: 0,
+  inProgress: 0,
+  resolved: 0,
+  closed: 0,
+  urgent: 0,
+  high: 0,
+};
+
+const EMPTY_FORM = {
+  tenantId: "",
+  title: "",
+  category: "maintenance",
+  description: "",
+  priority: "medium",
+  notes: "",
+};
+
+const getActivePGId = () => {
+  const pgId = localStorage.getItem("pgmate_active_pg");
+
+  if (!pgId || pgId === "all") {
+    return "";
+  }
+
+  return pgId;
+};
+
+const getId = (value) => {
+  if (!value) return "";
+  return typeof value === "object" ? value._id || "" : value;
+};
 
 function Complaints() {
-  const [complaints, setComplaints] =
-    useState([]);
+  const [activePGId, setActivePGId] = useState(getActivePGId);
 
-  const [tenants, setTenants] =
-    useState([]);
+  const [complaints, setComplaints] = useState([]);
+  const [tenants, setTenants] = useState([]);
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
 
-  const [summary, setSummary] =
-    useState({
-      total: 0,
-      open: 0,
-      inProgress: 0,
-      resolved: 0,
-      closed: 0,
-      urgent: 0,
-      high: 0,
-    });
+  const [loading, setLoading] = useState(true);
+  const [tenantsLoading, setTenantsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
 
-  const [error, setError] =
-    useState("");
+  const [showAddComplaint, setShowAddComplaint] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const [search, setSearch] =
-    useState("");
-
-  const [statusFilter, setStatusFilter] =
-    useState("all");
-
-  const [categoryFilter, setCategoryFilter] =
-    useState("all");
-
-  const [priorityFilter, setPriorityFilter] =
-    useState("all");
-
-  const [showAddComplaint, setShowAddComplaint] =
-    useState(false);
-
-  const [submitting, setSubmitting] =
-    useState(false);
-
-  const [updatingId, setUpdatingId] =
-    useState(null);
-
-  const [form, setForm] = useState({
-    tenantId: "",
-    title: "",
-    category: "maintenance",
-    description: "",
-    priority: "medium",
-    notes: "",
-  });
-
+  const [form, setForm] = useState(EMPTY_FORM);
 
   // --------------------------------------------------
-  // LOAD COMPLAINTS
+  // HANDLE ACTIVE PG CHANGES
   // --------------------------------------------------
 
-  const loadComplaints = async () => {
-    try {
-      setLoading(true);
+  useEffect(() => {
+    const handlePGChange = () => {
+      setActivePGId(getActivePGId());
+    };
+
+    window.addEventListener("pgmate-pg-changed", handlePGChange);
+    window.addEventListener("storage", handlePGChange);
+
+    // Read the latest selected PG when the page mounts.
+    handlePGChange();
+
+    return () => {
+      window.removeEventListener("pgmate-pg-changed", handlePGChange);
+      window.removeEventListener("storage", handlePGChange);
+    };
+  }, []);
+
+  // --------------------------------------------------
+  // LOAD COMPLAINTS AND SUMMARY FOR SELECTED PG
+  // --------------------------------------------------
+
+  const loadComplaints = useCallback(async () => {
+    const pgId = getActivePGId();
+
+    if (!pgId) {
+      setComplaints([]);
+      setSummary(EMPTY_SUMMARY);
+      setTenants([]);
+      setLoading(false);
       setError("");
+      return;
+    }
 
-      const [
-        complaintsResponse,
-        summaryResponse,
-      ] = await Promise.all([
+    setLoading(true);
+    setError("");
+
+    try {
+      const [complaintsResponse, summaryResponse] = await Promise.all([
         getOwnerComplaintsApi(
-          "",
+          pgId,
           statusFilter,
           categoryFilter,
           priorityFilter
         ),
-        getComplaintSummaryApi(""),
+        // Summary intentionally does not use list filters.
+        getComplaintSummaryApi(pgId),
       ]);
 
-      setComplaints(
-        complaintsResponse.complaints ||
-          []
-      );
+      // Avoid showing stale results if the user switches PGs mid-request.
+      if (getActivePGId() !== pgId) return;
 
-      setSummary(
-        summaryResponse.summary || {
-          total: 0,
-          open: 0,
-          inProgress: 0,
-          resolved: 0,
-          closed: 0,
-          urgent: 0,
-          high: 0,
-        }
-      );
+      setComplaints(complaintsResponse.complaints || []);
+      setSummary({
+        ...EMPTY_SUMMARY,
+        ...(summaryResponse.summary || {}),
+      });
     } catch (err) {
-      console.error(err);
-
-      setError(
-        err.message ||
-          "Failed to load complaints"
-      );
+      console.error("Load complaints error:", err);
+      setComplaints([]);
+      setSummary(EMPTY_SUMMARY);
+      setError(err.message || "Failed to load complaints.");
     } finally {
-      setLoading(false);
+      if (getActivePGId() === pgId) {
+        setLoading(false);
+      }
     }
-  };
+  }, [statusFilter, categoryFilter, priorityFilter]);
 
+  // --------------------------------------------------
+  // LOAD ACTIVE TENANTS FOR SELECTED PG
+  // --------------------------------------------------
 
-  const loadTenants = async () => {
+  const loadTenants = useCallback(async () => {
+    const pgId = getActivePGId();
+
+    if (!pgId) {
+      setTenants([]);
+      setTenantsLoading(false);
+      return;
+    }
+
+    setTenantsLoading(true);
+
     try {
-      const response =
-        await getComplaintTenantsApi("");
+      const response = await getComplaintTenantsApi(pgId);
 
-      setTenants(
-        response.tenants || []
-      );
+      if (getActivePGId() !== pgId) return;
+
+      setTenants(response.tenants || []);
     } catch (err) {
-      console.error(err);
+      console.error("Load complaint tenants error:", err);
 
-      setError(
-        err.message ||
-          "Failed to load tenants"
-      );
+      if (getActivePGId() === pgId) {
+        setTenants([]);
+        setError(err.message || "Failed to load active tenants.");
+      }
+    } finally {
+      if (getActivePGId() === pgId) {
+        setTenantsLoading(false);
+      }
     }
-  };
-
+  }, []);
 
   useEffect(() => {
     loadComplaints();
-  }, [
-    statusFilter,
-    categoryFilter,
-    priorityFilter,
-  ]);
-
+  }, [loadComplaints, activePGId]);
 
   useEffect(() => {
     loadTenants();
-  }, []);
-
+  }, [loadTenants, activePGId]);
 
   // --------------------------------------------------
   // SEARCH
   // --------------------------------------------------
 
-  const filteredComplaints =
-    useMemo(() => {
-      const query =
-        search.trim().toLowerCase();
+  const filteredComplaints = useMemo(() => {
+    const query = search.trim().toLowerCase();
 
-      if (!query) {
-        return complaints;
-      }
+    if (!query) return complaints;
 
-      return complaints.filter(
-        (complaint) => {
-          const title =
-            complaint.title
-              ?.toLowerCase() || "";
+    return complaints.filter((complaint) => {
+      const title = complaint.title?.toLowerCase() || "";
+      const description = complaint.description?.toLowerCase() || "";
+      const category = complaint.category?.toLowerCase() || "";
+      const tenantName =
+        complaint.tenantId?.userId?.name?.toLowerCase() ||
+        complaint.userId?.name?.toLowerCase() ||
+        "";
+      const mobile =
+        complaint.tenantId?.userId?.mobile ||
+        complaint.userId?.mobile ||
+        "";
+      const pgName = complaint.pgId?.name?.toLowerCase() || "";
 
-          const description =
-            complaint.description
-              ?.toLowerCase() || "";
-
-          const category =
-            complaint.category
-              ?.toLowerCase() || "";
-
-          const tenantName =
-            complaint.tenantId
-              ?.userId?.name
-              ?.toLowerCase() || "";
-
-          const pgName =
-            complaint.pgId?.name
-              ?.toLowerCase() || "";
-
-          return (
-            title.includes(query) ||
-            description.includes(query) ||
-            category.includes(query) ||
-            tenantName.includes(query) ||
-            pgName.includes(query)
-          );
-        }
+      return (
+        title.includes(query) ||
+        description.includes(query) ||
+        category.includes(query) ||
+        tenantName.includes(query) ||
+        mobile.includes(query) ||
+        pgName.includes(query)
       );
-    }, [
-      complaints,
-      search,
-    ]);
-
+    });
+  }, [complaints, search]);
 
   // --------------------------------------------------
-  // FORM
+  // FORM HELPERS
   // --------------------------------------------------
 
-  const handleChange = (
-    event
-  ) => {
-    const {
-      name,
-      value,
-    } = event.target;
+  const handleChange = (event) => {
+    const { name, value } = event.target;
 
     setForm((previous) => ({
       ...previous,
@@ -333,1124 +278,696 @@ function Complaints() {
     }));
   };
 
-
   const resetForm = () => {
-    setForm({
-      tenantId: "",
-      title: "",
-      category: "maintenance",
-      description: "",
-      priority: "medium",
-      notes: "",
-    });
+    setForm({ ...EMPTY_FORM });
   };
 
+  const closeAddModal = () => {
+    if (submitting) return;
+
+    setShowAddComplaint(false);
+    setError("");
+    resetForm();
+  };
 
   // --------------------------------------------------
-  // ADD COMPLAINT
+  // CREATE COMPLAINT
   // --------------------------------------------------
 
-  const handleAddComplaint =
-    async (event) => {
-      event.preventDefault();
+  const handleAddComplaint = async (event) => {
+    event.preventDefault();
 
-      if (
-        !form.tenantId ||
-        !form.title.trim() ||
-        !form.description.trim()
-      ) {
-        setError(
-          "Please fill all required fields."
-        );
+    const pgId = getActivePGId();
 
-        return;
-      }
+    if (!pgId) {
+      setError("Please select a PG before adding a complaint.");
+      return;
+    }
 
-      try {
-        setSubmitting(true);
-        setError("");
+    if (
+      !form.tenantId ||
+      !form.title.trim() ||
+      !form.description.trim()
+    ) {
+      setError("Please fill all required fields.");
+      return;
+    }
 
-        const tenant =
-          tenants.find(
-            (item) =>
-              item._id ===
-              form.tenantId
-          );
+    const selectedTenant = tenants.find(
+      (tenant) => tenant._id === form.tenantId
+    );
 
-        if (!tenant) {
-          throw new Error(
-            "Selected tenant was not found."
-          );
-        }
+    if (!selectedTenant) {
+      setError("Please select a valid active tenant.");
+      return;
+    }
 
-        await createComplaintApi({
-          pgId:
-            tenant.pgId?._id ||
-            tenant.pgId,
+    // Extra frontend guard; the backend independently verifies ownership.
+    if (getId(selectedTenant.pgId) !== pgId) {
+      setError("The selected tenant does not belong to the active PG.");
+      return;
+    }
 
-          tenantId:
-            form.tenantId,
+    try {
+      setSubmitting(true);
+      setError("");
 
-          title:
-            form.title.trim(),
+      await createComplaintApi({
+        pgId,
+        tenantId: form.tenantId,
+        title: form.title.trim(),
+        category: form.category,
+        description: form.description.trim(),
+        priority: form.priority,
+        notes: form.notes.trim(),
+      });
 
-          category:
-            form.category,
+      setShowAddComplaint(false);
+      resetForm();
 
-          description:
-            form.description.trim(),
-
-          priority:
-            form.priority,
-
-          notes:
-            form.notes.trim(),
-        });
-
-        setShowAddComplaint(
-          false
-        );
-
-        resetForm();
-
-        await Promise.all([
-          loadComplaints(),
-          loadTenants(),
-        ]);
-      } catch (err) {
-        console.error(err);
-
-        setError(
-          err.message ||
-            "Failed to create complaint"
-        );
-      } finally {
-        setSubmitting(false);
-      }
-    };
-
+      await Promise.all([loadComplaints(), loadTenants()]);
+    } catch (err) {
+      console.error("Create complaint error:", err);
+      setError(err.message || "Failed to create complaint.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // --------------------------------------------------
   // UPDATE STATUS
   // --------------------------------------------------
 
-  const handleStatusChange =
-    async (
-      complaintId,
-      status
-    ) => {
-      try {
-        setUpdatingId(
-          complaintId
-        );
+  const handleStatusChange = async (complaintId, status) => {
+    const previousComplaint = complaints.find(
+      (item) => item._id === complaintId
+    );
 
-        setError("");
+    if (!previousComplaint) return;
 
-        await updateComplaintApi(
-          complaintId,
-          { status }
-        );
+    try {
+      setUpdatingId(complaintId);
+      setError("");
 
-        await loadComplaints();
-      } catch (err) {
-        console.error(err);
+      // Update the visible row immediately.
+      setComplaints((previous) =>
+        previous.map((item) =>
+          item._id === complaintId ? { ...item, status } : item
+        )
+      );
 
-        setError(
-          err.message ||
-            "Failed to update complaint"
-        );
-      } finally {
-        setUpdatingId(null);
-      }
-    };
+      await updateComplaintApi(complaintId, { status });
 
+      await loadComplaints();
+    } catch (err) {
+      console.error("Update complaint status error:", err);
+
+      // Restore the previous status if the API fails.
+      setComplaints((previous) =>
+        previous.map((item) =>
+          item._id === complaintId
+            ? { ...item, status: previousComplaint.status }
+            : item
+        )
+      );
+
+      setError(err.message || "Failed to update complaint.");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
 
   // --------------------------------------------------
   // DELETE
   // --------------------------------------------------
 
-  const handleDelete =
-    async (complaintId) => {
-      const confirmed =
-        window.confirm(
-          "Are you sure you want to delete this complaint?"
-        );
+  const handleDelete = async (complaintId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this complaint? This action cannot be undone."
+    );
 
-      if (!confirmed) {
-        return;
-      }
+    if (!confirmed) return;
 
-      try {
-        setError("");
+    try {
+      setDeletingId(complaintId);
+      setError("");
 
-        await deleteComplaintApi(
-          complaintId
-        );
+      await deleteComplaintApi(complaintId);
 
-        await loadComplaints();
-      } catch (err) {
-        console.error(err);
-
-        setError(
-          err.message ||
-            "Failed to delete complaint"
-        );
-      }
-    };
-
+      await loadComplaints();
+    } catch (err) {
+      console.error("Delete complaint error:", err);
+      setError(err.message || "Failed to delete complaint.");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   // --------------------------------------------------
-  // HELPERS
+  // DISPLAY HELPERS
   // --------------------------------------------------
 
   const formatDate = (date) => {
     if (!date) return "-";
 
-    return new Date(
-      date
-    ).toLocaleDateString(
-      "en-IN",
-      {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }
-    );
+    const parsed = new Date(date);
+
+    if (Number.isNaN(parsed.getTime())) return "-";
+
+    return parsed.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   };
 
+  const getCategoryLabel = (value) =>
+    categories.find((item) => item.value === value)?.label || "Other";
 
-  const getCategoryLabel = (
-    value
-  ) => {
-    return (
-      categories.find(
-        (item) =>
-          item.value === value
-      )?.label || "Other"
-    );
-  };
+  const getPriorityLabel = (value) =>
+    priorities.find((item) => item.value === value)?.label || "Medium";
 
-
-  const getPriorityLabel = (
-    value
-  ) => {
-    return (
-      priorities.find(
-        (item) =>
-          item.value === value
-      )?.label || "Medium"
-    );
-  };
-
-
-  const getStatusLabel = (
-    value
-  ) => {
-    return (
-      statuses.find(
-        (item) =>
-          item.value === value
-      )?.label || value
-    );
-  };
-
+  const getStatusLabel = (value) =>
+    statuses.find((item) => item.value === value)?.label || value;
 
   // --------------------------------------------------
-  // LOADING
+  // NO PG SELECTED
+  // --------------------------------------------------
+
+  if (!activePGId) {
+    return (
+      <div className="complaints-page">
+        <div className="complaints-header">
+          <div>
+            <span className="complaints-eyebrow">SUPPORT</span>
+            <p>Track and resolve tenant complaints and issues.</p>
+          </div>
+        </div>
+
+        <div className="complaints-empty">
+          <div className="complaints-empty-icon">
+            <MessageSquareWarning size={28} />
+          </div>
+
+          <h3>Select a PG first</h3>
+          <p>
+            Choose a property from your PG selector to view its complaints,
+            summary counts, and tenants.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // --------------------------------------------------
+  // PAGE LOADING
   // --------------------------------------------------
 
   if (loading) {
     return (
       <div className="complaints-page">
-
         <div className="complaints-loading-card">
-
           <div className="complaints-loading-icon">
-            <Loader2
-              size={24}
-              className="complaints-spinner"
-            />
+            <Loader2 size={24} className="complaints-spinner" />
           </div>
 
           <div>
-            <h3>
-              Loading complaints...
-            </h3>
-
-            <p>
-              Fetching complaint records.
-            </p>
+            <h3>Loading complaints...</h3>
+            <p>Fetching complaints for the selected PG.</p>
           </div>
-
         </div>
-
       </div>
     );
   }
 
+  // --------------------------------------------------
+  // MAIN PAGE
+  // --------------------------------------------------
 
   return (
     <div className="complaints-page">
-
       {/* HEADER */}
-
       <div className="complaints-header">
-
         <div>
-          <span className="complaints-eyebrow">
-            SUPPORT
-          </span>
-
-          <p>
-            Track and resolve tenant
-            complaints and issues.
-          </p>
+          <span className="complaints-eyebrow">SUPPORT</span>
+          <p>Track and resolve tenant complaints and issues.</p>
         </div>
-
       </div>
 
-
       {/* ERROR */}
-
       {error && (
-        <div className="complaints-error">
-
-          <span>
-            {error}
-          </span>
+        <div className="complaints-error" role="alert">
+          <span>{error}</span>
 
           <button
-            onClick={() =>
-              setError("")
-            }
+            type="button"
+            aria-label="Dismiss error"
+            onClick={() => setError("")}
           >
             <X size={16} />
           </button>
-
         </div>
       )}
 
-
-      {/* STATS */}
-
+      {/* SUMMARY CARDS */}
       <div className="complaints-stats">
-
         <div className="complaint-stat-card">
-
           <div className="complaint-stat-icon">
-            <MessageSquareWarning
-              size={20}
-            />
+            <MessageSquareWarning size={20} />
           </div>
-
           <div>
-            <span>
-              Total
-            </span>
-
-            <strong>
-              {summary.total}
-            </strong>
+            <span>Total</span>
+            <strong>{summary.total}</strong>
           </div>
-
         </div>
 
-
         <div className="complaint-stat-card">
-
           <div className="complaint-stat-icon">
             <CircleDot size={20} />
           </div>
-
           <div>
-            <span>
-              Open
-            </span>
-
-            <strong>
-              {summary.open}
-            </strong>
+            <span>Open</span>
+            <strong>{summary.open}</strong>
           </div>
-
         </div>
 
-
         <div className="complaint-stat-card">
-
           <div className="complaint-stat-icon">
             <Clock3 size={20} />
           </div>
-
           <div>
-            <span>
-              In Progress
-            </span>
-
-            <strong>
-              {summary.inProgress}
-            </strong>
+            <span>In Progress</span>
+            <strong>{summary.inProgress}</strong>
           </div>
-
         </div>
-
 
         <div className="complaint-stat-card">
-
           <div className="complaint-stat-icon">
-            <CheckCircle2
-              size={20}
-            />
+            <CheckCircle2 size={20} />
           </div>
-
           <div>
-            <span>
-              Resolved
-            </span>
-
-            <strong>
-              {summary.resolved}
-            </strong>
+            <span>Resolved</span>
+            <strong>{summary.resolved}</strong>
           </div>
-
         </div>
-
 
         <div className="complaint-stat-card complaint-stat-danger">
-
           <div className="complaint-stat-icon">
-            <AlertTriangle
-              size={20}
-            />
+            <AlertTriangle size={20} />
           </div>
-
           <div>
-            <span>
-              Urgent
-            </span>
-
-            <strong>
-              {summary.urgent}
-            </strong>
+            <span>Urgent</span>
+            <strong>{summary.urgent}</strong>
           </div>
-
         </div>
-
       </div>
 
-
-      {/* FILTERS */}
-
+      {/* TOOLBAR */}
       <div className="complaints-toolbar">
-
         <div className="complaints-search">
-
           <Search size={18} />
 
           <input
             type="text"
             placeholder="Search complaints..."
             value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
+            onChange={(event) => setSearch(event.target.value)}
           />
-
         </div>
-
 
         <div className="complaints-filters">
-
           <select
-            value={
-              statusFilter
-            }
-            onChange={(event) =>
-              setStatusFilter(
-                event.target.value
-              )
-            }
+            aria-label="Filter by status"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
           >
-            {statuses.map(
-              (status) => (
-                <option
-                  key={
-                    status.value
-                  }
-                  value={
-                    status.value
-                  }
-                >
-                  {
-                    status.label
-                  }
-                </option>
-              )
-            )}
+            {statuses.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
           </select>
 
-
           <select
-            value={
-              categoryFilter
-            }
-            onChange={(event) =>
-              setCategoryFilter(
-                event.target.value
-              )
-            }
+            aria-label="Filter by category"
+            value={categoryFilter}
+            onChange={(event) => setCategoryFilter(event.target.value)}
           >
-            {categories.map(
-              (category) => (
-                <option
-                  key={
-                    category.value
-                  }
-                  value={
-                    category.value
-                  }
-                >
-                  {
-                    category.label
-                  }
-                </option>
-              )
-            )}
+            {categories.map((category) => (
+              <option key={category.value} value={category.value}>
+                {category.label}
+              </option>
+            ))}
           </select>
 
-
           <select
-            value={
-              priorityFilter
-            }
-            onChange={(event) =>
-              setPriorityFilter(
-                event.target.value
-              )
-            }
+            aria-label="Filter by priority"
+            value={priorityFilter}
+            onChange={(event) => setPriorityFilter(event.target.value)}
           >
-            {priorities.map(
-              (priority) => (
-                <option
-                  key={
-                    priority.value
-                  }
-                  value={
-                    priority.value
-                  }
-                >
-                  {
-                    priority.label
-                  }
-                </option>
-              )
-            )}
+            {priorities.map((priority) => (
+              <option key={priority.value} value={priority.value}>
+                {priority.label}
+              </option>
+            ))}
           </select>
-
         </div>
-
       </div>
 
-
-      {/* LIST */}
-
+      {/* COMPLAINT LIST */}
       <div className="complaints-list-card">
-
         <div className="complaints-list-header">
-
           <div>
-            <h2>
-              Complaint History
-            </h2>
-
-            <p>
-              {
-                filteredComplaints.length
-              }{" "}
-              records found
-            </p>
+            <h2>Complaint History</h2>
+            <p>{filteredComplaints.length} records found</p>
           </div>
-
         </div>
 
-
-        {filteredComplaints.length ===
-        0 ? (
+        {filteredComplaints.length === 0 ? (
           <div className="complaints-empty">
-
             <div className="complaints-empty-icon">
-              <MessageSquareWarning
-                size={28}
-              />
+              <MessageSquareWarning size={28} />
             </div>
 
-            <h3>
-              No complaints found
-            </h3>
+            <h3>No complaints found</h3>
 
             <p>
-              There are no complaints
-              matching your current
-              filters.
+              No complaints match the current PG and filters.
             </p>
 
             <button
-              onClick={() =>
-                setShowAddComplaint(
-                  true
-                )
-              }
+              type="button"
+              onClick={() => {
+                setError("");
+                setShowAddComplaint(true);
+              }}
             >
               <Plus size={17} />
-
               Add Complaint
             </button>
-
           </div>
         ) : (
-
           <div className="complaints-table-wrapper">
-
             <table className="complaints-table">
-
               <thead>
                 <tr>
-                  <th>
-                    Complaint
-                  </th>
-
-                  <th>
-                    Tenant
-                  </th>
-
-                  <th>
-                    Category
-                  </th>
-
-                  <th>
-                    Priority
-                  </th>
-
-                  <th>
-                    Status
-                  </th>
-
-                  <th>
-                    Date
-                  </th>
-
-                  <th></th>
+                  <th>Complaint</th>
+                  <th>Tenant</th>
+                  <th>Category</th>
+                  <th>Priority</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                  <th aria-label="Actions" />
                 </tr>
               </thead>
 
-
               <tbody>
+                {filteredComplaints.map((complaint) => {
+                  const tenantName =
+                    complaint.tenantId?.userId?.name ||
+                    complaint.userId?.name ||
+                    "Unknown";
 
-                {filteredComplaints.map(
-                  (complaint) => (
-                    <tr
-                      key={
-                        complaint._id
-                      }
-                    >
+                  const tenantMobile =
+                    complaint.tenantId?.userId?.mobile ||
+                    complaint.userId?.mobile ||
+                    "";
 
-                      {/* COMPLAINT */}
-
+                  return (
+                    <tr key={complaint._id}>
                       <td>
-
                         <div className="complaint-title-cell">
-
                           <div className="complaint-row-icon">
-                            <MessageSquareWarning
-                              size={17}
-                            />
+                            <MessageSquareWarning size={17} />
                           </div>
 
                           <div>
-                            <strong>
-                              {
-                                complaint.title
-                              }
-                            </strong>
-
-                            <span>
-                              {
-                                complaint.description
-                              }
-                            </span>
+                            <strong>{complaint.title}</strong>
+                            <span>{complaint.description}</span>
                           </div>
-
                         </div>
-
                       </td>
 
-
-                      {/* TENANT */}
-
                       <td>
-
                         <div className="complaint-tenant">
-
-                          <strong>
-                            {
-                              complaint
-                                .tenantId
-                                ?.userId
-                                ?.name ||
-                              complaint
-                                .userId
-                                ?.name ||
-                              "Unknown"
-                            }
-                          </strong>
-
-                          <span>
-                            {
-                              complaint
-                                .tenantId
-                                ?.userId
-                                ?.mobile ||
-                              complaint
-                                .userId
-                                ?.mobile ||
-                              ""
-                            }
-                          </span>
-
+                          <strong>{tenantName}</strong>
+                          <span>{tenantMobile}</span>
                         </div>
-
                       </td>
 
-
-                      {/* CATEGORY */}
-
                       <td>
-
                         <span className="complaint-category">
-                          {getCategoryLabel(
-                            complaint.category
-                          )}
+                          {getCategoryLabel(complaint.category)}
                         </span>
-
                       </td>
 
-
-                      {/* PRIORITY */}
-
                       <td>
-
                         <span
                           className={`complaint-priority priority-${complaint.priority}`}
                         >
-                          {getPriorityLabel(
-                            complaint.priority
-                          )}
+                          {getPriorityLabel(complaint.priority)}
                         </span>
-
                       </td>
 
-
-                      {/* STATUS */}
-
                       <td>
-
                         <select
+                          aria-label={`Status for ${complaint.title}`}
                           className={`complaint-status status-${complaint.status}`}
-                          value={
-                            complaint.status
-                          }
+                          value={complaint.status}
                           disabled={
-                            updatingId ===
-                            complaint._id
+                            updatingId === complaint._id ||
+                            deletingId === complaint._id
                           }
-                          onChange={(
-                            event
-                          ) =>
+                          onChange={(event) =>
                             handleStatusChange(
                               complaint._id,
-                              event
-                                .target
-                                .value
+                              event.target.value
                             )
                           }
                         >
-
                           {statuses
-                            .filter(
-                              (
-                                item
-                              ) =>
-                                item.value !==
-                                "all"
-                            )
-                            .map(
-                              (
-                                status
-                              ) => (
-                                <option
-                                  key={
-                                    status.value
-                                  }
-                                  value={
-                                    status.value
-                                  }
-                                >
-                                  {
-                                    status.label
-                                  }
-                                </option>
-                              )
-                            )}
-
+                            .filter((item) => item.value !== "all")
+                            .map((status) => (
+                              <option
+                                key={status.value}
+                                value={status.value}
+                              >
+                                {getStatusLabel(status.value)}
+                              </option>
+                            ))}
                         </select>
 
-                      </td>
-
-
-                      {/* DATE */}
-
-                      <td>
-                        {formatDate(
-                          complaint.createdAt
+                        {updatingId === complaint._id && (
+                          <Loader2
+                            size={14}
+                            className="complaints-spinner"
+                          />
                         )}
                       </td>
 
-
-                      {/* DELETE */}
+                      <td>{formatDate(complaint.createdAt)}</td>
 
                       <td>
-
                         <button
+                          type="button"
                           className="complaint-delete-btn"
-                          onClick={() =>
-                            handleDelete(
-                              complaint._id
-                            )
-                          }
                           title="Delete complaint"
+                          aria-label={`Delete ${complaint.title}`}
+                          disabled={
+                            deletingId === complaint._id ||
+                            updatingId === complaint._id
+                          }
+                          onClick={() => handleDelete(complaint._id)}
                         >
-                          <Trash2
-                            size={17}
-                          />
+                          {deletingId === complaint._id ? (
+                            <Loader2
+                              size={17}
+                              className="complaints-spinner"
+                            />
+                          ) : (
+                            <Trash2 size={17} />
+                          )}
                         </button>
-
                       </td>
-
                     </tr>
-                  )
-                )}
-
+                  );
+                })}
               </tbody>
-
             </table>
-
           </div>
-
         )}
-
       </div>
 
-
       {/* ADD COMPLAINT MODAL */}
-
       {showAddComplaint && (
         <div
           className="complaint-modal-overlay"
-          onMouseDown={() =>
-            !submitting &&
-            setShowAddComplaint(
-              false
-            )
-          }
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeAddModal();
+            }
+          }}
         >
-
           <div
             className="complaint-modal"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
+            onMouseDown={(event) => event.stopPropagation()}
           >
-
             <div className="complaint-modal-header">
-
               <div>
-                <h2>
-                  Add Complaint
-                </h2>
-
-                <p>
-                  Record a tenant complaint
-                  or issue.
-                </p>
+                <h2>Add Complaint</h2>
+                <p>Record an issue for a tenant in this PG.</p>
               </div>
 
               <button
-                onClick={() =>
-                  !submitting &&
-                  setShowAddComplaint(
-                    false
-                  )
-                }
+                type="button"
+                aria-label="Close complaint form"
+                disabled={submitting}
+                onClick={closeAddModal}
               >
                 <X size={20} />
               </button>
-
             </div>
 
-
-            <form
-              className="complaint-form"
-              onSubmit={
-                handleAddComplaint
-              }
-            >
-
+            <form className="complaint-form" onSubmit={handleAddComplaint}>
               {/* TENANT */}
-
               <div className="complaint-form-group">
-
-                <label>
-                  Tenant *
-                </label>
+                <label htmlFor="complaint-tenant">Tenant *</label>
 
                 <select
+                  id="complaint-tenant"
                   name="tenantId"
-                  value={
-                    form.tenantId
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.tenantId}
+                  onChange={handleChange}
                   required
+                  disabled={submitting || tenantsLoading}
                 >
-
                   <option value="">
-                    Select tenant
+                    {tenantsLoading
+                      ? "Loading tenants..."
+                      : "Select tenant"}
                   </option>
 
-                  {tenants.map(
-                    (tenant) => (
-                      <option
-                        key={
-                          tenant._id
-                        }
-                        value={
-                          tenant._id
-                        }
-                      >
-                        {
-                          tenant
-                            .userId
-                            ?.name
-                        }
-                        {" — "}
-                        Room{" "}
-                        {
-                          tenant
-                            .roomId
-                            ?.roomNumber
-                        }
-                        {" / "}
-                        Bed{" "}
-                        {
-                          tenant
-                            .bedId
-                            ?.bedNumber
-                        }
-                      </option>
-                    )
-                  )}
-
+                  {tenants.map((tenant) => (
+                    <option key={tenant._id} value={tenant._id}>
+                      {tenant.userId?.name || "Unnamed tenant"}
+                      {" — Room "}
+                      {tenant.roomId?.roomNumber || "-"}
+                      {" / Bed "}
+                      {tenant.bedId?.bedNumber || "-"}
+                    </option>
+                  ))}
                 </select>
 
+                {!tenantsLoading && tenants.length === 0 && (
+                  <span>
+                    No active tenants found in this PG.
+                  </span>
+                )}
               </div>
-
 
               {/* TITLE */}
-
               <div className="complaint-form-group">
-
-                <label>
-                  Complaint Title *
-                </label>
+                <label htmlFor="complaint-title">Complaint Title *</label>
 
                 <input
+                  id="complaint-title"
                   name="title"
                   type="text"
+                  maxLength={150}
                   placeholder="e.g. Bathroom tap is leaking"
-                  value={
-                    form.title
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.title}
+                  onChange={handleChange}
                   required
                 />
-
               </div>
 
-
-              {/* CATEGORY + PRIORITY */}
-
+              {/* CATEGORY AND PRIORITY */}
               <div className="complaint-form-row">
-
                 <div className="complaint-form-group">
-
-                  <label>
-                    Category
-                  </label>
+                  <label htmlFor="complaint-category">Category</label>
 
                   <select
+                    id="complaint-category"
                     name="category"
-                    value={
-                      form.category
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.category}
+                    onChange={handleChange}
                   >
                     {categories
-                      .filter(
-                        (
-                          item
-                        ) =>
-                          item.value !==
-                          "all"
-                      )
-                      .map(
-                        (
-                          category
-                        ) => (
-                          <option
-                            key={
-                              category.value
-                            }
-                            value={
-                              category.value
-                            }
-                          >
-                            {
-                              category.label
-                            }
-                          </option>
-                        )
-                      )}
+                      .filter((item) => item.value !== "all")
+                      .map((category) => (
+                        <option
+                          key={category.value}
+                          value={category.value}
+                        >
+                          {category.label}
+                        </option>
+                      ))}
                   </select>
-
                 </div>
-
 
                 <div className="complaint-form-group">
-
-                  <label>
-                    Priority
-                  </label>
+                  <label htmlFor="complaint-priority">Priority</label>
 
                   <select
+                    id="complaint-priority"
                     name="priority"
-                    value={
-                      form.priority
-                    }
-                    onChange={
-                      handleChange
-                    }
+                    value={form.priority}
+                    onChange={handleChange}
                   >
                     {priorities
-                      .filter(
-                        (
-                          item
-                        ) =>
-                          item.value !==
-                          "all"
-                      )
-                      .map(
-                        (
-                          priority
-                        ) => (
-                          <option
-                            key={
-                              priority.value
-                            }
-                            value={
-                              priority.value
-                            }
-                          >
-                            {
-                              priority.label
-                            }
-                          </option>
-                        )
-                      )}
+                      .filter((item) => item.value !== "all")
+                      .map((priority) => (
+                        <option
+                          key={priority.value}
+                          value={priority.value}
+                        >
+                          {priority.label}
+                        </option>
+                      ))}
                   </select>
-
                 </div>
-
               </div>
 
-
               {/* DESCRIPTION */}
-
               <div className="complaint-form-group">
-
-                <label>
+                <label htmlFor="complaint-description">
                   Description *
                 </label>
 
                 <textarea
+                  id="complaint-description"
                   name="description"
                   rows="4"
+                  maxLength={5000}
                   placeholder="Describe the issue..."
-                  value={
-                    form.description
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.description}
+                  onChange={handleChange}
                   required
                 />
-
               </div>
 
-
-              {/* NOTES */}
-
+              {/* INTERNAL NOTES */}
               <div className="complaint-form-group">
-
-                <label>
-                  Internal Notes
-                </label>
+                <label htmlFor="complaint-notes">Internal Notes</label>
 
                 <textarea
+                  id="complaint-notes"
                   name="notes"
                   rows="3"
+                  maxLength={3000}
                   placeholder="Optional notes for the owner..."
-                  value={
-                    form.notes
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.notes}
+                  onChange={handleChange}
                 />
-
               </div>
 
-
               {/* ACTIONS */}
-
               <div className="complaint-form-actions">
-
                 <button
                   type="button"
                   className="complaint-cancel-btn"
-                  onClick={() =>
-                    setShowAddComplaint(
-                      false
-                    )
-                  }
-                  disabled={
-                    submitting
-                  }
+                  onClick={closeAddModal}
+                  disabled={submitting}
                 >
                   Cancel
                 </button>
@@ -1459,38 +976,31 @@ function Complaints() {
                   type="submit"
                   className="complaint-submit-btn"
                   disabled={
-                    submitting
+                    submitting ||
+                    tenantsLoading ||
+                    tenants.length === 0
                   }
                 >
-
                   {submitting ? (
                     <>
                       <Loader2
                         size={17}
                         className="complaints-spinner"
                       />
-
                       Saving...
                     </>
                   ) : (
                     <>
                       <Plus size={17} />
-
                       Add Complaint
                     </>
                   )}
-
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }

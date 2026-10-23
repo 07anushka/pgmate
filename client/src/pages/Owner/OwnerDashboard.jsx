@@ -385,7 +385,13 @@ function OwnerDashboard() {
 
   const handlePropertyChange = (pgId) => {
     setActivePGId(pgId);
+
     localStorage.setItem("pgmate_active_pg", pgId);
+
+    // Notify all modules that the selected PG changed.
+    window.dispatchEvent(
+      new Event("pgmate-pg-changed")
+    );
   };
 
   /* Create property */
@@ -414,8 +420,17 @@ function OwnerDashboard() {
       }
 
       setPGs((previous) => [newPG, ...previous]);
+
       setActivePGId(newPG._id);
-      localStorage.setItem("pgmate_active_pg", newPG._id);
+
+      localStorage.setItem(
+        "pgmate_active_pg",
+        newPG._id
+      );
+
+      window.dispatchEvent(
+        new Event("pgmate-pg-changed")
+      );
 
       setPGForm({
         name: "",
@@ -606,19 +621,21 @@ function OwnerDashboard() {
       )
       .reduce((sum, expense) => sum + safeNumber(expense?.amount), 0);
 
+
     const collectedFromSummary = overviewData.paymentSummaries.reduce(
       (sum, summary) =>
         sum +
         (findSummaryNumber(summary, [
+          "totalCollected",
           "monthlyCollected",
           "monthlyPaid",
-          "paidAmount",
-          "totalCollected",
           "totalPaid",
           "collectedAmount",
+          "paidAmount",
         ]) ?? 0),
       0
     );
+
 
     const pendingFromSummary = overviewData.paymentSummaries.reduce(
       (sum, summary) =>

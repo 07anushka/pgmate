@@ -20,7 +20,11 @@ import { authorizeRoles } from "../middleware/roleMiddleware.js";
 
 const router = express.Router();
 
-// Owner: Get notices
+// ============================================
+// OWNER: GET NOTICES
+// GET /api/notices/my?pgId=PG_ID
+// ============================================
+
 router.get(
   "/my",
   protect,
@@ -29,7 +33,11 @@ router.get(
   getMyNotices
 );
 
-// Owner: Get notice summary
+// ============================================
+// OWNER: GET NOTICE SUMMARY
+// GET /api/notices/summary?pgId=PG_ID
+// ============================================
+
 router.get(
   "/summary",
   protect,
@@ -38,7 +46,11 @@ router.get(
   getNoticeSummary
 );
 
-// Tenant: Get notices
+// ============================================
+// TENANT: GET NOTICES FOR THEIR PG
+// GET /api/notices/tenant/my
+// ============================================
+
 router.get(
   "/tenant/my",
   protect,
@@ -47,7 +59,11 @@ router.get(
   getTenantNotices
 );
 
-// Owner: Create notice
+// ============================================
+// OWNER: CREATE NOTICE
+// POST /api/notices
+// ============================================
+
 router.post(
   "/",
   protect,
@@ -56,7 +72,11 @@ router.post(
   createNotice
 );
 
-// Owner: Update notice
+// ============================================
+// OWNER: UPDATE NOTICE
+// PATCH /api/notices/:noticeId
+// ============================================
+
 router.patch(
   "/:noticeId",
   protect,
@@ -65,7 +85,11 @@ router.patch(
   updateNotice
 );
 
-// Owner: Delete notice
+// ============================================
+// OWNER: DELETE NOTICE
+// DELETE /api/notices/:noticeId
+// ============================================
+
 router.delete(
   "/:noticeId",
   protect,
@@ -74,7 +98,11 @@ router.delete(
   deleteNotice
 );
 
-// Tenant: Dismiss own notice
+// ============================================
+// TENANT: DISMISS A NOTICE
+// DELETE /api/notices/my/:noticeId/dismiss
+// ============================================
+
 router.delete(
   "/my/:noticeId/dismiss",
   protect,

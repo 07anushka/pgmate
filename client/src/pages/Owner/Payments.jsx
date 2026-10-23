@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -33,6 +34,58 @@ import {
 import MessageCard from "../../components/MessageCard";
 import "./Payments.css";
 
+const EMPTY_SUMMARY = {
+  totalTenants: 0,
+  paid: 0,
+  pending: 0,
+  overdue: 0,
+  paidAmount: 0,
+  pendingAmount: 0,
+  overdueAmount: 0,
+  debtCollected: 0,
+  totalCollected: 0,
+  paidOnTime: 0,
+  paidLate: 0,
+  totalLateDays: 0,
+};
+
+const PAYMENT_METHODS = [
+  { value: "cash", label: "Cash" },
+  { value: "upi", label: "UPI" },
+  { value: "bank", label: "Bank Transfer" },
+  { value: "card", label: "Card" },
+  { value: "other", label: "Other" },
+];
+
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const getTodayDate = () => {
+  const date = new Date();
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getActivePGId = () =>
+  (
+    localStorage.getItem("pgmate_active_pg") || ""
+  ).trim();
+
 function Payments() {
   const now = new Date();
 
@@ -44,24 +97,13 @@ function Payments() {
     now.getFullYear()
   );
 
+  const [activePGId, setActivePGId] = useState(
+    getActivePGId
+  );
+
   const [rentRecords, setRentRecords] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [collections, setCollections] = useState([]);
-
-  const [summary, setSummary] = useState({
-    totalTenants: 0,
-    paid: 0,
-    pending: 0,
-    overdue: 0,
-    paidAmount: 0,
-    pendingAmount: 0,
-    overdueAmount: 0,
-    debtCollected: 0,
-    totalCollected: 0,
-    paidOnTime: 0,
-    paidLate: 0,
-    totalLateDays: 0,
-  });
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -86,25 +128,10 @@ function Payments() {
   const [form, setForm] = useState({
     tenantId: "",
     amount: "",
-    paymentDate: new Date().toISOString().split("T")[0],
+    paymentDate: getTodayDate(),
     paymentMethod: "cash",
     notes: "",
   });
-
-  const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
 
   const years = Array.from(
     { length: 5 },
@@ -112,23 +139,54 @@ function Payments() {
   );
 
   // =====================================================
-  // LOAD RENT AND PAYMENT DATA
+  // RESET DATA
   // =====================================================
 
-  const loadPayments = async () => {
+  const resetPaymentData = useCallback(() => {
+    setRentRecords([]);
+    setPayments([]);
+    setSummary({ ...EMPTY_SUMMARY });
+  }, []);
+
+  // =====================================================
+  // LOAD SELECTED PG DATA
+  // =====================================================
+
+  const loadPayments = useCallback(async () => {
+    const pgId = getActivePGId();
+
+    setActivePGId(pgId);
+    setError("");
+
+    if (!pgId || pgId.toLowerCase() === "all") {
+      resetPaymentData();
+      setError("Please select a PG to view payment details.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      setError("");
 
       const [
         rentResponse,
         summaryResponse,
         paymentsResponse,
       ] = await Promise.all([
-        getRentRecordsApi(selectedMonth, selectedYear),
-        getRentSummaryApi(selectedMonth, selectedYear),
+        getRentRecordsApi(
+          selectedMonth,
+          selectedYear,
+          pgId
+        ),
+
+        getRentSummaryApi(
+          selectedMonth,
+          selectedYear,
+          pgId
+        ),
+
         getMyPaymentsApi(
-          "",
+          pgId,
           "",
           selectedMonth,
           selectedYear
@@ -136,66 +194,100 @@ function Payments() {
       ]);
 
       setRentRecords(
-        rentResponse.rentRecords ||
-        rentResponse.records ||
+        rentResponse?.rentRecords ||
+        rentResponse?.records ||
         []
       );
 
-      setSummary(
-        summaryResponse.summary || {
-          totalTenants: 0,
-          paid: 0,
-          pending: 0,
-          overdue: 0,
-          paidAmount: 0,
-          pendingAmount: 0,
-          overdueAmount: 0,
-          paidOnTime: 0,
-          paidLate: 0,
-          totalLateDays: 0,
-        }
-      );
+      setSummary({
+        ...EMPTY_SUMMARY,
+        ...(summaryResponse?.summary || {}),
+      });
 
-      setPayments(paymentsResponse.payments || []);
-
-      // Optional: if your backend returns collections in either
-      // payment response, use them for a collection-history section.
-      setCollections(
-        paymentsResponse.collections ||
-        rentResponse.collections ||
-        []
-      );
+      setPayments(paymentsResponse?.payments || []);
     } catch (err) {
       console.error("Load payments error:", err);
 
+      resetPaymentData();
+
       setError(
-        err.message || "Failed to load payment details."
+        err?.message || "Failed to load payment details."
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    selectedMonth,
+    selectedYear,
+    activePGId,
+    resetPaymentData,
+  ]);
+
+  // =====================================================
+  // REFRESH ON MONTH, YEAR OR PG CHANGE
+  // =====================================================
 
   useEffect(() => {
     loadPayments();
-  }, [selectedMonth, selectedYear]);
+  }, [loadPayments]);
+
+  useEffect(() => {
+    const handlePGChange = () => {
+      const newPGId = getActivePGId();
+
+      setActivePGId((previous) =>
+        previous === newPGId ? previous : newPGId
+      );
+    };
+
+    const handleStorage = (event) => {
+      if (
+        !event ||
+        event.key === "pgmate_active_pg"
+      ) {
+        handlePGChange();
+      }
+    };
+
+    window.addEventListener(
+      "pgmate-pg-changed",
+      handlePGChange
+    );
+
+    window.addEventListener(
+      "storage",
+      handleStorage
+    );
+
+    return () => {
+      window.removeEventListener(
+        "pgmate-pg-changed",
+        handlePGChange
+      );
+
+      window.removeEventListener(
+        "storage",
+        handleStorage
+      );
+    };
+  }, []);
 
   // =====================================================
   // TENANT / ROOM HELPERS
   // =====================================================
 
   const getTenantName = (record) =>
-    record.userId?.name ||
-    record.tenantId?.userId?.name ||
-    record.tenantId?.name ||
-    record.tenantName ||
-    record.name ||
+    record?.userId?.name ||
+    record?.tenantId?.userId?.name ||
+    record?.tenantId?.name ||
+    record?.tenantName ||
+    record?.name ||
     "Tenant name unavailable";
 
   const getTenantMobile = (record) =>
-    record.userId?.mobile ||
-    record.tenantId?.userId?.mobile ||
-    record.mobile ||
+    record?.userId?.mobile ||
+    record?.tenantId?.userId?.mobile ||
+    record?.mobile ||
     "";
 
   const getTenantId = (record) => {
@@ -209,32 +301,33 @@ function Payments() {
   };
 
   const getRoomNumber = (record) =>
-    record.roomId?.roomNumber ||
-    record.tenantId?.roomId?.roomNumber ||
-    record.bedId?.roomId?.roomNumber ||
-    record.tenantId?.bedId?.roomId?.roomNumber ||
-    record.bedId?.roomNumber ||
-    record.roomNumber ||
+    record?.roomId?.roomNumber ||
+    record?.tenantId?.roomId?.roomNumber ||
+    record?.bedId?.roomId?.roomNumber ||
+    record?.tenantId?.bedId?.roomId?.roomNumber ||
+    record?.bedId?.roomNumber ||
+    record?.roomNumber ||
     "";
 
   const getBedNumber = (record) =>
-    record.bedId?.bedNumber ||
-    record.tenantId?.bedId?.bedNumber ||
+    record?.bedId?.bedNumber ||
+    record?.bedId?.bedName ||
+    record?.tenantId?.bedId?.bedNumber ||
+    record?.tenantId?.bedId?.bedName ||
+    record?.bedNumber ||
     "";
 
   const getPropertyName = (record) =>
-    record.pgId?.name ||
-    record.tenantId?.pgId?.name ||
+    record?.pgId?.name ||
+    record?.tenantId?.pgId?.name ||
     "";
 
   const isTenantVacated = (record) => {
     const statuses = [
-      record.tenantStatus,
-      record.tenant?.status,
-      record.tenantId?.status,
-      record.tenantId?.tenantStatus,
-      record.userId?.status,
-      record.tenantId?.userId?.status,
+      record?.tenantStatus,
+      record?.tenant?.status,
+      record?.tenantId?.status,
+      record?.tenantId?.tenantStatus,
     ];
 
     return (
@@ -243,9 +336,9 @@ function Payments() {
           String(status || "").toLowerCase() === "vacated"
       ) ||
       Boolean(
-        record.tenant?.vacatedAt ||
-        record.tenantId?.vacatedAt ||
-        record.tenantVacatedAt
+        record?.tenant?.vacatedAt ||
+        record?.tenantId?.vacatedAt ||
+        record?.tenantVacatedAt
       )
     );
   };
@@ -256,12 +349,11 @@ function Payments() {
 
   const getTenantBalance = (record) => {
     const balanceFields = [
-      record.tenantId?.outstandingBalance,
-      record.outstandingBalance,
-      record.remainingBalance,
-      record.balanceDue,
-      record.pendingAmount,
-      record.amountDue,
+      record?.tenantId?.outstandingBalance,
+      record?.outstandingBalance,
+      record?.remainingBalance,
+      record?.balanceDue,
+      record?.amountDue,
     ];
 
     for (const value of balanceFields) {
@@ -270,12 +362,14 @@ function Payments() {
         value !== null &&
         value !== ""
       ) {
-        return Math.max(0, Number(value) || 0);
+        const balance = Number(value);
+
+        return Number.isFinite(balance)
+          ? Math.max(0, balance)
+          : null;
       }
     }
 
-    // A paid monthly rent record is not proof that all historical
-    // debt has been settled. Do not infer a historical balance.
     return null;
   };
 
@@ -327,6 +421,37 @@ function Payments() {
   }, [rentRecords, search, statusFilter]);
 
   // =====================================================
+  // FILTER PAYMENT TRANSACTIONS
+  // =====================================================
+
+  const filteredPayments = useMemo(() => {
+    const searchValue = search.trim().toLowerCase();
+
+    return payments.filter((payment) => {
+      const tenantName = getTenantName(payment).toLowerCase();
+      const mobile = getTenantMobile(payment).toLowerCase();
+      const pgName = getPropertyName(payment).toLowerCase();
+
+      const roomNumber = String(
+        getRoomNumber(payment)
+      ).toLowerCase();
+
+      const bedNumber = String(
+        getBedNumber(payment)
+      ).toLowerCase();
+
+      return (
+        !searchValue ||
+        tenantName.includes(searchValue) ||
+        mobile.includes(searchValue) ||
+        pgName.includes(searchValue) ||
+        roomNumber.includes(searchValue) ||
+        bedNumber.includes(searchValue)
+      );
+    });
+  }, [payments, search]);
+
+  // =====================================================
   // FORM CHANGE
   // =====================================================
 
@@ -339,12 +464,27 @@ function Payments() {
     }));
   };
 
+  const notifyPaymentsChanged = () => {
+    window.dispatchEvent(new Event("pgmate-payments-changed"));
+  };
+
   // =====================================================
-  // CREATE NORMAL RENT PAYMENT
+  // CREATE RENT PAYMENT
   // =====================================================
 
   const handleCreatePayment = async (event) => {
     event.preventDefault();
+
+    const pgId = getActivePGId();
+
+    if (!pgId || pgId.toLowerCase() === "all") {
+      setMessageCard({
+        type: "warning",
+        title: "Select a PG",
+        message: "Please select a PG before recording a payment.",
+      });
+      return;
+    }
 
     if (!form.tenantId.trim()) {
       setMessageCard({
@@ -355,11 +495,17 @@ function Payments() {
       return;
     }
 
-    if (!form.amount || Number(form.amount) <= 0) {
+    const amount = Number(form.amount);
+
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      Math.round(amount * 100) !== amount * 100
+    ) {
       setMessageCard({
         type: "warning",
         title: "Valid amount required",
-        message: "Enter a payment amount greater than zero.",
+        message: "Enter an amount greater than zero with up to two decimal places.",
       });
       return;
     }
@@ -373,18 +519,28 @@ function Payments() {
       return;
     }
 
+    if (form.notes.length > 1000) {
+      setMessageCard({
+        type: "warning",
+        title: "Notes too long",
+        message: "Notes cannot exceed 1000 characters.",
+      });
+      return;
+    }
+
     try {
       setCreatingPayment(true);
       setError("");
 
       await createPaymentApi({
         tenantId: form.tenantId.trim(),
-        amount: Number(form.amount),
+        pgId,
+        amount,
         paymentDate: form.paymentDate,
         paymentMethod: form.paymentMethod,
         month: Number(selectedMonth),
         year: Number(selectedYear),
-        notes: form.notes,
+        notes: form.notes.trim(),
       });
 
       setShowAddPayment(false);
@@ -392,7 +548,7 @@ function Payments() {
       setForm({
         tenantId: "",
         amount: "",
-        paymentDate: new Date().toISOString().split("T")[0],
+        paymentDate: getTodayDate(),
         paymentMethod: "cash",
         notes: "",
       });
@@ -410,7 +566,8 @@ function Payments() {
       setMessageCard({
         type: "error",
         title: "Payment failed",
-        message: err.message || "Failed to record payment.",
+        message:
+          err?.message || "Failed to record payment.",
       });
     } finally {
       setCreatingPayment(false);
@@ -418,7 +575,7 @@ function Payments() {
   };
 
   // =====================================================
-  // COLLECT VACATED TENANT'S OUTSTANDING DEBT
+  // OPEN DEBT COLLECTION MODAL
   // =====================================================
 
   const openCollectionModal = (record) => {
@@ -428,7 +585,8 @@ function Payments() {
       setMessageCard({
         type: "warning",
         title: "Tenant is not vacated",
-        message: "Outstanding debt collection is available for vacated tenants only.",
+        message:
+          "Debt collection is available for vacated tenants only.",
       });
       return;
     }
@@ -437,10 +595,13 @@ function Payments() {
       setMessageCard({
         type: "warning",
         title: "No outstanding balance",
-        message: "No collectible outstanding balance was found for this tenant.",
+        message:
+          "No collectible outstanding balance was found for this tenant.",
       });
       return;
     }
+
+    setError("");
 
     setCollectionForm({
       amount: String(balance),
@@ -450,6 +611,10 @@ function Payments() {
 
     setTenantToCollect(record);
   };
+
+  // =====================================================
+  // COLLECT VACATED TENANT DEBT
+  // =====================================================
 
   const handleCollectDebt = async (event) => {
     event.preventDefault();
@@ -465,13 +630,30 @@ function Payments() {
       return;
     }
 
-    if (!Number.isFinite(amount) || amount <= 0) {
-      setError("Enter a valid collection amount.");
+    if (
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      Math.round(amount * 100) !== amount * 100
+    ) {
+      setError(
+        "Enter a valid amount with up to two decimal places."
+      );
       return;
     }
 
-    if (balance === null || balance <= 0 || amount > balance) {
-      setError("The collection amount exceeds the available balance.");
+    if (
+      balance === null ||
+      balance <= 0 ||
+      amount > balance
+    ) {
+      setError(
+        "The collection amount exceeds the available balance."
+      );
+      return;
+    }
+
+    if (collectionForm.notes.length > 1000) {
+      setError("Notes cannot exceed 1000 characters.");
       return;
     }
 
@@ -482,7 +664,7 @@ function Payments() {
       await collectVacatedDebtApi(tenantId, {
         amount,
         paymentMethod: collectionForm.paymentMethod,
-        notes: collectionForm.notes,
+        notes: collectionForm.notes.trim(),
       });
 
       setTenantToCollect(null);
@@ -494,12 +676,23 @@ function Payments() {
       });
 
       await loadPayments();
+
+      setMessageCard({
+        type: "success",
+        title: "Collection recorded",
+        message:
+          "The outstanding debt collection was recorded successfully.",
+      });
     } catch (err) {
       console.error("Collection failed:", err);
-      setError(
-        err.message ||
-        "Collection could not be saved. Please check the backend server."
-      );
+
+      setMessageCard({
+        type: "error",
+        title: "Collection failed",
+        message:
+          err?.message ||
+          "Collection could not be saved. Please refresh and try again.",
+      });
     } finally {
       setCollectingDebt("");
     }
@@ -514,12 +707,14 @@ function Payments() {
   };
 
   const confirmDeletePayment = async () => {
-    if (!paymentToDelete?._id) return;
+    if (!paymentToDelete?._id || deletingPayment) return;
 
     try {
       setDeletingPayment(paymentToDelete._id);
+      setError("");
 
       await deletePaymentApi(paymentToDelete._id);
+
       setPaymentToDelete(null);
 
       await loadPayments();
@@ -532,12 +727,14 @@ function Payments() {
       });
     } catch (err) {
       console.error("Delete payment error:", err);
+
       setPaymentToDelete(null);
 
       setMessageCard({
         type: "error",
         title: "Delete failed",
-        message: err.message || "Failed to delete payment.",
+        message:
+          err?.message || "Failed to delete payment.",
       });
     } finally {
       setDeletingPayment("");
@@ -551,7 +748,13 @@ function Payments() {
   const formatDate = (date) => {
     if (!date) return "-";
 
-    return new Date(date).toLocaleDateString("en-IN", {
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -559,7 +762,9 @@ function Payments() {
   };
 
   const formatCurrency = (amount) =>
-    `₹${Number(amount || 0).toLocaleString("en-IN")}`;
+    `₹${Number(amount || 0).toLocaleString("en-IN", {
+      maximumFractionDigits: 2,
+    })}`;
 
   const getStatusLabel = (record) => {
     if (isTenantVacated(record)) return "Vacated";
@@ -581,21 +786,18 @@ function Payments() {
     if (isTenantVacated(record)) return "vacated";
     if (record.status === "paid") return "paid";
     if (record.status === "overdue") return "overdue";
+
     return "pending";
   };
 
   const formatPaymentMethod = (method) => {
     if (!method) return "-";
 
-    const methods = {
-      cash: "Cash",
-      upi: "UPI",
-      bank: "Bank Transfer",
-      card: "Card",
-      other: "Other",
-    };
+    const found = PAYMENT_METHODS.find(
+      (item) => item.value === method
+    );
 
-    return methods[method] || method;
+    return found?.label || method;
   };
 
   const renderRoomDetails = (record) => {
@@ -656,6 +858,7 @@ function Payments() {
 
         <button
           className="payments-add-btn"
+          disabled={!activePGId || activePGId === "all"}
           onClick={() => {
             setError("");
             setShowAddPayment(true);
@@ -669,9 +872,14 @@ function Payments() {
       {error && (
         <div className="payments-error">
           <AlertCircle size={17} />
+
           <span>{error}</span>
 
-          <button onClick={() => setError("")}>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            aria-label="Dismiss error"
+          >
             <X size={16} />
           </button>
         </div>
@@ -695,15 +903,16 @@ function Payments() {
 
         <div className="payments-period-selects">
           <div className="payments-period-select">
-            <label>Month</label>
+            <label htmlFor="payments-month">Month</label>
 
             <select
+              id="payments-month"
               value={selectedMonth}
               onChange={(event) =>
                 setSelectedMonth(Number(event.target.value))
               }
             >
-              {months.map((month, index) => (
+              {MONTHS.map((month, index) => (
                 <option key={month} value={index + 1}>
                   {month}
                 </option>
@@ -712,9 +921,10 @@ function Payments() {
           </div>
 
           <div className="payments-period-select">
-            <label>Year</label>
+            <label htmlFor="payments-year">Year</label>
 
             <select
+              id="payments-year"
               value={selectedYear}
               onChange={(event) =>
                 setSelectedYear(Number(event.target.value))
@@ -740,8 +950,10 @@ function Payments() {
 
           <div>
             <span>Paid</span>
-            <strong>{summary.paid || 0}</strong>
-            <small>{formatCurrency(summary.paidAmount)}</small>
+            <strong>{summary.paid}</strong>
+            <small>
+              {formatCurrency(summary.paidAmount)}
+            </small>
           </div>
         </div>
 
@@ -752,8 +964,10 @@ function Payments() {
 
           <div>
             <span>Pending</span>
-            <strong>{summary.pending || 0}</strong>
-            <small>{formatCurrency(summary.pendingAmount)}</small>
+            <strong>{summary.pending}</strong>
+            <small>
+              {formatCurrency(summary.pendingAmount)}
+            </small>
           </div>
         </div>
 
@@ -764,11 +978,12 @@ function Payments() {
 
           <div>
             <span>Overdue</span>
-            <strong>{summary.overdue || 0}</strong>
-            <small>{formatCurrency(summary.overdueAmount)}</small>
+            <strong>{summary.overdue}</strong>
+            <small>
+              {formatCurrency(summary.overdueAmount)}
+            </small>
           </div>
         </div>
-
 
         <div className="payment-stat-card">
           <div className="payment-stat-icon green">
@@ -779,18 +994,12 @@ function Payments() {
             <span>Total Collected</span>
 
             <strong>
-              {formatCurrency(
-                summary.totalCollected ??
-                (
-                  Number(summary.paidAmount || 0) +
-                  Number(summary.debtCollected || 0)
-                )
-              )}
+              {formatCurrency(summary.totalCollected)}
             </strong>
 
             <small>
-              {summary.paidOnTime || 0} on time ·{" "}
-              {summary.paidLate || 0} late
+              {summary.paidOnTime} on time ·{" "}
+              {summary.paidLate} late
             </small>
           </div>
         </div>
@@ -814,8 +1023,11 @@ function Payments() {
           <Filter size={17} />
 
           <select
+            aria-label="Filter rent records by status"
             value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
+            onChange={(event) =>
+              setStatusFilter(event.target.value)
+            }
           >
             <option value="all">All Tenants</option>
             <option value="paid">Paid</option>
@@ -832,7 +1044,7 @@ function Payments() {
         <div className="payments-card-header">
           <div>
             <h2>
-              {months[selectedMonth - 1]} {selectedYear} Rent
+              {MONTHS[selectedMonth - 1]} {selectedYear} Rent
             </h2>
 
             <p>
@@ -860,6 +1072,7 @@ function Payments() {
 
             <button
               className="payments-empty-btn"
+              disabled={!activePGId || activePGId === "all"}
               onClick={() => setShowAddPayment(true)}
             >
               <Plus size={17} />
@@ -910,7 +1123,9 @@ function Payments() {
 
                   <div className="payment-info">
                     <span>Due Date</span>
-                    <strong>{formatDate(record.dueDate)}</strong>
+                    <strong>
+                      {formatDate(record.dueDate)}
+                    </strong>
                   </div>
 
                   <div className="payment-info">
@@ -964,7 +1179,9 @@ function Payments() {
                           !tenantId ||
                           collectingDebt === tenantId
                         }
-                        onClick={() => openCollectionModal(record)}
+                        onClick={() =>
+                          openCollectionModal(record)
+                        }
                       >
                         {collectingDebt === tenantId ? (
                           <>
@@ -1000,113 +1217,94 @@ function Payments() {
 
       {/* PAYMENT TRANSACTION HISTORY */}
 
-      {payments.length > 0 && (
+      {filteredPayments.length > 0 && (
         <div className="payments-card payments-history-card">
           <div className="payments-card-header">
             <div>
               <h2>Payment Transactions</h2>
+
               <p>
                 Actual payment entries recorded for this month.
               </p>
             </div>
 
             <div className="payment-count">
-              {payments.length} Transactions
+              {filteredPayments.length} Transactions
             </div>
           </div>
 
           <div className="payments-list">
-            {payments
-              .filter((payment) => {
-                const tenantName =
-                  getTenantName(payment).toLowerCase();
+            {filteredPayments.map((payment) => {
+              const tenantName = getTenantName(payment);
+              const mobile = getTenantMobile(payment);
 
-                const mobile =
-                  getTenantMobile(payment).toLowerCase();
-
-                const searchValue = search.trim().toLowerCase();
-
-                return (
-                  !searchValue ||
-                  tenantName.includes(searchValue) ||
-                  mobile.includes(searchValue) ||
-                  getPropertyName(payment)
-                    .toLowerCase()
-                    .includes(searchValue) ||
-                  String(getRoomNumber(payment))
-                    .toLowerCase()
-                    .includes(searchValue) ||
-                  String(getBedNumber(payment))
-                    .toLowerCase()
-                    .includes(searchValue)
-                );
-              })
-              .map((payment) => {
-                const tenantName = getTenantName(payment);
-                const mobile = getTenantMobile(payment);
-
-                return (
-                  <div
-                    className="payment-row transaction-row"
-                    key={payment._id}
-                  >
-                    <div className="payment-tenant">
-                      <div className="payment-avatar">
-                        {tenantName.charAt(0).toUpperCase()}
-                      </div>
-
-                      <div>
-                        <h3>{tenantName}</h3>
-                        <p>{mobile || " "}</p>
-                        {renderRoomDetails(payment)}
-                      </div>
+              return (
+                <div
+                  className="payment-row transaction-row"
+                  key={payment._id}
+                >
+                  <div className="payment-tenant">
+                    <div className="payment-avatar">
+                      {tenantName.charAt(0).toUpperCase()}
                     </div>
 
-                    <div className="payment-info">
-                      <span>Amount</span>
-                      <strong>
-                        {formatCurrency(payment.amount)}
-                      </strong>
-                    </div>
+                    <div>
+                      <h3>{tenantName}</h3>
+                      <p>{mobile || " "}</p>
 
-                    <div className="payment-info">
-                      <span>Payment Date</span>
-                      <strong>
-                        {formatDate(payment.paymentDate)}
-                      </strong>
+                      {renderRoomDetails(payment)}
                     </div>
-
-                    <div className="payment-method">
-                      <span>Method</span>
-                      <strong>
-                        {formatPaymentMethod(payment.paymentMethod)}
-                      </strong>
-                    </div>
-
-                    <div
-                      className={`payment-status ${payment.status || "paid"}`}
-                    >
-                      {payment.status || "paid"}
-                    </div>
-
-                    <button
-                      className="payment-delete-btn"
-                      title="Delete payment"
-                      disabled={deletingPayment === payment._id}
-                      onClick={() => handleDeletePayment(payment)}
-                    >
-                      {deletingPayment === payment._id ? (
-                        <Loader2
-                          size={16}
-                          className="delete-spinner"
-                        />
-                      ) : (
-                        <Trash2 size={16} />
-                      )}
-                    </button>
                   </div>
-                );
-              })}
+
+                  <div className="payment-info">
+                    <span>Amount</span>
+                    <strong>
+                      {formatCurrency(payment.amount)}
+                    </strong>
+                  </div>
+
+                  <div className="payment-info">
+                    <span>Payment Date</span>
+                    <strong>
+                      {formatDate(payment.paymentDate)}
+                    </strong>
+                  </div>
+
+                  <div className="payment-method">
+                    <span>Method</span>
+                    <strong>
+                      {formatPaymentMethod(payment.paymentMethod)}
+                    </strong>
+                  </div>
+
+                  <div
+                    className={`payment-status ${payment.status || "paid"}`}
+                  >
+                    {payment.status || "paid"}
+                  </div>
+
+                  <button
+                    type="button"
+                    className="payment-delete-btn"
+                    title="Delete payment"
+                    aria-label={`Delete payment for ${tenantName}`}
+                    disabled={deletingPayment === payment._id}
+                    onClick={() =>
+                      handleDeletePayment(payment)
+                    }
+                  >
+                    {deletingPayment === payment._id ? (
+                      <Loader2
+                        size={16}
+                        className="delete-spinner"
+                      />
+                    ) : (
+                      <Trash2 size={16} />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -1117,7 +1315,9 @@ function Payments() {
         <div
           className="payment-modal-overlay"
           onClick={() => {
-            if (!creatingPayment) setShowAddPayment(false);
+            if (!creatingPayment) {
+              setShowAddPayment(false);
+            }
           }}
         >
           <div
@@ -1127,16 +1327,19 @@ function Payments() {
             <div className="payment-modal-header">
               <div>
                 <h2>Record Payment</h2>
+
                 <p>
-                  Record rent for {months[selectedMonth - 1]}{" "}
+                  Record rent for {MONTHS[selectedMonth - 1]}{" "}
                   {selectedYear}.
                 </p>
               </div>
 
               <button
+                type="button"
                 className="payment-modal-close"
                 disabled={creatingPayment}
                 onClick={() => setShowAddPayment(false)}
+                aria-label="Close payment form"
               >
                 <X size={20} />
               </button>
@@ -1147,9 +1350,12 @@ function Payments() {
               onSubmit={handleCreatePayment}
             >
               <div className="payment-form-group">
-                <label>Tenant ID</label>
+                <label htmlFor="payment-tenant-id">
+                  Tenant ID
+                </label>
 
                 <input
+                  id="payment-tenant-id"
                   type="text"
                   name="tenantId"
                   value={form.tenantId}
@@ -1165,15 +1371,18 @@ function Payments() {
 
               <div className="payment-form-row">
                 <div className="payment-form-group">
-                  <label>Amount</label>
+                  <label htmlFor="payment-amount">
+                    Amount
+                  </label>
 
                   <div className="amount-input">
                     <IndianRupee size={16} />
 
                     <input
+                      id="payment-amount"
                       type="number"
                       name="amount"
-                      min="1"
+                      min="0.01"
                       step="0.01"
                       value={form.amount}
                       onChange={handleChange}
@@ -1184,9 +1393,12 @@ function Payments() {
                 </div>
 
                 <div className="payment-form-group">
-                  <label>Payment Date</label>
+                  <label htmlFor="payment-date">
+                    Payment Date
+                  </label>
 
                   <input
+                    id="payment-date"
                     type="date"
                     name="paymentDate"
                     value={form.paymentDate}
@@ -1197,30 +1409,40 @@ function Payments() {
               </div>
 
               <div className="payment-form-group">
-                <label>Payment Method</label>
+                <label htmlFor="payment-method">
+                  Payment Method
+                </label>
 
                 <select
+                  id="payment-method"
                   name="paymentMethod"
                   value={form.paymentMethod}
                   onChange={handleChange}
                 >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="card">Card</option>
-                  <option value="other">Other</option>
+                  {PAYMENT_METHODS.map((method) => (
+                    <option
+                      key={method.value}
+                      value={method.value}
+                    >
+                      {method.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="payment-form-group">
-                <label>Notes</label>
+                <label htmlFor="payment-notes">
+                  Notes
+                </label>
 
                 <textarea
+                  id="payment-notes"
                   name="notes"
                   value={form.notes}
                   onChange={handleChange}
                   placeholder="Optional notes..."
                   rows="3"
+                  maxLength={1000}
                 />
               </div>
 
@@ -1286,6 +1508,7 @@ function Payments() {
                 className="payment-modal-close"
                 disabled={Boolean(collectingDebt)}
                 onClick={() => setTenantToCollect(null)}
+                aria-label="Close collection form"
               >
                 <X size={20} />
               </button>
@@ -1306,9 +1529,12 @@ function Payments() {
               </div>
 
               <div className="payment-form-group">
-                <label>Amount Collected (₹)</label>
+                <label htmlFor="collection-amount">
+                  Amount Collected (₹)
+                </label>
 
                 <input
+                  id="collection-amount"
                   type="number"
                   min="0.01"
                   max={
@@ -1331,9 +1557,12 @@ function Payments() {
               </div>
 
               <div className="payment-form-group">
-                <label>Payment Method</label>
+                <label htmlFor="collection-method">
+                  Payment Method
+                </label>
 
                 <select
+                  id="collection-method"
                   value={collectionForm.paymentMethod}
                   onChange={(event) =>
                     setCollectionForm((previous) => ({
@@ -1342,19 +1571,26 @@ function Payments() {
                     }))
                   }
                 >
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="card">Card</option>
-                  <option value="other">Other</option>
+                  {PAYMENT_METHODS.map((method) => (
+                    <option
+                      key={method.value}
+                      value={method.value}
+                    >
+                      {method.label}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="payment-form-group">
-                <label>Notes</label>
+                <label htmlFor="collection-notes">
+                  Notes
+                </label>
 
                 <textarea
+                  id="collection-notes"
                   rows="3"
+                  maxLength={1000}
                   value={collectionForm.notes}
                   onChange={(event) =>
                     setCollectionForm((previous) => ({
@@ -1409,7 +1645,11 @@ function Payments() {
           type="confirm"
           title="Delete payment?"
           message="This will remove the payment transaction and update the corresponding rent record."
-          onClose={() => setPaymentToDelete(null)}
+          onClose={() => {
+            if (!deletingPayment) {
+              setPaymentToDelete(null);
+            }
+          }}
           onConfirm={confirmDeletePayment}
           confirmText={
             deletingPayment ? "Deleting..." : "Delete Payment"
