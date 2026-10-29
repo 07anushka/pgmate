@@ -8,6 +8,13 @@ import Room from "../models/Room.js";
 import Bed from "../models/Bed.js";
 import RentRecord from "../models/RentRecord.js";
 
+import {
+  sendTenantWelcomeEmail,
+  sendTenantVacatedEmail,
+} from "../utils/email.js";
+
+import TenantEmailLog from "../models/TenantEmailLog.js";
+
 /* =====================================================
    RENT HELPERS
 ===================================================== */
@@ -194,7 +201,7 @@ export const getMyTenants = async (req, res) => {
       ownerId,
       pgId,
     })
-      .populate("userId", "name mobile role")
+      .populate("userId", "name mobile email role")
       .populate("pgId", "name address city state contactNumber")
       .populate("roomId", "roomNumber roomType monthlyRent floor")
       .populate("bedId", "bedNumber status")
@@ -306,6 +313,7 @@ export const createTenant = async (req, res) => {
     const {
       name,
       mobile,
+      email,
       password,
       pgId,
       roomId,
@@ -317,7 +325,6 @@ export const createTenant = async (req, res) => {
       emergencyContactName,
       emergencyContactNumber,
       notes,
-
       dateOfBirth,
       gender,
       documentType,
@@ -332,6 +339,7 @@ export const createTenant = async (req, res) => {
     if (
       !name ||
       !mobile ||
+      !email ||
       !password ||
       !pgId ||
       !roomId ||
@@ -342,7 +350,7 @@ export const createTenant = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Name, mobile, password, PG, room, bed, joining date and monthly rent are required.",
+          "Name, mobile, email, password, PG, room, bed, joining date and monthly rent are required.",
       });
     }
 
@@ -376,6 +384,14 @@ export const createTenant = async (req, res) => {
     }
 
     const normalizedMobile = String(mobile).trim();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
+      });
+    }
 
     const existingUser = await User.findOne({
       mobile: normalizedMobile,
@@ -385,6 +401,17 @@ export const createTenant = async (req, res) => {
       return res.status(409).json({
         success: false,
         message: "A user with this mobile number already exists.",
+      });
+    }
+
+    const existingEmail = await User.findOne({
+      email: normalizedEmail,
+    });
+
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: "This email address is already registered.",
       });
     }
 
@@ -432,6 +459,8 @@ export const createTenant = async (req, res) => {
     createdUser = await User.create({
       name: name.trim(),
       mobile: normalizedMobile,
+      email: normalizedEmail,
+      isEmailVerified: false,
       password: hashedPassword,
       role: "tenant",
       createdBy: ownerId,
@@ -443,35 +472,22 @@ export const createTenant = async (req, res) => {
       pgId,
       roomId,
       bedId,
-
       joiningDate: new Date(joiningDate),
       rentDueDay: dueDay,
       monthlyRent: Number(monthlyRent),
       securityDeposit: Number(securityDeposit || 0),
-
       emergencyContactName: emergencyContactName?.trim() || "",
       emergencyContactNumber: emergencyContactNumber?.trim() || "",
       notes: notes?.trim() || "",
-
       dateOfBirth: dateOfBirth || null,
       gender: gender || "",
       documentType: documentType || "",
-
-      // Preserve compatibility with existing screens.
-      tenantPhoto:
-        tenantPhoto || aadhaarFrontImage || "",
-
-      // Save both Aadhaar sides independently.
-      aadhaarFrontImage:
-        aadhaarFrontImage || tenantPhoto || "",
-
-      aadhaarBackImage:
-        aadhaarBackImage || "",
-
+      tenantPhoto: tenantPhoto || aadhaarFrontImage || "",
+      aadhaarFrontImage: aadhaarFrontImage || tenantPhoto || "",
+      aadhaarBackImage: aadhaarBackImage || "",
       aadhaarNumber: normalizeAadhaarNumber(aadhaarNumber),
       panNumber: normalizePanNumber(panNumber),
       address: normalizeAddress(address),
-
       status: "active",
     });
 
@@ -515,14 +531,80 @@ export const createTenant = async (req, res) => {
     }
 
     const tenant = await Tenant.findById(createdTenant._id)
-      .populate("userId", "name mobile role")
+      .populate("userId", "name mobile email role")
       .populate("pgId", "name address city state contactNumber")
       .populate("roomId", "roomNumber roomType monthlyRent floor")
       .populate("bedId", "bedNumber status");
 
+    let welcomeEmailSent = false;
+
+    try {
+      const notificationKey = `welcome:${tenant._id}`;
+
+      const existingLog = await TenantEmailLog.findOne({
+        notificationKey,
+        status: "sent",
+      });
+
+      if (!existingLog && tenant.userId?.email) {
+        await sendTenantWelcomeEmail({
+          tenant,
+          user: tenant.userId,
+          pg: tenant.pgId,
+          room: tenant.roomId,
+          bed: tenant.bedId,
+        });
+
+        await TenantEmailLog.updateOne(
+          { notificationKey },
+          {
+            $set: {
+              tenantId: tenant._id,
+              notificationKey,
+              emailType: "welcome",
+              status: "sent",
+              recipient: tenant.userId.email,
+              sentAt: new Date(),
+              error: "",
+            },
+          },
+          { upsert: true }
+        );
+
+        welcomeEmailSent = true;
+      }
+    } catch (emailError) {
+      console.error("Tenant welcome email failed:", emailError);
+
+      try {
+        const notificationKey = `welcome:${tenant._id}`;
+
+        await TenantEmailLog.updateOne(
+          { notificationKey },
+          {
+            $set: {
+              tenantId: tenant._id,
+              notificationKey,
+              emailType: "welcome",
+              status: "failed",
+              recipient: tenant.userId?.email || "",
+              sentAt: new Date(),
+              error: String(
+                emailError.message || emailError
+              ).slice(0, 1000),
+            },
+          },
+          { upsert: true }
+        );
+      } catch (logError) {
+        console.error("Tenant welcome email log failed:", logError);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Tenant created and bed assigned successfully.",
+      welcomeEmailSent,
       tenant,
     });
   } catch (error) {
@@ -686,9 +768,87 @@ export const vacateTenant = async (req, res) => {
       }
     );
 
+    // Send move-out email after vacating has been saved.
+    let vacatedEmailSent = false;
+
+    try {
+      const user = await User.findById(tenant.userId)
+        .select("name email");
+
+      const pg = await PG.findById(tenant.pgId)
+        .select("name");
+
+      const notificationKey =
+        `vacated:${tenant._id}:${vacatedAt.getTime()}`;
+
+      if (user?.email) {
+        const existingLog = await TenantEmailLog.findOne({
+          notificationKey,
+          status: "sent",
+        });
+
+        if (!existingLog) {
+          await sendTenantVacatedEmail({
+            user,
+            pg,
+            tenant,
+          });
+
+          await TenantEmailLog.updateOne(
+            { notificationKey },
+            {
+              $set: {
+                tenantId: tenant._id,
+                notificationKey,
+                emailType: "vacated",
+                status: "sent",
+                recipient: user.email,
+                sentAt: new Date(),
+                error: "",
+              },
+            },
+            { upsert: true }
+          );
+
+          vacatedEmailSent = true;
+        }
+      }
+    } catch (emailError) {
+      console.error("Tenant move-out email failed:", emailError);
+
+      try {
+        const user = await User.findById(tenant.userId)
+          .select("email");
+
+        const notificationKey =
+          `vacated:${tenant._id}:${vacatedAt.getTime()}`;
+
+        await TenantEmailLog.updateOne(
+          { notificationKey },
+          {
+            $set: {
+              tenantId: tenant._id,
+              notificationKey,
+              emailType: "vacated",
+              status: "failed",
+              recipient: user?.email || "",
+              sentAt: new Date(),
+              error: String(
+                emailError.message || emailError
+              ).slice(0, 1000),
+            },
+          },
+          { upsert: true }
+        );
+      } catch (logError) {
+        console.error("Move-out email log failed:", logError);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Tenant vacated successfully.",
+      vacatedEmailSent,
       tenant,
       outstandingBalance,
     });
@@ -714,6 +874,7 @@ export const updateTenant = async (req, res) => {
     const {
       name,
       mobile,
+      email,
       password,
       pgId,
       roomId,
@@ -725,7 +886,6 @@ export const updateTenant = async (req, res) => {
       emergencyContactName,
       emergencyContactNumber,
       notes,
-
       dateOfBirth,
       gender,
       documentType,
@@ -745,33 +905,37 @@ export const updateTenant = async (req, res) => {
     if (!tenant) {
       return res.status(404).json({
         success: false,
-        message: "Tenant not found",
+        message: "Tenant not found.",
       });
     }
 
     if (!pgId || !roomId || !bedId) {
       return res.status(400).json({
         success: false,
-        message: "PG, room and bed are required",
+        message: "PG, room and bed are required.",
       });
     }
 
     const dueDay = Number(rentDueDay || 5);
 
-    if (dueDay < 1 || dueDay > 28) {
+    if (
+      !Number.isInteger(dueDay) ||
+      dueDay < 1 ||
+      dueDay > 28
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Rent due day must be between 1 and 28",
+        message: "Rent due day must be between 1 and 28.",
       });
     }
 
     if (
-      !Number.isFinite(Number(monthlyRent || 0)) ||
-      Number(monthlyRent || 0) < 0
+      !Number.isFinite(Number(monthlyRent)) ||
+      Number(monthlyRent) < 0
     ) {
       return res.status(400).json({
         success: false,
-        message: "Monthly rent cannot be negative",
+        message: "Monthly rent cannot be negative.",
       });
     }
 
@@ -781,7 +945,7 @@ export const updateTenant = async (req, res) => {
     ) {
       return res.status(400).json({
         success: false,
-        message: "Security deposit cannot be negative",
+        message: "Security deposit cannot be negative.",
       });
     }
 
@@ -793,7 +957,7 @@ export const updateTenant = async (req, res) => {
     if (!pg) {
       return res.status(403).json({
         success: false,
-        message: "You do not have access to this PG",
+        message: "You do not have access to this PG.",
       });
     }
 
@@ -806,7 +970,7 @@ export const updateTenant = async (req, res) => {
     if (!room) {
       return res.status(400).json({
         success: false,
-        message: "Selected room does not belong to the selected PG",
+        message: "Selected room does not belong to the selected PG.",
       });
     }
 
@@ -819,7 +983,7 @@ export const updateTenant = async (req, res) => {
     if (!bed) {
       return res.status(400).json({
         success: false,
-        message: "Selected bed does not belong to the selected room",
+        message: "Selected bed does not belong to the selected room.",
       });
     }
 
@@ -832,7 +996,7 @@ export const updateTenant = async (req, res) => {
     if (existingTenant) {
       return res.status(400).json({
         success: false,
-        message: "This bed is already occupied",
+        message: "This bed is already occupied.",
       });
     }
 
@@ -841,17 +1005,33 @@ export const updateTenant = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Tenant user account not found",
+        message: "Tenant user account not found.",
       });
     }
 
-    if (name?.trim()) {
+    if (name !== undefined) {
+      if (typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Name cannot be empty.",
+        });
+      }
+
       user.name = name.trim();
     }
 
-    if (mobile?.trim()) {
+    if (mobile !== undefined) {
+      if (typeof mobile !== "string" || !mobile.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "Mobile number cannot be empty.",
+        });
+      }
+
+      const normalizedMobile = mobile.trim();
+
       const mobileOwner = await User.findOne({
-        mobile: mobile.trim(),
+        mobile: normalizedMobile,
         _id: { $ne: user._id },
       });
 
@@ -862,31 +1042,89 @@ export const updateTenant = async (req, res) => {
         });
       }
 
-      user.mobile = mobile.trim();
+      user.mobile = normalizedMobile;
     }
 
-    if (password?.trim()) {
-      user.password = await bcrypt.hash(password.trim(), 12);
+    if (email !== undefined) {
+      const normalizedEmail = String(email || "")
+        .trim()
+        .toLowerCase();
+
+      if (
+        normalizedEmail &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid email address.",
+        });
+      }
+
+      if (normalizedEmail) {
+        const duplicateEmail = await User.findOne({
+          email: normalizedEmail,
+          _id: { $ne: user._id },
+        });
+
+        if (duplicateEmail) {
+          return res.status(409).json({
+            success: false,
+            message: "This email address is already registered.",
+          });
+        }
+      }
+
+      if ((user.email || "") !== normalizedEmail) {
+        user.email = normalizedEmail || undefined;
+        user.isEmailVerified = false;
+      }
     }
 
-    await user.save();
+    if (password !== undefined && password !== "") {
+      if (
+        typeof password !== "string" ||
+        password.length < 8
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "New password must contain at least 8 characters.",
+        });
+      }
+
+      user.password = await bcrypt.hash(password, 12);
+    }
+
+    const joining = joiningDate
+      ? new Date(joiningDate)
+      : new Date(tenant.joiningDate);
+
+    if (Number.isNaN(joining.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid joining date.",
+      });
+    }
 
     const oldBedId = tenant.bedId;
+
+    user.name = user.name.trim();
+
+    await user.save();
 
     tenant.pgId = pgId;
     tenant.roomId = roomId;
     tenant.bedId = bedId;
-
-    if (joiningDate) {
-      tenant.joiningDate = new Date(joiningDate);
-    }
-
+    tenant.joiningDate = joining;
     tenant.rentDueDay = dueDay;
-    tenant.monthlyRent = Number(monthlyRent || 0);
+    tenant.monthlyRent = Number(monthlyRent);
     tenant.securityDeposit = Number(securityDeposit || 0);
 
-    tenant.emergencyContactName = emergencyContactName?.trim() || "";
-    tenant.emergencyContactNumber = emergencyContactNumber?.trim() || "";
+    tenant.emergencyContactName =
+      emergencyContactName?.trim() || "";
+
+    tenant.emergencyContactNumber =
+      emergencyContactNumber?.trim() || "";
+
     tenant.notes = notes?.trim() || "";
 
     if (dateOfBirth !== undefined) {
@@ -901,16 +1139,13 @@ export const updateTenant = async (req, res) => {
       tenant.documentType = documentType;
     }
 
-    // Keep the old image field compatible with existing screens.
     if (tenantPhoto !== undefined) {
       tenant.tenantPhoto = tenantPhoto;
     }
 
-    // Update front and back independently.
     if (aadhaarFrontImage !== undefined) {
       tenant.aadhaarFrontImage = aadhaarFrontImage;
 
-      // Keep legacy image in sync with the front side.
       if (aadhaarFrontImage) {
         tenant.tenantPhoto = aadhaarFrontImage;
       }
@@ -921,7 +1156,8 @@ export const updateTenant = async (req, res) => {
     }
 
     if (aadhaarNumber !== undefined) {
-      tenant.aadhaarNumber = normalizeAadhaarNumber(aadhaarNumber);
+      tenant.aadhaarNumber =
+        normalizeAadhaarNumber(aadhaarNumber);
     }
 
     if (panNumber !== undefined) {
@@ -949,20 +1185,17 @@ export const updateTenant = async (req, res) => {
       );
     }
 
-    await Bed.findByIdAndUpdate(
-      bed._id,
-      {
-        $set: {
-          status: "occupied",
-          tenantId: tenant.userId,
-        },
-      }
-    );
+    await Bed.findByIdAndUpdate(bed._id, {
+      $set: {
+        status: "occupied",
+        tenantId: tenant.userId,
+      },
+    });
 
     await syncCurrentRentRecord(tenant);
 
     const populatedTenant = await Tenant.findById(tenant._id)
-      .populate("userId", "name mobile")
+      .populate("userId", "name mobile email")
       .populate("ownerId", "name mobile")
       .populate("pgId")
       .populate("roomId")
@@ -970,7 +1203,7 @@ export const updateTenant = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Tenant updated successfully",
+      message: "Tenant updated successfully.",
       tenant: populatedTenant,
     });
   } catch (error) {
@@ -985,24 +1218,18 @@ export const updateTenant = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to update tenant",
+      message: "Failed to update tenant.",
     });
   }
 };
-
-/* =====================================================
-   DELETE TENANT
-   OWNER ONLY
-===================================================== */
-
+// ============================================
+// DELETE TENANT
+// ============================================
 export const deleteTenant = async (req, res) => {
   try {
-    const { tenantId } = req.params;
+    const tenantId = req.params.id;
 
-    const tenant = await Tenant.findOne({
-      _id: tenantId,
-      ownerId: req.user.userId,
-    });
+    const tenant = await Tenant.findById(tenantId);
 
     if (!tenant) {
       return res.status(404).json({
@@ -1011,66 +1238,84 @@ export const deleteTenant = async (req, res) => {
       });
     }
 
-    await Bed.findOneAndUpdate(
-      {
-        _id: tenant.bedId,
-        pgId: tenant.pgId,
-      },
-      {
-        $set: {
-          status: "available",
-          tenantId: null,
-        },
-      }
-    );
+    // Ensure the tenant belongs to the logged-in owner
+    if (tenant.ownerId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: "You are not authorized to delete this tenant",
+      });
+    }
 
-    // Preserve rent records as financial history.
-    await Tenant.deleteOne({ _id: tenant._id });
-    await User.deleteOne({ _id: tenant.userId });
+    // Release the bed if the tenant is still active
+    if (tenant.status === "active" && tenant.bedId) {
+      await Bed.findByIdAndUpdate(tenant.bedId, {
+        $set: { isOccupied: false },
+      });
+    }
+
+    // Remove tenant rent records
+    await RentRecord.deleteMany({
+      tenantId: tenant._id,
+      ownerId: tenant.ownerId,
+    });
+
+    // Remove tenant record
+    await Tenant.findByIdAndDelete(tenant._id);
+
+    // Remove the associated user only if they have no other tenant records
+    const otherTenantRecords = await Tenant.countDocuments({
+      userId: tenant.userId,
+    });
+
+    if (otherTenantRecords === 0) {
+      await User.findByIdAndDelete(tenant.userId);
+    }
 
     return res.status(200).json({
       success: true,
-      message: "Tenant deleted successfully.",
+      message: "Tenant deleted successfully",
     });
   } catch (error) {
     console.error("Delete tenant error:", error);
 
     return res.status(500).json({
       success: false,
-      message: "Failed to delete tenant.",
+      message: "Failed to delete tenant",
+      error: error.message,
     });
   }
 };
 
-/* =====================================================
-   GET MY ROOMMATES
-   TENANT ONLY
-===================================================== */
-
+// ============================================
+// GET MY ROOMMATES
+// ============================================
 export const getMyRoommates = async (req, res) => {
   try {
-    const userId = req.user.userId;
+    const userId = req.user.id;
 
-    const tenant = await Tenant.findOne({
+    // Find the tenant record associated with the logged-in user
+    const myTenant = await Tenant.findOne({
       userId,
       status: "active",
     });
 
-    if (!tenant) {
+    if (!myTenant) {
       return res.status(404).json({
         success: false,
-        message: "Active tenant profile not found.",
+        message: "No active tenant record found",
       });
     }
 
+    // Find other active tenants in the same PG and room
     const roommates = await Tenant.find({
-      roomId: tenant.roomId,
+      pgId: myTenant.pgId,
+      roomId: myTenant.roomId,
       status: "active",
-      _id: { $ne: tenant._id },
+      _id: { $ne: myTenant._id },
     })
-      .populate("userId", "name")
-      .populate("roomId", "roomNumber roomType floor")
-      .select("userId roomId tenantPhoto");
+      .populate("userId", "name email phone")
+      .populate("bedId", "bedNumber")
+      .select("-aadhaarImage");
 
     return res.status(200).json({
       success: true,
@@ -1082,7 +1327,8 @@ export const getMyRoommates = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch roommates.",
+      message: "Failed to fetch roommates",
+      error: error.message,
     });
   }
 };

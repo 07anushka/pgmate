@@ -1,8 +1,12 @@
+
 import Payment from "../models/Payment.js";
 import RentRecord from "../models/RentRecord.js";
 import Tenant from "../models/Tenant.js";
 import PG from "../models/PG.js";
 import DebtCollection from "../models/DebtCollection.js";
+import User from "../models/User.js";
+import { sendTenantPaymentReceipt } from "../utils/email.js";
+import TenantEmailLog from "../models/TenantEmailLog.js";
 
 /* =====================================================
    HELPERS
@@ -27,6 +31,7 @@ const isValidObjectId = (value) =>
 
 const validateAmount = (value) => {
   const amount = Number(value);
+
   return (
     Number.isFinite(amount) &&
     amount > 0 &&
@@ -85,15 +90,17 @@ const populateTenantDetails = (query) =>
         },
         {
           path: "userId",
-          select: "name mobile",
+          select: "name mobile email",
         },
       ],
     })
-    .populate("userId", "name mobile")
+    .populate("userId", "name mobile email")
     .populate("pgId", "name address city state");
 
 const verifyPGOwnership = async (pgId, ownerId) => {
-  if (!pgId || !isValidObjectId(String(pgId))) return null;
+  if (!pgId || !isValidObjectId(String(pgId))) {
+    return null;
+  }
 
   return PG.findOne({
     _id: pgId,
@@ -107,6 +114,7 @@ const requireSelectedPG = async (pgId, ownerId, res) => {
       success: false,
       message: "Select a PG to view payment details.",
     });
+
     return null;
   }
 
@@ -117,6 +125,7 @@ const requireSelectedPG = async (pgId, ownerId, res) => {
       success: false,
       message: "You do not have access to this PG.",
     });
+
     return null;
   }
 
@@ -261,10 +270,7 @@ export const getMyPayments = async (req, res) => {
     const pg = await requireSelectedPG(pgId, ownerId, res);
     if (!pg) return;
 
-    if (
-      (month && !year) ||
-      (!month && year)
-    ) {
+    if ((month && !year) || (!month && year)) {
       return res.status(400).json({
         success: false,
         message: "Month and year must be provided together.",
@@ -294,10 +300,7 @@ export const getMyPayments = async (req, res) => {
       });
     }
 
-    const filter = {
-      ownerId,
-      pgId,
-    };
+    const filter = { ownerId, pgId };
 
     if (month && year) {
       const { start, end } = getMonthRange(
@@ -421,13 +424,9 @@ export const getPaymentSummary = async (req, res) => {
     const debtCollections = await DebtCollection.aggregate([
       {
         $match: {
-          ownerId: (await PG.findById(pgId).select("ownerId"))
-            ?.ownerId,
+          ownerId,
           pgId: pg._id,
-          paymentDate: {
-            $gte: start,
-            $lte: end,
-          },
+          paymentDate: { $gte: start, $lte: end },
         },
       },
       {
@@ -515,12 +514,7 @@ export const getRentRecords = async (req, res) => {
       year,
     });
 
-    const filter = {
-      ownerId,
-      pgId,
-      month,
-      year,
-    };
+    const filter = { ownerId, pgId, month, year };
 
     if (
       status &&
@@ -618,7 +612,7 @@ export const createPayment = async (req, res) => {
       ownerId,
       pgId,
       status: "active",
-    });
+    }).populate("userId", "name email mobile");
 
     if (!tenant) {
       return res.status(404).json({
@@ -728,7 +722,7 @@ export const createPayment = async (req, res) => {
       ownerId,
       pgId,
       tenantId,
-      userId: tenant.userId,
+      userId: tenant.userId?._id || tenant.userId,
       amount: numericAmount,
       paymentDate: paidAt,
       paymentMethod: method,
@@ -736,24 +730,127 @@ export const createPayment = async (req, res) => {
       notes: String(notes || "").trim(),
     });
 
-    rentRecord.status = "paid";
-    rentRecord.paidDate = paidAt;
-    rentRecord.paymentMethod = method;
-    rentRecord.daysLate = daysLate;
-    rentRecord.paymentId = payment._id;
+    try {
+      rentRecord.status = "paid";
+      rentRecord.paidDate = paidAt;
+      rentRecord.paymentMethod = method;
+      rentRecord.daysLate = daysLate;
+      rentRecord.paymentId = payment._id;
 
-    await rentRecord.save();
+      await rentRecord.save();
+    } catch (rentError) {
+      // Roll back the payment if its rent record cannot be updated.
+      await Payment.deleteOne({
+        _id: payment._id,
+        ownerId,
+      });
+
+      throw rentError;
+    }
+
+    // Send the receipt only after the payment is saved.
+    // Email failure must not turn a successful payment into a failed API response.
+    let receiptEmailSent = false;
+
+    const tenantUser = tenant.userId;
+
+    const tenantEmail = tenantUser?.email;
+
+    const notificationKey = `payment-receipt:${payment._id}`;
+
+    if (tenantEmail) {
+      try {
+        const existingLog = await TenantEmailLog.findOne({
+          tenantId: tenant._id,
+          notificationKey,
+          status: "sent",
+        });
+
+        if (!existingLog) {
+          await sendTenantPaymentReceipt({
+            tenant,
+            user: tenantUser,
+            pg,
+            payment,
+            rentRecord,
+          });
+
+          receiptEmailSent = true;
+
+          await TenantEmailLog.findOneAndUpdate(
+            {
+              tenantId: tenant._id,
+              notificationKey,
+            },
+            {
+              $set: {
+                ownerId,
+                pgId,
+                tenantId: tenant._id,
+                userId: tenantUser._id,
+                notificationKey,
+                status: "sent",
+                sentAt: new Date(),
+                error: "",
+              },
+            },
+            { upsert: true, new: true }
+          );
+        } else {
+          receiptEmailSent = true;
+        }
+      } catch (emailError) {
+        console.error(
+          "Tenant payment receipt email failed:",
+          emailError
+        );
+
+        try {
+          await TenantEmailLog.findOneAndUpdate(
+            {
+              tenantId: tenant._id,
+              notificationKey,
+            },
+            {
+              $set: {
+                ownerId,
+                pgId,
+                tenantId: tenant._id,
+                userId: tenantUser?._id || tenantUser,
+                notificationKey,
+                status: "failed",
+                sentAt: null,
+                error: String(emailError.message || emailError).slice(
+                  0,
+                  1000
+                ),
+              },
+            },
+            { upsert: true, new: true }
+          );
+        } catch (logError) {
+          console.error(
+            "Receipt email log failed:",
+            logError
+          );
+        }
+      }
+    } else {
+      console.warn(
+        `No email address for tenant ${tenant._id}; receipt not sent.`
+      );
+    }
 
     return res.status(201).json({
       success: true,
       message:
         daysLate > 0
-          ? `Rent marked as paid ${daysLate} ${
-              daysLate === 1 ? "day" : "days"
-            } late.`
+          ? `Rent marked as paid ${daysLate} ${daysLate === 1 ? "day" : "days"
+          } late.`
           : "Rent marked as paid on time.",
       payment,
       rentRecord,
+      receiptEmailSent,
     });
   } catch (error) {
     console.error("Create payment error:", error);
@@ -801,7 +898,23 @@ export const updatePaymentStatus = async (req, res) => {
       });
     }
 
-    const paymentDate = new Date(payment.paymentDate);
+    const allowedMethods = [
+      "cash",
+      "upi",
+      "bank",
+      "card",
+      "other",
+    ];
+
+    if (
+      paymentMethod &&
+      !allowedMethods.includes(paymentMethod)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment method.",
+      });
+    }
 
     const rentRecord = await RentRecord.findOne({
       ownerId,
@@ -929,8 +1042,7 @@ export const deletePayment = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message:
-        "Payment transaction deleted successfully.",
+      message: "Payment transaction deleted successfully.",
     });
   } catch (error) {
     console.error("Delete payment error:", error);
@@ -1015,8 +1127,7 @@ export const collectVacatedDebt = async (req, res) => {
     if (currentBalance <= 0) {
       return res.status(400).json({
         success: false,
-        message:
-          "This tenant has no outstanding balance.",
+        message: "This tenant has no outstanding balance.",
       });
     }
 
@@ -1066,8 +1177,7 @@ export const collectVacatedDebt = async (req, res) => {
 
       return res.status(409).json({
         success: false,
-        message:
-          "The balance changed. Refresh and try again.",
+        message: "The balance changed. Refresh and try again.",
       });
     }
 

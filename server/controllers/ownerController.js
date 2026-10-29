@@ -3,6 +3,12 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import User from "../models/User.js";
 
+import {
+  sendOwnerWelcomeEmail,
+} from "../utils/email.js";
+
+import SubscriptionEmailLog from "../models/SubscriptionEmailLog.js";
+
 const PLAN_DURATIONS = {
   monthly: 1,
   quarterly: 3,
@@ -59,6 +65,8 @@ const ownerResponse = (owner) => ({
   id: owner._id,
   name: owner.name,
   mobile: owner.mobile,
+  email: owner.email || "",
+  isEmailVerified: Boolean(owner.isEmailVerified),
   role: owner.role,
   createdBy: owner.createdBy,
   createdAt: owner.createdAt,
@@ -91,13 +99,22 @@ const parsePlanDates = (planName, startDateValue) => {
 // CREATE OWNER
 export const createOwner = async (req, res) => {
   try {
-    const { name, mobile, password, planName = "monthly", startDate } =
+    const { name, mobile, email, password, planName = "monthly", startDate } =
       req.body;
 
-    if (!name?.trim() || !mobile?.trim() || !password) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+
+    if (!name?.trim() || !mobile?.trim() || !normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
-        message: "Name, mobile number and password are required.",
+        message: "Name, mobile number, email address and password are required.",
+      });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address.",
       });
     }
 
@@ -119,6 +136,14 @@ export const createOwner = async (req, res) => {
       });
     }
 
+    const existingEmail = await User.findOne({ email: normalizedEmail });
+    if (existingEmail) {
+      return res.status(409).json({
+        success: false,
+        message: "This email address is already registered.",
+      });
+    }
+
     let dates;
 
     try {
@@ -135,6 +160,8 @@ export const createOwner = async (req, res) => {
     const owner = await User.create({
       name: name.trim(),
       mobile: normalizedMobile,
+      email: normalizedEmail,
+      isEmailVerified: false,
       password: hashedPassword,
       role: "owner",
       createdBy: req.user._id,
@@ -144,16 +171,69 @@ export const createOwner = async (req, res) => {
       subscriptionReactivatedAt: null,
     });
 
+    // Owner is already saved. Email failure must not undo owner creation.
+    let welcomeEmailSent = false;
+
+    try {
+      // Check whether a welcome email has already been logged.
+      const existingWelcomeLog = await SubscriptionEmailLog.findOne({
+        ownerId: owner._id,
+        subscriptionEndDate: owner.subscriptionEndDate,
+        emailType: "welcome",
+        status: "sent",
+      });
+
+      if (!existingWelcomeLog) {
+        await sendOwnerWelcomeEmail(owner);
+
+        await SubscriptionEmailLog.create({
+          ownerId: owner._id,
+          subscriptionEndDate: owner.subscriptionEndDate,
+          emailType: "welcome",
+          status: "sent",
+          sentAt: new Date(),
+        });
+
+        welcomeEmailSent = true;
+      }
+    } catch (emailError) {
+      console.error("Owner welcome email error:", emailError);
+
+      // Record failure for troubleshooting.
+      try {
+        await SubscriptionEmailLog.updateOne(
+          {
+            ownerId: owner._id,
+            subscriptionEndDate: owner.subscriptionEndDate,
+            emailType: "welcome",
+          },
+          {
+            $set: {
+              status: "failed",
+              error: String(emailError.message || emailError).slice(0, 1000),
+              sentAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
+      } catch (logError) {
+        console.error("Welcome email log error:", logError);
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Owner created successfully.",
+      welcomeEmailSent,
       owner: ownerResponse(owner),
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "This mobile number is already registered.",
+        message: error.keyPattern?.email
+          ? "This email address is already registered."
+          : "This mobile number is already registered.",
       });
     }
 
@@ -291,7 +371,7 @@ export const reactivateOwnerSubscription = async (req, res) => {
 export const updateOwner = async (req, res) => {
   try {
     const { ownerId } = req.params;
-    const { name, mobile, password, planName, startDate } = req.body;
+    const { name, mobile, email, password, planName, startDate } = req.body;
 
     if (!mongoose.isValidObjectId(ownerId)) {
       return res.status(400).json({
@@ -346,6 +426,34 @@ export const updateOwner = async (req, res) => {
       owner.mobile = normalizedMobile;
     }
 
+    if (email !== undefined) {
+      const normalizedEmail = String(email || "").trim().toLowerCase();
+
+      if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid email address.",
+        });
+      }
+
+      const duplicateEmail = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: owner._id },
+      });
+
+      if (duplicateEmail) {
+        return res.status(409).json({
+          success: false,
+          message: "This email address is already registered.",
+        });
+      }
+
+      if (owner.email !== normalizedEmail) {
+        owner.email = normalizedEmail;
+        owner.isEmailVerified = false;
+      }
+    }
+
     if (password) {
       if (typeof password !== "string" || password.length < 8) {
         return res.status(400).json({
@@ -392,7 +500,9 @@ export const updateOwner = async (req, res) => {
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "This mobile number is already registered.",
+        message: error.keyPattern?.email
+          ? "This email address is already registered."
+          : "This mobile number is already registered.",
       });
     }
 

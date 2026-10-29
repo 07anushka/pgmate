@@ -1325,3 +1325,16 @@ body,
 
   line-height: 1.4;
 }
+
+.login-content-forgot {
+  width: min(440px, 82%);
+  max-height: 100%;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .login-content-forgot {
+    width: 100%;
+    max-width: 390px;
+  }
+}

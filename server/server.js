@@ -17,6 +17,11 @@ import foodMenuRoutes from "./routes/foodMenuRoutes.js";
 import noticeRoutes from "./routes/noticeRoutes.js";
 import tenantPortalRoutes from "./routes/tenantPortalRoutes.js";
 import aadhaarVerificationRoutes from "./routes/aadhaarVerificationRoutes.js";
+import forgotPasswordRoutes from "./routes/forgotPassword.routes.js";
+import superAdminSettingsRoutes from "./routes/superAdminSettingsRoutes.js";
+import { startSubscriptionReminderScheduler } from "./utils/subscriptionReminder.js";
+import { startTenantRentScheduler } from "./utils/tenantRentScheduler.js";
+
 
 dotenv.config();
 
@@ -29,7 +34,8 @@ const PORT = process.env.PORT || 5000;
 ========================================= */
 
 connectDB();
-
+startSubscriptionReminderScheduler();
+startTenantRentScheduler();
 /* =========================================
    MIDDLEWARE
 ========================================= */
@@ -48,6 +54,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 ========================================= */
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/forgot-password", forgotPasswordRoutes);
 app.use("/api/owners", ownerRoutes);
 app.use("/api/pg", pgRoutes);
 app.use("/api/rooms", roomRoutes);
@@ -58,7 +65,10 @@ app.use("/api/complaints", complaintRoutes);
 app.use("/api/food-menu", foodMenuRoutes);
 app.use("/api/notices", noticeRoutes);
 app.use("/api/tenant-portal", tenantPortalRoutes);
-
+app.use(
+  "/api/super-admin/settings",
+  superAdminSettingsRoutes
+);
 /* =========================================
    AADHAAR VERIFICATION ROUTE
 ========================================= */

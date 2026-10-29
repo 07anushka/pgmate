@@ -59,6 +59,7 @@ const API_URL = "http://localhost:5000/api";
 const getInitialForm = () => ({
   name: "",
   mobile: "",
+  email: "",
   password: "",
   dateOfBirth: "",
   gender: "",
@@ -1085,6 +1086,10 @@ function Tenants() {
           tenant.userId
             ?.mobile || "",
 
+        email:
+          tenant.userId
+            ?.email || "",
+
         password: "",
         dateOfBirth: tenant.dateOfBirth
           ? new Date(tenant.dateOfBirth)
@@ -1836,20 +1841,30 @@ function Tenants() {
         return;
       }
 
-      if (
-        !form.name.trim() ||
-        !form.mobile.trim() ||
-        !form.pgId ||
-        !form.roomId ||
-        !form.bedId ||
-        form.monthlyRent ===
-        "" ||
-        !form.rentDueDay
-      ) {
-        setTenantError(
-          "Please fill all required fields."
-        );
+      const missingFields = [];
 
+      if (!form.name.trim()) missingFields.push("Full Name");
+      if (!form.mobile.trim()) missingFields.push("Mobile Number");
+
+      if (!editingTenant && !form.email.trim()) {
+        missingFields.push("Email Address");
+      }
+
+      if (
+        form.email.trim() &&
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
+      ) {
+        missingFields.push("Valid Email Address");
+      }
+
+      if (!form.pgId) missingFields.push("PG");
+      if (!form.roomId) missingFields.push("Room");
+      if (!form.bedId) missingFields.push("Bed");
+      if (form.monthlyRent === "") missingFields.push("Monthly Rent");
+      if (!form.rentDueDay) missingFields.push("Rent Due Day");
+
+      if (missingFields.length > 0) {
+        setTenantError(`Please check: ${missingFields.join(", ")}.`);
         return;
       }
 
@@ -1875,6 +1890,7 @@ function Tenants() {
 
           mobile:
             form.mobile.trim(),
+          email: form.email.trim().toLowerCase(),
           dateOfBirth: form.dateOfBirth || null,
           gender: form.gender || "",
           documentType: form.documentType || "",
@@ -4325,6 +4341,25 @@ function Tenants() {
                       }
                       placeholder="Mobile number"
                       required
+                    />
+
+                  </div>
+
+                  <div className="tenant-form-group">
+
+                    <label htmlFor="tenant-email">
+                      Email Address{!editingTenant ? " *" : ""}
+                    </label>
+
+                    <input
+                      id="tenant-email"
+                      type="email"
+                      name="email"
+                      value={form.email || ""}
+                      onChange={handleChange}
+                      placeholder="name@example.com"
+                      autoComplete="email"
+                      required={!editingTenant}
                     />
 
                   </div>

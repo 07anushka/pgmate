@@ -31,3 +31,33 @@ a {
   text-decoration: none;
   color: inherit;
 }
+
+
+
+/* Prevent mobile browsers from zooming into form fields */
+@media screen and (max-width: 768px) {
+  input,
+  select,
+  textarea,
+  button {
+    font-size: 16px;
+  }
+
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+/* Keep the page layout stable on mobile */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  width: 100%;
+  overflow-x: hidden;
+}

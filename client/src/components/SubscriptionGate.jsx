@@ -6,7 +6,8 @@ import { useAuth } from "../context/AuthContext";
 import ownerIllustration from "../assets/owner-subscription-ended.png";
 import tenantIllustration from "../assets/tenant-subscription-ended.png";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 export default function SubscriptionGate({ children }) {
   const { user, token, logout } = useAuth();
